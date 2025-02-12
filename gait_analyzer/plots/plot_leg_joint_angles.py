@@ -122,15 +122,6 @@ class PlotLegData:
                     if this_cycles_data is not None:
                         cycles_data[condition_name] += this_cycles_data
 
-        # TODO: remove ------------------------
-        plt.figure()
-        data_tempo = cycles_data[list(cycles_data.keys())[0]]
-        for i in range(len(data_tempo)):
-            print(data_tempo[i].shape)
-            plt.plot(data_tempo[i][5, :])
-        plt.savefig("plottttt.png")
-        plt.show()
-
         # Prepare the plot
         if self.plot_type == PlotType.GRF:
             plot_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8]

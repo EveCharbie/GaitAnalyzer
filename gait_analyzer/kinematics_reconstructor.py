@@ -291,12 +291,12 @@ class KinematicsReconstructor:
                 f"75 percentile between : {np.min(np.percentile(residuals[:, self.frame_range], 75, axis=0))} and "
                 f"{np.max(np.percentile(residuals[:, self.frame_range], 75, axis=0))}"
             )
-            # if np.all(np.percentile(residuals, 75, axis=0) < 0.1):
-            #     is_successful_reconstruction = True
-            #     break
+            if np.all(np.percentile(residuals, 75, axis=0) < 0.05):
+                is_successful_reconstruction = True
+                break
 
-        # if not is_successful_reconstruction:
-        #     raise RuntimeError("The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling.")
+        if not is_successful_reconstruction:
+            raise RuntimeError("The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling.")
 
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
