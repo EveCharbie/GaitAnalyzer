@@ -40,7 +40,6 @@ class PlotLegData:
         # Prepare the plot
         self.prepare_plot()
 
-
     def get_event_index(self, event, cycles_to_analyze, analog_time_vector, markers_time_vector):
         if self.plot_type == PlotType.GRF:
             event_index = event
@@ -50,11 +49,10 @@ class PlotLegData:
                 markers_time_vector,
                 event,
             )
-            events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start: cycles_to_analyze.stop]
+            events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
             events_idx_q -= events_idx_q[0]
             event_index = list(events_idx_q)
         return event_index
-
 
     def get_data_to_split(self, data):
         if self.plot_type == PlotType.GRF:
@@ -64,11 +62,11 @@ class PlotLegData:
                 data_to_split = data[self.plot_type.value][1, :, :].squeeze()
             else:
                 raise NotImplementedError(
-                    "Plotting GRF on both legs is not implemented yet. If you encounter this error, please notify the developers.")
+                    "Plotting GRF on both legs is not implemented yet. If you encounter this error, please notify the developers."
+                )
         else:
             data_to_split = data[self.plot_type.value]
         return data_to_split
-
 
     def get_splitted_cycles(self, current_file: str, partial_output_file_name: str):
         this_cycles_data = None
@@ -78,25 +76,24 @@ class PlotLegData:
                 data = pickle.load(f)
             subject_name = data["subject_name"]
             subject_mass = data["subject_mass"]
-            condition_name = (
-                partial_output_file_name
-                .replace(subject_name, "")
-                .replace("_results.pkl", "")
-            )
+            condition_name = partial_output_file_name.replace(subject_name, "").replace("_results.pkl", "")
             if self.leg_to_plot == LegToPlot.DOMINANT:
                 raise NotImplementedError(
-                    "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers.")
+                    "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers."
+                )
 
             if condition_name in self.conditions_to_compare:
-                event_index = self.get_event_index(event=data["events"]["right_leg_heel_touch"],
-                                                   cycles_to_analyze=data["cycles_to_analyze"],
-                                                   analog_time_vector=data["analogs_time_vector"],
-                                                   markers_time_vector=data["markers_time_vector"])
+                event_index = self.get_event_index(
+                    event=data["events"]["right_leg_heel_touch"],
+                    cycles_to_analyze=data["cycles_to_analyze"],
+                    analog_time_vector=data["analogs_time_vector"],
+                    markers_time_vector=data["markers_time_vector"],
+                )
                 data_to_split = self.get_data_to_split(data)
-                this_cycles_data = split_cycles(data_to_split, event_index, plot_type=self.plot_type,
-                                                  subject_mass=subject_mass)
+                this_cycles_data = split_cycles(
+                    data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
+                )
         return this_cycles_data, condition_name
-
 
     def prepare_plot(self):
         """
@@ -111,14 +108,16 @@ class PlotLegData:
                 for file_in_sub_folder in os.listdir(os.path.join(self.result_folder, result_file)):
                     file_in_sub_folder = os.path.join(self.result_folder, result_file, file_in_sub_folder)
                     partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
-                    this_cycles_data, condition_name = self.get_splitted_cycles(current_file=file_in_sub_folder,
-                                                      partial_output_file_name=partial_output_file_name)
+                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                        current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
+                    )
                     if this_cycles_data is not None:
                         cycles_data[condition_name] += this_cycles_data
             else:
                 if result_file.endswith("results.pkl"):
-                    this_cycles_data, condition_name = self.get_splitted_cycles(current_file=result_file,
-                                               partial_output_file_name=result_file)
+                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                        current_file=result_file, partial_output_file_name=result_file
+                    )
                     if this_cycles_data is not None:
                         cycles_data[condition_name] += this_cycles_data
 
@@ -135,7 +134,8 @@ class PlotLegData:
                 plot_idx = [[20, 3, 6, 9, 10], [20, 3, 13, 16, 17]]
             else:
                 raise ValueError(
-                    f"leg_to_plot {self.leg_to_plot} not recoginzed. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT.")
+                    f"leg_to_plot {self.leg_to_plot} not recoginzed. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT."
+                )
             plot_labels = ["Torso", "Pelvis", "Hip", "Knee", "Ankle"]
 
         # Store the output

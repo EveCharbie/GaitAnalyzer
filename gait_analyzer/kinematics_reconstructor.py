@@ -276,7 +276,9 @@ class KinematicsReconstructor:
                 residuals = ik.sol()["residuals"]
             elif recons_method == ReconstructionType.EKF:
                 # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
-                _, q_recons, _, _ = biorbd.extended_kalman_filter(self.biorbd_model, self.experimental_data.c3d_full_file_path)
+                _, q_recons, _, _ = biorbd.extended_kalman_filter(
+                    self.biorbd_model, self.experimental_data.c3d_full_file_path
+                )
                 residuals = np.zeros_like(markers)
                 raise Warning(
                     "The EKF acceptance criteria was not implemented yet. Please see the developers if you encounter this warning."
@@ -294,7 +296,9 @@ class KinematicsReconstructor:
                 break
 
         if not is_successful_reconstruction:
-            raise RuntimeError("The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling.")
+            raise RuntimeError(
+                "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
+            )
 
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
@@ -393,16 +397,12 @@ class KinematicsReconstructor:
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
         marker_data_with_ones[:3, :, :] = self.markers
-        markers = Markers(
-            data=marker_data_with_ones, channels=marker_names
-        )
+        markers = Markers(data=marker_data_with_ones, channels=marker_names)
 
         # Visualization
         viz = PhaseRerun(self.t)
         if self.q.shape[0] == model.nb_q:
-            q_animation = self.q_filtered.reshape(
-                model.nb_q, len(list(self.frame_range))
-            )
+            q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
             q_animation = self.q_filtered.T
         viz.add_animated_model(model, q_animation, tracked_markers=markers)

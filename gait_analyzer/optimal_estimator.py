@@ -13,13 +13,13 @@ class OptimalEstimator:
     """
 
     def __init__(
-            self,
-            biorbd_model_path: str,
-            experimental_data: ExperimentalData,
-            events: Events,
-            q_filtered: np.ndarray,
-            qdot: np.ndarray,
-            tau: np.ndarray
+        self,
+        biorbd_model_path: str,
+        experimental_data: ExperimentalData,
+        events: Events,
+        q_filtered: np.ndarray,
+        qdot: np.ndarray,
+        tau: np.ndarray,
     ):
         """
         Initialize the OptimalEstimator.

@@ -147,7 +147,6 @@ class ModelCreator:
         if not isinstance(animate_model_flag, bool):
             raise ValueError("animate_model_flag must be a boolean.")
 
-
         # Initial attributes
         self.subject_name = subject_name
         self.subject_mass = subject_mass
@@ -345,7 +344,9 @@ class ModelCreator:
         with open(self.biorbd_model_full_path, "w") as file:
             for i_line, line in enumerate(file_lines):
                 if i_line + 1 == 27:  # Turn the model so it is not alignes with the gimbal lock
-                    file.write(line.replace("\t\tRT\t0 0 0\txyz\t0 0 0\n", "\t\tRT\t1.57079633 1.57079633 0\txyz\t0 0 0\n"))
+                    file.write(
+                        line.replace("\t\tRT\t0 0 0\txyz\t0 0 0\n", "\t\tRT\t1.57079633 1.57079633 0\txyz\t0 0 0\n")
+                    )
                 elif i_line + 1 == 42:  # Translation X
                     file.write(line.replace("-10 10", "-3 3"))
                 elif i_line + 1 == 43:  # Translation Y
@@ -532,7 +533,6 @@ class ModelCreator:
         viz = PhaseRerun(np.linspace(0, 1, 10))
         viz.add_animated_model(model, np.zeros((model.nb_q, 10)))
         viz.rerun_by_frame("Kinematics reconstruction")
-
 
     def inputs(self):
         return {

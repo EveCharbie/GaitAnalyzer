@@ -45,13 +45,25 @@ def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) 
     elif plot_type == PlotType.QDDOT:
         unit_conversion = 180 / np.pi
     elif plot_type == PlotType.TAU:
-        unit_conversion = 1/subject_mass
+        unit_conversion = 1 / subject_mass
     elif plot_type == PlotType.POWER:
-        unit_conversion = 1/subject_mass
+        unit_conversion = 1 / subject_mass
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_conversion = 1
     elif plot_type == PlotType.GRF:
-        unit_conversion = np.array([1, 1, 1, 1, 1, 1, 1/(subject_mass*9.8066499999999994), 1/(subject_mass*9.8066499999999994), 1/(subject_mass*9.8066499999999994)])
+        unit_conversion = np.array(
+            [
+                1,
+                1,
+                1,
+                1,
+                1,
+                1,
+                1 / (subject_mass * 9.8066499999999994),
+                1 / (subject_mass * 9.8066499999999994),
+                1 / (subject_mass * 9.8066499999999994),
+            ]
+        )
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_conversion
@@ -79,7 +91,17 @@ def get_unit_names(plot_type: PlotType) -> str | list[str]:
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_str = r"[$kg.m^2/s$]"
     elif plot_type == PlotType.GRF:
-        unit_str = ["[m]", "[m]", "[m]", "[Nm]", "[Nm]", "[Nm]", "[N/Body weight]", "[N/Body weight]", "[N/Body weight]"]
+        unit_str = [
+            "[m]",
+            "[m]",
+            "[m]",
+            "[Nm]",
+            "[Nm]",
+            "[Nm]",
+            "[N/Body weight]",
+            "[N/Body weight]",
+            "[N/Body weight]",
+        ]
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_str
@@ -125,7 +147,9 @@ def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, su
         current_cycle = data[:, event_idx[i_event] : event_idx[i_event + 1]]
         if isinstance(unit_conversion, np.ndarray):
             if current_cycle.shape[0] != unit_conversion.shape[0]:
-                raise NotImplementedError("Due to a temporary design, the unit conversion factor must be the same length as the data dimension. If you encounter this error, please ping EveCharbie in a GitHub issue.")
+                raise NotImplementedError(
+                    "Due to a temporary design, the unit conversion factor must be the same length as the data dimension. If you encounter this error, please ping EveCharbie in a GitHub issue."
+                )
             else:
                 unit_conversion_array = np.tile(unit_conversion, (current_cycle.shape[1], 1)).T
         else:
