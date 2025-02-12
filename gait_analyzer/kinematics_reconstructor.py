@@ -236,7 +236,7 @@ class KinematicsReconstructor:
                 data = pickle.load(file)
                 self.frame_range = data["frame_range"]
                 self.markers = data["markers"]
-                self.cycles_to_analyze = data["cycles_to_analyze"]
+                self.cycles_to_analyze = data["cycles_to_analyze_kin"]
                 self.t = data["t"]
                 self.q = data["q"]
                 self.q_filtered = data["q_filtered"]
@@ -438,7 +438,7 @@ class KinematicsReconstructor:
             reconstruction_type = self.reconstruction_type.value
         return {
             "reconstruction_type": reconstruction_type,
-            "cycles_to_analyze": self.cycles_to_analyze,
+            "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,
             "markers": self.markers,
             "t": self.t,

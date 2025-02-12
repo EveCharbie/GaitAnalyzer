@@ -5,6 +5,7 @@ import biorbd
 import osim_to_biomod as otb
 import opensim as osim
 from xml.etree import ElementTree as ET
+from pyomeca import Markers
 
 
 class OsimModels:
@@ -130,6 +131,7 @@ class ModelCreator:
         models_result_folder: str,
         osim_model_type,
         skip_if_existing: bool,
+        animate_model_flag: bool,
     ):
 
         # Checks
@@ -143,6 +145,9 @@ class ModelCreator:
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
+        if not isinstance(animate_model_flag, bool):
+            raise ValueError("animate_model_flag must be a boolean.")
+
 
         # Initial attributes
         self.subject_name = subject_name
@@ -185,6 +190,9 @@ class ModelCreator:
 
         if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
             self.extended_model_for_EKF()
+
+        if animate_model_flag:
+            self.animate_model()
 
     def convert_c3d_to_trc(self):
         """
@@ -341,7 +349,7 @@ class ModelCreator:
         with open(self.biorbd_model_full_path, "w") as file:
             for i_line, line in enumerate(file_lines):
                 if i_line + 1 == 27:  # Turn the model so it is not alignes with the gimbal lock
-                    file.write(line.replace("\t\tRT\t0 0 0\txyz\t0 0 0\n", "\t\tRT\t0 0 -1.5707963\txyz\t0 0 0\n"))
+                    file.write(line.replace("\t\tRT\t0 0 0\txyz\t0 0 0\n", "\t\tRT\t1.57079633 1.57079633 0\txyz\t0 0 0\n"))
                 elif i_line + 1 == 42:  # Translation X
                     file.write(line.replace("-10 10", "-3 3"))
                 elif i_line + 1 == 43:  # Translation Y
@@ -510,6 +518,25 @@ class ModelCreator:
                     f"\tposition\t{virtual_marker_position_in_local[0]}\t{virtual_marker_position_in_local[1]}\t{virtual_marker_position_in_local[2]}\n"
                 )
                 file.write("endmarker\n")
+
+    def animate_model(self):
+        """
+        Animate the model
+        """
+        try:
+            from pyorerun import BiorbdModel, PhaseRerun
+        except:
+            raise RuntimeError("To animate the model, you must install Pyorerun.")
+
+        # Model
+        model = BiorbdModel(self.biorbd_model_virtual_markers_full_path)
+        model.options.transparent_mesh = False
+
+        # Visualization
+        viz = PhaseRerun(np.linspace(0, 1, 10))
+        viz.add_animated_model(model, np.zeros((model.nb_q, 10)))
+        viz.rerun_by_frame("Kinematics reconstruction")
+
 
     def inputs(self):
         return {
