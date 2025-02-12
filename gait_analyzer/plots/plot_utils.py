@@ -9,6 +9,7 @@ class LegToPlot(Enum):
     LEFT = "L"
     RIGHT = "R"
     BOTH = "both"
+    DOMINANT = "dominant"
 
 
 class PlotType(Enum):
@@ -45,7 +46,7 @@ def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) 
     elif plot_type == PlotType.TAU:
         unit_conversion = 1/subject_mass
     elif plot_type == PlotType.POWER:
-        unit_conversion = 1
+        unit_conversion = 1/subject_mass
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_conversion = 1
     else:
@@ -71,7 +72,7 @@ def get_unit_names(plot_type: PlotType) -> Tuple[float, str]:
     elif plot_type == PlotType.TAU:
         unit_str = r"[$Nm/kg$]"
     elif plot_type == PlotType.POWER:
-        unit_str = r"[$W$]"
+        unit_str = r"[$W/kg$]"
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_str = r"[$kg.m^2/s$]"
     else:

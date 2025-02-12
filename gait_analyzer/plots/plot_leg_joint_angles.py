@@ -40,10 +40,42 @@ class PlotLegData:
         # Prepare the plot
         self.prepare_plot()
 
+    def split_cycles(self, current_file: str, partial_output_file_name: str):
+        this_cycles_data = None
+        condition_name = None
+        if current_file.endswith("results.pkl"):
+            with open(current_file, "rb") as f:
+                data = pickle.load(f)
+            subject_name = data["subject_name"]
+            subject_mass = data["subject_mass"]
+            condition_name = (
+                partial_output_file_name
+                .replace(subject_name, "")
+                .replace("_results.pkl", "")
+            )
+            if self.leg_to_plot == LegToPlot.DOMINANT:
+                raise NotImplementedError(
+                    "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers.")
+            event_idx_markers = Operator.from_analog_frame_to_marker_frame(
+                data["analogs_time_vector"],
+                data["markers_time_vector"],
+                data["events"]["right_leg_heel_touch"],
+            )
+            cycles_to_analyze = data["cycles_to_analyze"]
+            events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start: cycles_to_analyze.stop]
+            events_idx_q -= events_idx_q[0]
+            event_idx = list(events_idx_q)
+            if condition_name in self.conditions_to_compare:
+                this_cycles_data = split_cycles(data[self.plot_type.value], event_idx, plot_type=self.plot_type,
+                                                  subject_mass=subject_mass)
+        return this_cycles_data, condition_name
+
+
     def prepare_plot(self):
         """
         This function prepares the data to plot.
         """
+
         # TODO: ThomasAout/FloEthv -> please decide if you want to compare mean of all participants
         cycles_data = {cond: [] for cond in self.conditions_to_compare}
         # Load the treated data to plot
@@ -51,42 +83,17 @@ class PlotLegData:
             if os.path.isdir(os.path.join(self.result_folder, result_file)):
                 for file_in_sub_folder in os.listdir(os.path.join(self.result_folder, result_file)):
                     file_in_sub_folder = os.path.join(self.result_folder, result_file, file_in_sub_folder)
-                    if file_in_sub_folder.endswith("results.pkl"):
-                        with open(file_in_sub_folder, "rb") as f:
-                            data = pickle.load(f)
-                        subject_name = data["subject_name"]
-                        subject_mass = data["subject_mass"]
-                        cond = (
-                            file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
-                            .replace(subject_name, "")
-                            .replace("_results.pkl", "")
-                        )
-                        event_idx_markers = Operator.from_analog_frame_to_marker_frame(
-                            data["analogs_time_vector"],
-                            data["markers_time_vector"],
-                            data["events"]["right_leg_heel_touch"],
-                        )
-                        cycles_to_analyze = data["cycles_to_analyze"]
-                        events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
-                        events_idx_q -= events_idx_q[0]
-                        event_idx = list(events_idx_q)
-                        if cond in self.conditions_to_compare:
-                            cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx, plot_type=self.plot_type, subject_mass=subject_mass)
+                    partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
+                    this_cycles_data, condition_name = self.split_cycles(current_file=file_in_sub_folder,
+                                                      partial_output_file_name=partial_output_file_name)
+                    if this_cycles_data is not None:
+                        cycles_data[condition_name] += this_cycles_data
             else:
                 if result_file.endswith("results.pkl"):
-                    with open(result_file, "rb") as f:
-                        data = pickle.load(f)
-                    subject_name = data["subject_name"]
-                    cond = result_file.replace(subject_name, "").replace(".pkl", "")
-                    event_idx_markers = Operator.from_analog_frame_to_marker_frame(
-                        data["analogs_time_vector"], data["markers_time_vector"], data["events"]["right_leg_heel_touch"]
-                    )
-                    cycles_to_analyze = data["cycles_to_analyze"]
-                    events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
-                    events_idx_q -= events_idx_q[0]
-                    event_idx = list(events_idx_q)
-                    if cond in self.conditions_to_compare:
-                        cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx)
+                    this_cycles_data, condition_name = self.split_cycles(current_file=result_file,
+                                               partial_output_file_name=result_file)
+                    if this_cycles_data is not None:
+                        cycles_data[condition_name] += this_cycles_data
 
         # TODO: remove ------------------------
         plt.figure()
@@ -100,10 +107,14 @@ class PlotLegData:
         # Prepare the plot
         if self.leg_to_plot == LegToPlot.RIGHT:
             plot_idx = [20, 3, 6, 9, 10]
-            plot_labels = ["Torso", "Pelvis", "Hip", "Knee", "Ankle"]
-            # plot_labels = ["Hip", "Knee", "Ankle"]  # TODO
+        elif self.leg_to_plot == LegToPlot.LEFT:
+            plot_idx = [20, 3, 13, 16, 17]
+        elif self.leg_to_plot == LegToPlot.BOTH:
+            plot_idx = [[20, 3, 6, 9, 10], [20, 3, 13, 16, 17]]
         else:
-            raise NotImplementedError("Only the right leg is implemented for now.")
+            raise ValueError(
+                f"leg_to_plot {self.leg_to_plot} not recoginzed. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT.")
+        plot_labels = ["Torso", "Pelvis", "Hip", "Knee", "Ankle"]
 
         # Store the output
         self.cycles_data = cycles_data
