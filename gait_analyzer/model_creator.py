@@ -1,11 +1,10 @@
 import os
 import shutil
+from xml.etree import ElementTree as ET
 import numpy as np
 import biorbd
 import osim_to_biomod as otb
 import opensim as osim
-from xml.etree import ElementTree as ET
-from pyomeca import Markers
 
 
 class OsimModels:
@@ -277,10 +276,6 @@ class ModelCreator:
         """
         This function is the one used in the process for now, but should be removed whenever we have the chance.
         """
-        self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
-
-        import shutil
-
         shutil.copyfile("../models/OpenSim_models/wholebody.xml", "wholebody.xml")
         shutil.copyfile("../models/OpenSim_models/wholebody.osim", "wholebody.osim")
         shutil.copyfile(self.trc_file_path, os.path.basename(self.trc_file_path))
@@ -301,6 +296,7 @@ class ModelCreator:
         tree.write(f"wholebody_{self.subject_name}.xml")
 
     def scale_opensim_model(self):
+        self.new_xml_path = self.osim_model_full_path.replace(".osim", f".xml")
         # tool = osim.ScaleTool(self.new_xml_path)
         tool = osim.ScaleTool(f"wholebody_{self.subject_name}.xml")
         tool.run()

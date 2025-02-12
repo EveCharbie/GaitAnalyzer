@@ -573,7 +573,7 @@ class Events:
         axs[1].set_ylabel("Right leg GRF")
         axs[2].set_ylabel("Phases both legs")
 
-        result_file_full_path = self.get_result_file_full_path()
+        result_file_full_path = self.get_result_file_full_path(self.experimental_data.result_folder + "/figures")
         plt.savefig(result_file_full_path.replace(".pkl", ".png"))
         plt.show()
 
@@ -590,8 +590,9 @@ class Events:
         end_frame = heel_touches[cycles_to_analyze.stop]
         return range(start_frame, end_frame)
 
-    def get_result_file_full_path(self):
-        result_folder = self.experimental_data.result_folder
+    def get_result_file_full_path(self, result_folder=None):
+        if result_folder is None:
+            result_folder = self.experimental_data.result_folder
         trial_name = self.experimental_data.c3d_file_name.split("/")[-1][:-4]
         result_file_full_path = f"{result_folder}/events_{trial_name}.pkl"
         return result_file_full_path
