@@ -1,26 +1,7 @@
 import numpy as np
 
-""" 
-from bioptim import (
-    BiorbdModel,
-    OptimalControlProgram,
-    DynamicsList,
-    DynamicsFcn,
-    BoundsList,
-    InitialGuessList,
-    ObjectiveList,
-    ObjectiveFcn,
-    InterpolationType,
-    Node,
-    Solver,
-    ConstraintList,
-    ConstraintFcn,
-    PhaseTransitionList,
-    PhaseTransitionFcn,
-    BiMappingList,
-)
-"""
 from gait_analyzer.experimental_data import ExperimentalData
+from gait_analyzer.events import Events
 
 
 class OptimalEstimator:
@@ -32,7 +13,13 @@ class OptimalEstimator:
     """
 
     def __init__(
-        self, biorbd_model_path: str, experimental_data: ExperimentalData, q: np.ndarray, qdot: np.ndarray, phases: dict
+        self,
+        biorbd_model_path: str,
+        experimental_data: ExperimentalData,
+        events: Events,
+        q_filtered: np.ndarray,
+        qdot: np.ndarray,
+        tau: np.ndarray,
     ):
         """
         Initialize the OptimalEstimator.
@@ -42,19 +29,53 @@ class OptimalEstimator:
         biorbd_model_path: str
             The full path to the biorbd model.
         """
+        try:
+            from bioptim import (
+                BiorbdModel,
+                OptimalControlProgram,
+                DynamicsList,
+                DynamicsFcn,
+                BoundsList,
+                InitialGuessList,
+                ObjectiveList,
+                ObjectiveFcn,
+                InterpolationType,
+                Node,
+                Solver,
+                ConstraintList,
+                ConstraintFcn,
+                PhaseTransitionList,
+                PhaseTransitionFcn,
+                BiMappingList,
+            )
+        except:
+            raise RuntimeError("To animate the kinematics, you must install Bioptim.")
+
         # Checks
+        if not isinstance(biorbd_model_path, str):
+            raise ValueError("biorbd_model_path must be a string")
+        if not isinstance(experimental_data, ExperimentalData):
+            raise ValueError("experimental_data must be an ExperimentalData")
+        if not isinstance(events, Events):
+            raise ValueError("events must be an Events")
+        if not isinstance(q_filtered, np.ndarray):
+            raise ValueError("q_filtered must be a np.ndarray")
+        if not isinstance(qdot, np.ndarray):
+            raise ValueError("qdot must be a np.ndarray")
+        if not isinstance(tau, np.ndarray):
+            raise ValueError("tau must be a np.ndarray")
 
         # Initial attributes
         self.biorbd_model_path = biorbd_model_path
         self.experimental_data = experimental_data
-        self.q = q
+        self.events = events
+        self.q_filtered = q_filtered
         self.qdot = qdot
-        self.phases = phases
+        self.tau = tau
 
         # Extended attributes
         self.ocp = None
         self.solution = None
-        self.tau = None
         self.muscle_forces = None
 
         # Perform the optimal estimation

@@ -4,11 +4,6 @@ from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
 import biorbd
-
-try:
-    from pyorerun import BiorbdModel, PhaseRerun
-except:
-    pass
 from pyomeca import Markers
 
 from gait_analyzer.operator import Operator
@@ -203,7 +198,7 @@ class KinematicsReconstructor:
         # Extended attributes
         self.frame_range = None
         self.markers = None
-        self.biorbd_model = None
+        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
         self.t = None
         self.q = None
         self.q_filtered = None
@@ -239,12 +234,15 @@ class KinematicsReconstructor:
         if os.path.exists(result_file_full_path):
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
+                self.frame_range = data["frame_range"]
+                self.markers = data["markers"]
+                self.cycles_to_analyze = data["cycles_to_analyze_kin"]
                 self.t = data["t"]
                 self.q = data["q"]
                 self.q_filtered = data["q_filtered"]
                 self.qdot = data["qdot"]
                 self.qddot = data["qddot"]
-                self.biorbd_model = self.model_creator.biorbd_model
+                self.biorbd_model = biorbd.Model(data["biorbd_model"])
                 if isinstance(data["reconstruction_type"], str):
                     self.reconstruction_type = ReconstructionType(data["reconstruction_type"])
                 else:
@@ -261,12 +259,10 @@ class KinematicsReconstructor:
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
-        model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
-        self.biorbd_model = model
         self.frame_range = self.events.get_frame_range(self.cycles_to_analyze)
         markers = self.experimental_data.markers_sorted_with_virtual
 
-        q_recons = np.ndarray((model.nbQ(), markers.shape[2]))
+        q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
         if isinstance(self.reconstruction_type, ReconstructionType):
             reconstruction_type = [self.reconstruction_type]
@@ -275,12 +271,14 @@ class KinematicsReconstructor:
         for recons_method in reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
-                ik = biorbd.InverseKinematics(model, markers)
+                ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
                 residuals = ik.sol()["residuals"]
             elif recons_method == ReconstructionType.EKF:
                 # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
-                _, q_recons, _, _ = biorbd.extended_kalman_filter(model, self.experimental_data.c3d_full_file_path)
+                _, q_recons, _, _ = biorbd.extended_kalman_filter(
+                    self.biorbd_model, self.experimental_data.c3d_full_file_path
+                )
                 residuals = np.zeros_like(markers)
                 raise Warning(
                     "The EKF acceptance criteria was not implemented yet. Please see the developers if you encounter this warning."
@@ -293,12 +291,14 @@ class KinematicsReconstructor:
                 f"75 percentile between : {np.min(np.percentile(residuals[:, self.frame_range], 75, axis=0))} and "
                 f"{np.max(np.percentile(residuals[:, self.frame_range], 75, axis=0))}"
             )
-            # if np.all(np.percentile(residuals, 75, axis=0) < 0.1):
-            #     is_successful_reconstruction = True
-            #     break
+            if np.all(np.percentile(residuals, 75, axis=0) < 0.05):
+                is_successful_reconstruction = True
+                break
 
-        # if not is_successful_reconstruction:
-        #     raise RuntimeError("The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling.")
+        if not is_successful_reconstruction:
+            raise RuntimeError(
+                "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
+            )
 
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
@@ -384,25 +384,27 @@ class KinematicsReconstructor:
         """
         Animate the kinematics
         """
+        try:
+            from pyorerun import BiorbdModel, PhaseRerun
+        except:
+            raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
+
         # Model
-        # model = BiorbdModel.from_biorbd_object(self.biorbd_model)
-        model = BiorbdModel(self.model_creator.biorbd_model_virtual_markers_full_path)
+        model = BiorbdModel(self.biorbd_model)
         model.options.transparent_mesh = False
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
-        markers = Markers(
-            data=self.experimental_data.markers_sorted_with_virtual[:, :, self.frame_range], channels=marker_names
-        )
+        marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
+        marker_data_with_ones[:3, :, :] = self.markers
+        markers = Markers(data=marker_data_with_ones, channels=marker_names)
 
         # Visualization
-        viz = PhaseRerun(self.t[self.frame_range])
-        if self.q.shape[0] == self.biorbd_model.nbQ():
-            q_animation = self.q_filtered[:, self.frame_range].reshape(
-                self.biorbd_model.nbQ(), len(list(self.frame_range))
-            )
+        viz = PhaseRerun(self.t)
+        if self.q.shape[0] == model.nb_q:
+            q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
-            q_animation = self.q_filtered[:, self.frame_range].T
+            q_animation = self.q_filtered.T
         viz.add_animated_model(model, q_animation, tracked_markers=markers)
         viz.rerun_by_frame("Kinematics reconstruction")
 
@@ -433,13 +435,15 @@ class KinematicsReconstructor:
         else:
             reconstruction_type = self.reconstruction_type.value
         return {
+            "biorbd_model": self.model_creator.biorbd_model_virtual_markers_full_path,
+            "reconstruction_type": reconstruction_type,
+            "cycles_to_analyze_kin": self.cycles_to_analyze,
+            "frame_range": self.frame_range,
+            "markers": self.markers,
             "t": self.t,
             "q": self.q,
             "q_filtered": self.q_filtered,
             "qdot": self.qdot,
             "qddot": self.qddot,
-            "markers": self.markers,
-            "frame_range": self.frame_range,
             "is_loaded_kinematics": self.is_loaded_kinematics,
-            "reconstruction_type": reconstruction_type,
         }

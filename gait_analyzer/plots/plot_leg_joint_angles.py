@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 
 from gait_analyzer.operator import Operator
-from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_units
+from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_unit_names
 
 
 class PlotLegData:
@@ -40,10 +40,66 @@ class PlotLegData:
         # Prepare the plot
         self.prepare_plot()
 
+    def get_event_index(self, event, cycles_to_analyze, analog_time_vector, markers_time_vector):
+        if self.plot_type == PlotType.GRF:
+            event_index = event
+        else:
+            event_idx_markers = Operator.from_analog_frame_to_marker_frame(
+                analog_time_vector,
+                markers_time_vector,
+                event,
+            )
+            events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
+            events_idx_q -= events_idx_q[0]
+            event_index = list(events_idx_q)
+        return event_index
+
+    def get_data_to_split(self, data):
+        if self.plot_type == PlotType.GRF:
+            if self.leg_to_plot == LegToPlot.LEFT:
+                data_to_split = data[self.plot_type.value][0, :, :].squeeze()
+            elif self.leg_to_plot == LegToPlot.RIGHT:
+                data_to_split = data[self.plot_type.value][1, :, :].squeeze()
+            else:
+                raise NotImplementedError(
+                    "Plotting GRF on both legs is not implemented yet. If you encounter this error, please notify the developers."
+                )
+        else:
+            data_to_split = data[self.plot_type.value]
+        return data_to_split
+
+    def get_splitted_cycles(self, current_file: str, partial_output_file_name: str):
+        this_cycles_data = None
+        condition_name = None
+        if current_file.endswith("results.pkl"):
+            with open(current_file, "rb") as f:
+                data = pickle.load(f)
+            subject_name = data["subject_name"]
+            subject_mass = data["subject_mass"]
+            condition_name = partial_output_file_name.replace(subject_name, "").replace("_results.pkl", "")
+            if self.leg_to_plot == LegToPlot.DOMINANT:
+                raise NotImplementedError(
+                    "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers."
+                )
+
+            if condition_name in self.conditions_to_compare:
+                event_index = self.get_event_index(
+                    event=data["events"]["right_leg_heel_touch"],
+                    cycles_to_analyze=data["cycles_to_analyze"],
+                    analog_time_vector=data["analogs_time_vector"],
+                    markers_time_vector=data["markers_time_vector"],
+                )
+                data_to_split = self.get_data_to_split(data)
+                this_cycles_data = split_cycles(
+                    data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
+                )
+        return this_cycles_data, condition_name
+
     def prepare_plot(self):
         """
         This function prepares the data to plot.
         """
+
         # TODO: ThomasAout/FloEthv -> please decide if you want to compare mean of all participants
         cycles_data = {cond: [] for cond in self.conditions_to_compare}
         # Load the treated data to plot
@@ -51,58 +107,36 @@ class PlotLegData:
             if os.path.isdir(os.path.join(self.result_folder, result_file)):
                 for file_in_sub_folder in os.listdir(os.path.join(self.result_folder, result_file)):
                     file_in_sub_folder = os.path.join(self.result_folder, result_file, file_in_sub_folder)
-                    if file_in_sub_folder.endswith("results.pkl"):
-                        with open(file_in_sub_folder, "rb") as f:
-                            data = pickle.load(f)
-                        subject_name = data["subject_name"]
-                        cond = (
-                            file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
-                            .replace(subject_name, "")
-                            .replace("_results.pkl", "")
-                        )
-                        event_idx_markers = Operator.from_analog_frame_to_marker_frame(
-                            data["analogs_time_vector"],
-                            data["markers_time_vector"],
-                            data["events"]["right_leg_heel_touch"],
-                        )
-                        cycles_to_analyze = data["cycles_to_analyze"]
-                        events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
-                        events_idx_q -= events_idx_q[0]
-                        event_idx = list(events_idx_q)
-                        if cond in self.conditions_to_compare:
-                            cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx)
+                    partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
+                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                        current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
+                    )
+                    if this_cycles_data is not None:
+                        cycles_data[condition_name] += this_cycles_data
             else:
                 if result_file.endswith("results.pkl"):
-                    with open(result_file, "rb") as f:
-                        data = pickle.load(f)
-                    subject_name = data["subject_name"]
-                    cond = result_file.replace(subject_name, "").replace(".pkl", "")
-                    event_idx_markers = Operator.from_analog_frame_to_marker_frame(
-                        data["analogs_time_vector"], data["markers_time_vector"], data["events"]["right_leg_heel_touch"]
+                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                        current_file=result_file, partial_output_file_name=result_file
                     )
-                    cycles_to_analyze = data["cycles_to_analyze"]
-                    events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
-                    events_idx_q -= events_idx_q[0]
-                    event_idx = list(events_idx_q)
-                    if cond in self.conditions_to_compare:
-                        cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx)
-
-        # TODO: remove ------------------------
-        plt.figure()
-        data_tempo = cycles_data[list(cycles_data.keys())[0]]
-        for i in range(len(data_tempo)):
-            print(data_tempo[i].shape)
-            plt.plot(data_tempo[i][5, :])
-        plt.savefig("plottttt.png")
-        plt.show()
+                    if this_cycles_data is not None:
+                        cycles_data[condition_name] += this_cycles_data
 
         # Prepare the plot
-        if self.leg_to_plot == LegToPlot.RIGHT:
-            plot_idx = [20, 3, 6, 9, 10]
-            plot_labels = ["Torso", "Pelvis", "Hip", "Knee", "Ankle"]
-            # plot_labels = ["Hip", "Knee", "Ankle"]  # TODO
+        if self.plot_type == PlotType.GRF:
+            plot_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+            plot_labels = ["CoPx", "CoPy", "CoPz", "Mx", "My", "Mz", "Fx", "Fy", "Fz"]
         else:
-            raise NotImplementedError("Only the right leg is implemented for now.")
+            if self.leg_to_plot == LegToPlot.RIGHT:
+                plot_idx = [20, 3, 6, 9, 10]
+            elif self.leg_to_plot == LegToPlot.LEFT:
+                plot_idx = [20, 3, 13, 16, 17]
+            elif self.leg_to_plot == LegToPlot.BOTH:
+                plot_idx = [[20, 3, 6, 9, 10], [20, 3, 13, 16, 17]]
+            else:
+                raise ValueError(
+                    f"leg_to_plot {self.leg_to_plot} not recoginzed. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT."
+                )
+            plot_labels = ["Torso", "Pelvis", "Hip", "Knee", "Ankle"]
 
         # Store the output
         self.cycles_data = cycles_data
@@ -131,7 +165,7 @@ class PlotLegData:
         all_std_data = np.zeros((n_data_to_plot, len(self.plot_idx), nb_frames_interp))
 
         # Plot the data
-        unit_conversion, unit_str = get_units(self.plot_type)
+        unit_str = get_unit_names(self.plot_type)
         lines_list = []
         labels_list = []
         for i_condition, key in enumerate(self.cycles_data):
@@ -140,8 +174,6 @@ class PlotLegData:
             if len(cycles) == 0:
                 continue
             mean_data, std_data = mean_cycles(cycles, index_to_keep=self.plot_idx, nb_frames_interp=nb_frames_interp)
-            mean_data = mean_data * unit_conversion
-            std_data = std_data * unit_conversion
             all_mean_data[i_condition, :, :] = mean_data
             all_std_data[i_condition, :, :] = std_data
             for i_ax, ax in enumerate(axs):
@@ -157,11 +189,13 @@ class PlotLegData:
                     labels_list += [key]
                 else:
                     ax.plot(normalized_time, mean_data[i_ax, :], label=key, color=colors[i_condition])
-                ax.set_ylabel(f"{self.plot_labels[i_ax]} " + unit_str)
+                this_unit_str = unit_str if isinstance(unit_str, str) else unit_str[i_ax]
+                ax.set_ylabel(f"{self.plot_labels[i_ax]} " + this_unit_str)
             axs[-1].set_xlabel("Normalized time [%]")
 
         axs[0].legend(lines_list, labels_list, bbox_to_anchor=(0.5, 1.6), loc="upper center")
         fig.subplots_adjust(top=0.9)
+        fig.tight_layout()
         fig.savefig(f"plot_conditions_{self.plot_type.value}.png")
         self.fig = fig
 

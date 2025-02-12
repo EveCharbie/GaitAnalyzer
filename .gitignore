@@ -180,16 +180,8 @@ results/
 
 examples/sandbox/
 
-models/biorbd_models/Geometry/
-
-models/biorbd_models/Geometry_cleaned/
-
-models/biorbd_models/
-
-models/OpenSim_models/
+models/OpenSim_models/Geometry/
 
 *.png
-
-examples/Geometry/
 
 osim_to_biomod/

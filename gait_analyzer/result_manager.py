@@ -58,7 +58,7 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
 
-    def create_model(self, osim_model_type, skip_if_existing: bool):
+    def create_model(self, osim_model_type, skip_if_existing: bool, animate_model_flag: bool = False):
         """
         Create and add the biorbd model to the ResultManager
         """
@@ -75,6 +75,7 @@ class ResultManager:
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,
+            animate_model_flag=animate_model_flag,
         )
 
     def add_experimental_data(self, c3d_file_name: str, animate_c3d_flag: bool = False):
@@ -173,9 +174,10 @@ class ResultManager:
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
-            biorbd_model_path=self.model_creator.biorbd_model_full_path,
+            biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
-            q=self.kinematics_reconstructor.q,
+            events=self.events,
+            q_filtered=self.kinematics_reconstructor.q_filtered,
             qdot=self.kinematics_reconstructor.qdot,
-            phases=self.events.phases,
+            tau=self.inverse_dynamics_performer.tau,
         )

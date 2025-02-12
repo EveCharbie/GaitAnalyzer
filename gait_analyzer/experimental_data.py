@@ -214,7 +214,11 @@ class ExperimentalData:
         compute_time_vectors()
 
     def animate_c3d(self):
-        # TODO: Charbie -> animate the c3d file with pyorerun
+        try:
+            from pyorerun import BiorbdModel, PhaseRerun
+        except:
+            raise RuntimeError("To animate the .c3d, you first need to install Pyorerun.")
+        raise NotImplementedError("Aniomation of c3d files is not implemented yet.")
         pass
 
     def extract_gait_parameters(self):
