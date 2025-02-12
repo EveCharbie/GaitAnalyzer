@@ -3,8 +3,6 @@ import shutil
 from xml.etree import ElementTree as ET
 import numpy as np
 import biorbd
-import osim_to_biomod as otb
-import opensim as osim
 
 
 class OsimModels:
@@ -199,15 +197,6 @@ class ModelCreator:
         """
         self.trc_file_path = self.static_trial.replace(".c3d", ".trc")
 
-        # # Read the c3d file
-        # c3d_adapter = osim.C3DFileAdapter()
-        # tables = c3d_adapter.read(self.static_trial)
-        # markers_table = c3d_adapter.getMarkersTable(tables)
-        #
-        # # Write the trc file
-        # sto_adapter = osim.STOFileAdapter()
-        # sto_adapter.write(markers_table.flatten(), self.trc_file_path)
-
         # Read the c3d file
         import ezc3d
 
@@ -215,8 +204,6 @@ class ModelCreator:
         labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
         frame_rate = c3d["header"]["points"]["frame_rate"]
         marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
-        # marker_data = marker_data[[0, 2, 1], :, :]  # Rotation
-        # marker_data[2, :, :] *= -1
 
         with open(self.trc_file_path, "w") as f:
             trc_file_name = os.path.basename(self.trc_file_path)
@@ -295,6 +282,11 @@ class ModelCreator:
         tree.write(f"wholebody_{self.subject_name}.xml")
 
     def scale_opensim_model(self):
+        try:
+            import opensim as osim
+        except:
+            raise RuntimeError("To scale the model, you must install OpenSim.")
+
         self.new_xml_path = self.osim_model_full_path.replace(".osim", f".xml")
         # tool = osim.ScaleTool(self.new_xml_path)
         tool = osim.ScaleTool(f"wholebody_{self.subject_name}.xml")
@@ -312,6 +304,11 @@ class ModelCreator:
         os.remove("wholebody.osim")
 
     def create_biorbd_model(self):
+        try:
+            import osim_to_biomod as otb
+        except:
+            raise RuntimeError("To converet the osim model into a biomod, you must install osim_to_biomod.")
+
         # Convert the osim model to a biorbd model
         converter = otb.Converter(
             self.biorbd_model_full_path,  # .bioMod file to export to
