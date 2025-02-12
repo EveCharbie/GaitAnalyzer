@@ -28,7 +28,7 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=True)
+    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
     results.add_experimental_data(c3d_file_name=c3d_file_name, animate_c3d_flag=False)
     results.add_events(plot_phases_flag=False)
     results.reconstruct_kinematics(
@@ -40,7 +40,7 @@ def analysis_to_perform(
     results.perform_inverse_dynamics(reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    # results.estimate_optimally()
+    results.estimate_optimally()
 
     return results
 
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         cycles_to_analyze=range(5, -5),
         result_folder="results",
         trails_to_analyze=["_ManipStim_L200_F30_I20"],
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
 
     # --- Example of how to plot the joint angles --- #

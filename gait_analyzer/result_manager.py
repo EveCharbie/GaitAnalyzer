@@ -174,9 +174,10 @@ class ResultManager:
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
-            biorbd_model_path=self.model_creator.biorbd_model_full_path,
+            biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
-            q=self.kinematics_reconstructor.q,
+            events=self.events,
+            q_filtered=self.kinematics_reconstructor.q_filtered,
             qdot=self.kinematics_reconstructor.qdot,
-            phases=self.events.phases,
+            tau=self.inverse_dynamics_performer.tau,
         )

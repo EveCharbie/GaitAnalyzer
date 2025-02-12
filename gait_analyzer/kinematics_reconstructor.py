@@ -198,7 +198,7 @@ class KinematicsReconstructor:
         # Extended attributes
         self.frame_range = None
         self.markers = None
-        self.biorbd_model = None
+        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
         self.t = None
         self.q = None
         self.q_filtered = None
@@ -259,12 +259,10 @@ class KinematicsReconstructor:
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
-        model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
-        self.biorbd_model = model
         self.frame_range = self.events.get_frame_range(self.cycles_to_analyze)
         markers = self.experimental_data.markers_sorted_with_virtual
 
-        q_recons = np.ndarray((model.nbQ(), markers.shape[2]))
+        q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
         if isinstance(self.reconstruction_type, ReconstructionType):
             reconstruction_type = [self.reconstruction_type]
@@ -273,12 +271,12 @@ class KinematicsReconstructor:
         for recons_method in reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
-                ik = biorbd.InverseKinematics(model, markers)
+                ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
                 residuals = ik.sol()["residuals"]
             elif recons_method == ReconstructionType.EKF:
                 # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
-                _, q_recons, _, _ = biorbd.extended_kalman_filter(model, self.experimental_data.c3d_full_file_path)
+                _, q_recons, _, _ = biorbd.extended_kalman_filter(self.biorbd_model, self.experimental_data.c3d_full_file_path)
                 residuals = np.zeros_like(markers)
                 raise Warning(
                     "The EKF acceptance criteria was not implemented yet. Please see the developers if you encounter this warning."
@@ -388,7 +386,7 @@ class KinematicsReconstructor:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
         # Model
-        model = BiorbdModel(self.model_creator.biorbd_model_virtual_markers_full_path)
+        model = BiorbdModel(self.biorbd_model)
         model.options.transparent_mesh = False
 
         # Markers
@@ -437,6 +435,7 @@ class KinematicsReconstructor:
         else:
             reconstruction_type = self.reconstruction_type.value
         return {
+            "biorbd_model": self.model_creator.biorbd_model_virtual_markers_full_path,
             "reconstruction_type": reconstruction_type,
             "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,
