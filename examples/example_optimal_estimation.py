@@ -28,14 +28,14 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True)
+    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=False)
     results.add_experimental_data(c3d_file_name=c3d_file_name, animate_c3d_flag=False)
     results.add_events(plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=ReconstructionType.ONLY_LM,  # [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
-        animate_kinematics_flag=False,
+        animate_kinematics_flag=True,
         plot_kinematics_flag=True,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
     results.perform_inverse_dynamics(reintegrate_flag=False, animate_dynamics_flag=False)
 
@@ -85,4 +85,15 @@ if __name__ == "__main__":
     )
     plot.draw_plot()
     plot.save("results/AOT_01_Tau_plot_temporary.png")
+    plot.show()
+
+    # --- Example of how to plot the ground reaction forces --- #
+    plot = PlotLegData(
+        result_folder="results",
+        leg_to_plot=LegToPlot.RIGHT,
+        plot_type=PlotType.GRF,
+        conditions_to_compare=["_ManipStim_L200_F30_I20"],
+    )
+    plot.draw_plot()
+    plot.save("results/AOT_01_GRF_plot_temporary.png")
     plot.show()

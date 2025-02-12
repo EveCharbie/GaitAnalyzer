@@ -1,25 +1,5 @@
 import numpy as np
 
-""" 
-from bioptim import (
-    BiorbdModel,
-    OptimalControlProgram,
-    DynamicsList,
-    DynamicsFcn,
-    BoundsList,
-    InitialGuessList,
-    ObjectiveList,
-    ObjectiveFcn,
-    InterpolationType,
-    Node,
-    Solver,
-    ConstraintList,
-    ConstraintFcn,
-    PhaseTransitionList,
-    PhaseTransitionFcn,
-    BiMappingList,
-)
-"""
 from gait_analyzer.experimental_data import ExperimentalData
 
 
@@ -42,6 +22,28 @@ class OptimalEstimator:
         biorbd_model_path: str
             The full path to the biorbd model.
         """
+        try:
+            from bioptim import (
+                BiorbdModel,
+                OptimalControlProgram,
+                DynamicsList,
+                DynamicsFcn,
+                BoundsList,
+                InitialGuessList,
+                ObjectiveList,
+                ObjectiveFcn,
+                InterpolationType,
+                Node,
+                Solver,
+                ConstraintList,
+                ConstraintFcn,
+                PhaseTransitionList,
+                PhaseTransitionFcn,
+                BiMappingList,
+            )
+        except:
+            raise RuntimeError("To animate the kinematics, you must install Bioptim.")
+
         # Checks
 
         # Initial attributes

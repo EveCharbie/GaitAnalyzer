@@ -4,11 +4,6 @@ from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
 import biorbd
-
-try:
-    from pyorerun import BiorbdModel, PhaseRerun
-except:
-    pass
 from pyomeca import Markers
 
 from gait_analyzer.operator import Operator
@@ -384,8 +379,12 @@ class KinematicsReconstructor:
         """
         Animate the kinematics
         """
+        try:
+            from pyorerun import BiorbdModel, PhaseRerun
+        except:
+            raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
+
         # Model
-        # model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model = BiorbdModel(self.model_creator.biorbd_model_virtual_markers_full_path)
         model.options.transparent_mesh = False
 
