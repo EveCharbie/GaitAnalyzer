@@ -234,12 +234,15 @@ class KinematicsReconstructor:
         if os.path.exists(result_file_full_path):
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
+                self.frame_range = data["frame_range"]
+                self.markers = data["markers"]
+                self.cycles_to_analyze = data["cycles_to_analyze"]
                 self.t = data["t"]
                 self.q = data["q"]
                 self.q_filtered = data["q_filtered"]
                 self.qdot = data["qdot"]
                 self.qddot = data["qddot"]
-                self.biorbd_model = self.model_creator.biorbd_model
+                self.biorbd_model = biorbd.Model(data["biorbd_model"])
                 if isinstance(data["reconstruction_type"], str):
                     self.reconstruction_type = ReconstructionType(data["reconstruction_type"])
                 else:
@@ -390,18 +393,20 @@ class KinematicsReconstructor:
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
+        marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
+        marker_data_with_ones[:3, :, :] = self.markers
         markers = Markers(
-            data=self.experimental_data.markers_sorted_with_virtual[:, :, self.frame_range], channels=marker_names
+            data=marker_data_with_ones, channels=marker_names
         )
 
         # Visualization
-        viz = PhaseRerun(self.t[self.frame_range])
-        if self.q.shape[0] == self.biorbd_model.nbQ():
-            q_animation = self.q_filtered[:, self.frame_range].reshape(
-                self.biorbd_model.nbQ(), len(list(self.frame_range))
+        viz = PhaseRerun(self.t)
+        if self.q.shape[0] == model.nb_q:
+            q_animation = self.q_filtered.reshape(
+                model.nb_q, len(list(self.frame_range))
             )
         else:
-            q_animation = self.q_filtered[:, self.frame_range].T
+            q_animation = self.q_filtered.T
         viz.add_animated_model(model, q_animation, tracked_markers=markers)
         viz.rerun_by_frame("Kinematics reconstruction")
 
@@ -432,13 +437,14 @@ class KinematicsReconstructor:
         else:
             reconstruction_type = self.reconstruction_type.value
         return {
+            "reconstruction_type": reconstruction_type,
+            "cycles_to_analyze": self.cycles_to_analyze,
+            "frame_range": self.frame_range,
+            "markers": self.markers,
             "t": self.t,
             "q": self.q,
             "q_filtered": self.q_filtered,
             "qdot": self.qdot,
             "qddot": self.qddot,
-            "markers": self.markers,
-            "frame_range": self.frame_range,
             "is_loaded_kinematics": self.is_loaded_kinematics,
-            "reconstruction_type": reconstruction_type,
         }

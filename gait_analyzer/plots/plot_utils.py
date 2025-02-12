@@ -13,12 +13,13 @@ class LegToPlot(Enum):
 
 
 class PlotType(Enum):
-    Q = "q"
+    Q = "q_filtered"
     QDOT = "qdot"
     QDDOT = "qddot"
     TAU = "tau"
     POWER = "power"
     ANGULAR_MOMENTUM = "h"
+    GRF = "f_ext_sorted_filtered"
 
 
 class DimentionsToPlot(Enum):
@@ -26,7 +27,7 @@ class DimentionsToPlot(Enum):
     TRIDIMENTIONAL = "3D"
 
 
-def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) -> Tuple[float, str]:
+def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) -> float | np.ndarray[float]:
     """
     This function returns the unit conversion factor for the plot type.
     .
@@ -49,12 +50,14 @@ def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) 
         unit_conversion = 1/subject_mass
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_conversion = 1
+    elif plot_type == PlotType.GRF:
+        unit_conversion = np.array([1, 1, 1, 1, 1, 1, 1/(subject_mass*9.8066499999999994), 1/(subject_mass*9.8066499999999994), 1/(subject_mass*9.8066499999999994)])
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_conversion
 
 
-def get_unit_names(plot_type: PlotType) -> Tuple[float, str]:
+def get_unit_names(plot_type: PlotType) -> str | list[str]:
     """
     This function returns the unit string for the plot type.
     .
@@ -75,6 +78,8 @@ def get_unit_names(plot_type: PlotType) -> Tuple[float, str]:
         unit_str = r"[$W/kg$]"
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_str = r"[$kg.m^2/s$]"
+    elif plot_type == PlotType.GRF:
+        unit_str = ["[m]", "[m]", "[m]", "[Nm]", "[Nm]", "[Nm]", "[N/Body weight]", "[N/Body weight]", "[N/Body weight]"]
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_str
@@ -114,11 +119,18 @@ def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, su
         )
 
     unit_conversion = get_unit_conversion_factor(plot_type, subject_mass)
-    # Split the data into cycles (skipping everything before the first event and after the last event)
     cycles = []
     for i_event in range(len(event_idx) - 1):
+        # Split the data into cycles (skipping everything before the first event and after the last event)
         current_cycle = data[:, event_idx[i_event] : event_idx[i_event + 1]]
-        cycles += [current_cycle * unit_conversion]
+        if isinstance(unit_conversion, np.ndarray):
+            if current_cycle.shape[0] != unit_conversion.shape[0]:
+                raise NotImplementedError("Due to a temporary design, the unit conversion factor must be the same length as the data dimension. If you encounter this error, please ping EveCharbie in a GitHub issue.")
+            else:
+                unit_conversion_array = np.tile(unit_conversion, (current_cycle.shape[1], 1)).T
+        else:
+            unit_conversion_array = unit_conversion
+        cycles += [current_cycle * unit_conversion_array]
 
     return cycles
 
