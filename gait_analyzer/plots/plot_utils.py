@@ -25,46 +25,61 @@ class DimentionsToPlot(Enum):
     TRIDIMENTIONAL = "3D"
 
 
-def get_units(plot_type) -> Tuple[float, str]:
+def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) -> Tuple[float, str]:
     """
-    This function returns the unit conversion and the unit string for the plot type.
+    This function returns the unit conversion factor for the plot type.
     .
     Parameters
     ----------
     plot_type: PlotType
         The type of plot to get the units for
-    .
-    Returns
-    -------
-    unit_conversion: float
-        The unit conversion factor tp multiply the data to plot with to get the right units
-    unit_str: str
-        The unit string to display on the plot
+    subject_mass: float
+        The mass of the subject in kg
     """
     if plot_type == PlotType.Q:
         unit_conversion = 180 / np.pi
-        unit_str = r"[$^\circ$]"
     elif plot_type == PlotType.QDOT:
         unit_conversion = 180 / np.pi
-        unit_str = r"[$^\circ/s$]"
     elif plot_type == PlotType.QDDOT:
         unit_conversion = 180 / np.pi
-        unit_str = r"[$^\circ/s^2$]"
     elif plot_type == PlotType.TAU:
-        unit_conversion = 1
-        unit_str = r"[$Nm$]"
+        unit_conversion = 1/subject_mass
     elif plot_type == PlotType.POWER:
         unit_conversion = 1
-        unit_str = r"[$W$]"
     elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_conversion = 1
+    else:
+        raise ValueError("plot_type must be a PlotType.")
+    return unit_conversion
+
+
+def get_unit_names(plot_type: PlotType) -> Tuple[float, str]:
+    """
+    This function returns the unit string for the plot type.
+    .
+    Parameters
+    ----------
+    plot_type: PlotType
+        The type of plot to get the units for
+    """
+    if plot_type == PlotType.Q:
+        unit_str = r"[$^\circ$]"
+    elif plot_type == PlotType.QDOT:
+        unit_str = r"[$^\circ/s$]"
+    elif plot_type == PlotType.QDDOT:
+        unit_str = r"[$^\circ/s^2$]"
+    elif plot_type == PlotType.TAU:
+        unit_str = r"[$Nm/kg$]"
+    elif plot_type == PlotType.POWER:
+        unit_str = r"[$W$]"
+    elif plot_type == PlotType.ANGULAR_MOMENTUM:
         unit_str = r"[$kg.m^2/s$]"
     else:
         raise ValueError("plot_type must be a PlotType.")
-    return unit_conversion, unit_str
+    return unit_str
 
 
-def split_cycles(data: np.ndarray, event_idx: list[int]) -> list[np.ndarray]:
+def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, subject_mass: float) -> list[np.ndarray]:
     """
     This function splits the data into cycles at the event.
     .
@@ -74,6 +89,10 @@ def split_cycles(data: np.ndarray, event_idx: list[int]) -> list[np.ndarray]:
         The data to split into cycles
     event_idx: list[int]
         The index of the events
+    plot_type: PlotType
+        The type of plot to split the data for
+    subject_mass: float
+        The mass of the subject in kg
     .
     Returns
     -------
@@ -93,10 +112,12 @@ def split_cycles(data: np.ndarray, event_idx: list[int]) -> list[np.ndarray]:
             f"Your frame dimension {data.shape[1]} is too short for the event indices {event_idx}."
         )
 
+    unit_conversion = get_unit_conversion_factor(plot_type, subject_mass)
     # Split the data into cycles (skipping everything before the first event and after the last event)
     cycles = []
     for i_event in range(len(event_idx) - 1):
-        cycles += [data[:, event_idx[i_event] : event_idx[i_event + 1]]]
+        current_cycle = data[:, event_idx[i_event] : event_idx[i_event + 1]]
+        cycles += [current_cycle * unit_conversion]
 
     return cycles
 

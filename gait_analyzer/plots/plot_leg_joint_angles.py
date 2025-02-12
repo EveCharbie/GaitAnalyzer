@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 
 from gait_analyzer.operator import Operator
-from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_units
+from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_unit_names
 
 
 class PlotLegData:
@@ -55,6 +55,7 @@ class PlotLegData:
                         with open(file_in_sub_folder, "rb") as f:
                             data = pickle.load(f)
                         subject_name = data["subject_name"]
+                        subject_mass = data["subject_mass"]
                         cond = (
                             file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
                             .replace(subject_name, "")
@@ -70,7 +71,7 @@ class PlotLegData:
                         events_idx_q -= events_idx_q[0]
                         event_idx = list(events_idx_q)
                         if cond in self.conditions_to_compare:
-                            cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx)
+                            cycles_data[cond] += split_cycles(data[self.plot_type.value], event_idx, plot_type=self.plot_type, subject_mass=subject_mass)
             else:
                 if result_file.endswith("results.pkl"):
                     with open(result_file, "rb") as f:
@@ -131,7 +132,7 @@ class PlotLegData:
         all_std_data = np.zeros((n_data_to_plot, len(self.plot_idx), nb_frames_interp))
 
         # Plot the data
-        unit_conversion, unit_str = get_units(self.plot_type)
+        unit_str = get_unit_names(self.plot_type)
         lines_list = []
         labels_list = []
         for i_condition, key in enumerate(self.cycles_data):
@@ -140,8 +141,6 @@ class PlotLegData:
             if len(cycles) == 0:
                 continue
             mean_data, std_data = mean_cycles(cycles, index_to_keep=self.plot_idx, nb_frames_interp=nb_frames_interp)
-            mean_data = mean_data * unit_conversion
-            std_data = std_data * unit_conversion
             all_mean_data[i_condition, :, :] = mean_data
             all_std_data[i_condition, :, :] = std_data
             for i_ax, ax in enumerate(axs):
