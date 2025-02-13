@@ -150,7 +150,7 @@ class ResultManager:
             animate_dynamics_flag=animate_dynamics_flag,
         )
 
-    def estimate_optimally(self):
+    def estimate_optimally(self, cycle_to_analyze: int):
 
         # Checks
         if self.model_creator is None:
@@ -166,6 +166,7 @@ class ResultManager:
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
+            cycle_to_analyze=cycle_to_analyze,
             biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
             events=self.events,

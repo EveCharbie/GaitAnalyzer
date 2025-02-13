@@ -11,7 +11,7 @@ class Subject:
     This class contains all the subject information.
     """
 
-    def __init__(self, subject_name: str, subject_mass: float, dominant_leg: Side):
+    def __init__(self, subject_name: str, subject_mass: float, dominant_leg: Side, preferential_speed: float):
         """
         Initialize the SubjectList.
         """
@@ -25,8 +25,11 @@ class Subject:
             raise ValueError(f"Mass of subject {subject_name} must be a expressed in [30, 100] kg.")
         if not isinstance(dominant_leg, Side):
             raise ValueError("dominant_leg must be a Side")
+        if not isinstance(preferential_speed, float):
+            raise ValueError("preferential_speed must be a float")
 
         # Initial attributes
         self.subject_name = subject_name
         self.subject_mass = subject_mass
         self.dominant_leg = dominant_leg
+        self.preferential_speed = preferential_speed

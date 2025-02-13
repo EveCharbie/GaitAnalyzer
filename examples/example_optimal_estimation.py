@@ -40,7 +40,7 @@ def analysis_to_perform(
     results.perform_inverse_dynamics(reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    results.estimate_optimally()
+    results.estimate_optimally(cycle_to_analyze=9)
 
     return results
 
@@ -57,7 +57,8 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT))
+    # TODO: ThomasAout -> could you provide preferential speed ?
+    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.5))
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #
