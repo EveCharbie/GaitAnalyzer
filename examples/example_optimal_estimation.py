@@ -30,14 +30,14 @@ def analysis_to_perform(
     )
     results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
     results.add_experimental_data(c3d_file_name=c3d_file_name, animate_c3d_flag=False)
-    results.add_events(plot_phases_flag=False)
+    results.add_events(skip_if_existing=True, plot_phases_flag=False)
     results.reconstruct_kinematics(
-        reconstruction_type=ReconstructionType.ONLY_LM,  # [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
+        reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
         skip_if_existing=True,
     )
-    results.perform_inverse_dynamics(reintegrate_flag=False, animate_dynamics_flag=False)
+    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
     results.estimate_optimally(cycle_to_analyze=9)

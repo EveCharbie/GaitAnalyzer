@@ -1,3 +1,5 @@
+import pickle
+import os
 import numpy as np
 from pyomeca import Markers
 
@@ -14,8 +16,9 @@ class InverseDynamicsPerformer:
         self,
         experimental_data: ExperimentalData,
         kinematics_reconstructor: KinematicsReconstructor,
-        reintegrate_flag,
-        animate_dynamics_flag,
+        skip_if_existing: bool,
+        reintegrate_flag: bool,
+        animate_dynamics_flag: bool,
     ):
         """
         Initialize the InverseDynamicsPerformer.
@@ -26,6 +29,8 @@ class InverseDynamicsPerformer:
             The experimental data from the trial
         kinematics_reconstructor: KinematicsReconstructor
             The kinematics reconstructor
+        skip_if_existing: bool
+            If True, the inverse dynamics is not performed if the results already exist
         reintegrate_flag: bool
             If True the dynamics is reintegrated to confirm the results
         animate_dynamics_flag: bool
@@ -41,6 +46,8 @@ class InverseDynamicsPerformer:
             raise ValueError(
                 "biorbd_model must be an instance of biorbd.Model. You can declare it by running biorbd.Model('path_to_model.bioMod')."
             )
+        if not isinstance(skip_if_existing, bool):
+            raise ValueError("skip_if_existing must be a boolean")
         if not isinstance(reintegrate_flag, bool):
             raise ValueError("reintegrate_flag must be a boolean")
         if not isinstance(animate_dynamics_flag, bool):
@@ -61,9 +68,15 @@ class InverseDynamicsPerformer:
         # Extended attributes
         self.tau = None
         self.q_reintegrated = None
+        self.is_loaded_inverse_dynamics = False
 
         # Perform the inverse dynamics
-        self.perform_inverse_dynamics()
+        if skip_if_existing and self.check_if_existing():
+            self.is_loaded_inverse_dynamics = True
+        else:
+            print("Performing inverse dynamics...")
+            self.perform_inverse_dynamics()
+            self.save_inverse_dynamics()
 
         # Reintegrate the dynamics to confirm the results (q, tau, f_ext)
         if reintegrate_flag:
@@ -72,8 +85,27 @@ class InverseDynamicsPerformer:
         if animate_dynamics_flag:
             self.animate_dynamics()
 
+    def check_if_existing(self):
+        """
+        Check if the events detection already exists.
+        If it exists, load the events.
+        .
+        Returns
+        -------
+        bool
+            If the events detection already exists
+        """
+        result_file_full_path = self.get_result_file_full_path()
+        if os.path.exists(result_file_full_path):
+            with open(result_file_full_path, "rb") as file:
+                data = pickle.load(file)
+                self.tau = data["tau"]
+                self.q_reintegrated = data["q_reintegrated"] if data["q_reintegrated"] != 0 else None
+            return True
+        else:
+            return False
+
     def perform_inverse_dynamics(self):
-        print("Performing inverse dynamics...")
         tau = np.zeros_like(self.q_filtered)
         for i_node in range(self.q_filtered.shape[1]):
             f_ext = self.get_f_ext_at_frame(i_node)
@@ -212,6 +244,23 @@ class InverseDynamicsPerformer:
         # Play
         viz.rerun_by_frame("Kinematics reconstruction")
 
+    def get_result_file_full_path(self, result_folder=None):
+        if result_folder is None:
+            result_folder = self.experimental_data.result_folder
+        trial_name = self.experimental_data.c3d_file_name.split("/")[-1][:-4]
+        result_file_full_path = f"{result_folder}/inv_dyn_{trial_name}.pkl"
+        return result_file_full_path
+
+    def save_inverse_dynamics(self):
+        """
+        Save the inverse dynamics results.
+        """
+        if self.q_reintegrated is None:
+            self.q_reintegrated = 0
+        result_file_full_path = self.get_result_file_full_path()
+        with open(result_file_full_path, "wb") as file:
+            pickle.dump(self.outputs(), file)
+
     def inputs(self):
         return {
             "biorbd_model": self.biorbd_model,
@@ -225,4 +274,5 @@ class InverseDynamicsPerformer:
         return {
             "tau": self.tau,
             "q_reintegrated": self.q_reintegrated,
+            "is_loaded_inverse_dynamics": self.is_loaded_inverse_dynamics,
         }
