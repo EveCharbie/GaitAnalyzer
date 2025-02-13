@@ -122,6 +122,7 @@ class AnalysisPerformer:
         """
 
         result_dict = self.get_version()
+        result_dict["cycles_to_analyze"] = self.cycles_to_analyze
         for attr_name in dir(results):
             attr = getattr(results, attr_name)
             if not callable(attr) and not attr_name.startswith("__"):

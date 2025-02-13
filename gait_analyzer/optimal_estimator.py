@@ -28,8 +28,8 @@ class OptimalEstimator:
         q_filtered: np.ndarray,
         qdot: np.ndarray,
         tau: np.ndarray,
-        plot_solution_flag: bool = False,
-        animate_solution_flag: bool = False,
+        plot_solution_flag: bool,
+        animate_solution_flag: bool,
     ):
         """
         Initialize the OptimalEstimator.
@@ -99,7 +99,7 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.generate_contact_biomods()
-        self.prepare_reduced_experimental_data(plot_exp_data_flag=True)
+        self.prepare_reduced_experimental_data(plot_exp_data_flag=False)
         self.prepare_ocp()
         self.solve()
         self.save_optimal_reconstruction()
@@ -274,8 +274,6 @@ class OptimalEstimator:
             plt.show()
             print(f"There are {np.sum(np.isnan(self.markers_exp_ocp))} markers missing.")
 
-
-
     def prepare_ocp(self):
         """
         Let's say swing phase only for now
@@ -336,8 +334,7 @@ class OptimalEstimator:
         # )
 
         dynamics = bioptim.DynamicsList()  # TODO: Charbie -> Change for muscles
-        dynamics.add(bioptim.DynamicsFcn.TORQUE_DRIVEN, with_contact=False, phase_dynamics=bioptim.PhaseDynamics.SHARED_DURING_THE_PHASE)
-        ##################################################################################################
+        dynamics.add(bioptim.DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase_dynamics=bioptim.PhaseDynamics.SHARED_DURING_THE_PHASE)
 
         dof_mappings = bioptim.BiMappingList()
         dof_mappings.add(
@@ -362,7 +359,7 @@ class OptimalEstimator:
         )
 
         u_init = bioptim.InitialGuessList()
-        u_init.add("tau", initial_guess=self.tau_exp_ocp[6:, :-1], interpolation=bioptim.InterpolationType.EACH_FRAME)
+        # u_init.add("tau", initial_guess=self.tau_exp_ocp[6:, :-1], interpolation=bioptim.InterpolationType.EACH_FRAME)
 
         # TODO: Charbie -> Add phase transition when I have the full cycle
         # phase_transitions = PhaseTransitionList()

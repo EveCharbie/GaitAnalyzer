@@ -151,7 +151,7 @@ class ResultManager:
             animate_dynamics_flag=animate_dynamics_flag,
         )
 
-    def estimate_optimally(self, cycle_to_analyze: int):
+    def estimate_optimally(self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False):
 
         # Checks
         if self.model_creator is None:
@@ -174,4 +174,6 @@ class ResultManager:
             q_filtered=self.kinematics_reconstructor.q_filtered,
             qdot=self.kinematics_reconstructor.qdot,
             tau=self.inverse_dynamics_performer.tau,
+            plot_solution_flag=plot_solution_flag,
+            animate_solution_flag=animate_solution_flag,
         )
