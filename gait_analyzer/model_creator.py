@@ -156,10 +156,20 @@ class ModelCreator:
         # TODO: Charbie -> can we point to the Opensim folder where all opensim's vtp files are stored
         self.vtp_geometry_path = "../../Geometry"
         self.osim_model_full_path = (
-            self.models_result_folder + "/" + osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".osim"
+            self.models_result_folder
+            + "/"
+            + osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".osim"
         )
         self.biorbd_model_full_path = (
-            self.models_result_folder + "/" + osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".bioMod"
+            self.models_result_folder
+            + "/"
+            + osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".bioMod"
         )
         self.biorbd_model_virtual_markers_full_path = (
             self.models_result_folder
