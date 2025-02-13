@@ -33,3 +33,12 @@ class Subject:
         self.subject_mass = subject_mass
         self.dominant_leg = dominant_leg
         self.preferential_speed = preferential_speed
+
+
+    def outputs(self):
+        return {
+            "subject_name": self.subject_name,
+            "subject_mass": self.subject_mass,
+            "dominant_leg": self.dominant_leg,
+            "preferential_speed": self.preferential_speed,
+        }

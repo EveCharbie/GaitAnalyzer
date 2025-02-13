@@ -454,6 +454,8 @@ class ModelCreator:
                     )
                 elif i_line + 1 == 1203:  # Head and neck Rotation X
                     file.write(line.replace("-1.74533 1.0471975499999999", f"{-50 * np.pi / 180} {45 * np.pi / 180}"))
+                elif i_line + 1 in [1311, 1312, 1313, 1314, 1483, 1484, 2142, 2143, 2144, 2145, 3214, 2315]:  # Uncomment ranges
+                    file.write(line.replace("// ", ""))
                 else:
                     file.write(line)
 
