@@ -1,18 +1,19 @@
 import os
 import pickle
 from scipy.io import savemat
-import pandas as pd
 import git
 from datetime import date
 import subprocess
 import json
+
+from gait_analyzer.subject import Subject
 
 
 class AnalysisPerformer:
     def __init__(
         self,
         analysis_to_perform: callable,
-        subjects_to_analyze: dict[str:float],
+        subjects_to_analyze: list[Subject],
         cycles_to_analyze: range = range(5, -5),
         result_folder: str = "../results/",
         trails_to_analyze: list[str] = None,
@@ -25,8 +26,8 @@ class AnalysisPerformer:
         ----------
         analysis_to_perform: callable(subject_name: str, subject_mass: float, c3d_file_name: str)
             The analysis to perform
-        subjects_to_analyze: dict[str: float]
-            The dictionary of the name and mass of the subjects to analyze
+        subjects_to_analyze: list[Subject]
+            The list of subjects to analyze
         cycles_to_analyze: range
             The range of cycles to analyze
         result_folder: str
@@ -40,11 +41,11 @@ class AnalysisPerformer:
         # Checks:
         if not callable(analysis_to_perform):
             raise ValueError("analysis_to_perform must be a callable")
-        if not isinstance(subjects_to_analyze, dict):
-            raise ValueError("subjects_to_analyze must be a dictionary")
+        if not isinstance(subjects_to_analyze, list):
+            raise ValueError("subjects_to_analyze must be a list of Subject")
         for subject in subjects_to_analyze:
-            if not isinstance(subject, str):
-                raise ValueError("All elements of subjects_to_analyze must be strings")
+            if not isinstance(subject, Subject):
+                raise ValueError("All elements of subjects_to_analyze must be Subject")
         if not isinstance(cycles_to_analyze, range):
             raise ValueError("cycles_to_analyze must be a range of cycles to analyze")
         if not isinstance(result_folder, str):
@@ -153,14 +154,10 @@ class AnalysisPerformer:
         Loops over the data files and perform the analysis specified by the user (on the subjects specified by the user).
         """
         # Loop over all subjects
-        for subject_name in self.subjects_to_analyze:
+        for subject in self.subjects_to_analyze:
 
+            subject_name = subject.subject_name
             subject_data_folder = f"../data/{subject_name}"
-            subject_mass = self.subjects_to_analyze[subject_name]
-            if not isinstance(subject_mass, float):
-                raise ValueError(f"Mass of subject {subject_name} must be a float.")
-            if subject_mass < 30 or subject_mass > 100:
-                raise ValueError(f"Mass of subject {subject_name} must be a expressed in [30, 100] kg.")
 
             # Checks
             if not os.path.exists(subject_data_folder):
@@ -216,8 +213,7 @@ class AnalysisPerformer:
                 # Actually perform the analysis
                 print("Analyzing ", subject_name, " : ", data_file)
                 results = self.analysis_to_perform(
-                    subject_name,
-                    subject_mass,
+                    subject,
                     self.cycles_to_analyze,
                     static_trial_full_file_path,
                     c3d_file_name,

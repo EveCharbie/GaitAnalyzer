@@ -1,9 +1,9 @@
 import ezc3d
-import biorbd
 import numpy as np
 
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.operator import Operator
+from gait_analyzer.subject import Subject
 
 
 class ExperimentalData:
@@ -14,7 +14,6 @@ class ExperimentalData:
     def __init__(
         self,
         c3d_file_name: str,
-        subject_name: str,
         result_folder: str,
         model_creator: ModelCreator,
         animate_c3d_flag: bool,
@@ -26,10 +25,10 @@ class ExperimentalData:
         ----------
         c3d_file_name: str
             The name of the trial's c3d file.
-        subject_name: str
-            The name of the subject.
+        subject: Subject
+            The subject to analyze.
         result_folder: str
-            The folder where the results will be saved. It will look like result_folder/subject_name.
+            The folder where the results will be saved. It should look like result_folder/subject_name.
         model_creator: ModelCreator
             The subject's personalized biorbd model.
         animate_c3d: bool
@@ -38,8 +37,6 @@ class ExperimentalData:
         # Checks
         if not isinstance(c3d_file_name, str):
             raise ValueError("c3d_file_name must be a string")
-        if not isinstance(subject_name, str):
-            raise ValueError("subject_name must be a string")
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
 
@@ -47,7 +44,6 @@ class ExperimentalData:
         self.c3d_file_name = c3d_file_name
         self.c3d_full_file_path = "../data/" + c3d_file_name
         self.model_creator = model_creator
-        self.subject_name = subject_name
         self.result_folder = result_folder
 
         # Extended attributes
