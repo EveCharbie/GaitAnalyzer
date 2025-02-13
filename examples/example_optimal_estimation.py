@@ -7,13 +7,14 @@ from gait_analyzer import (
     PlotLegData,
     LegToPlot,
     PlotType,
+    Subject,
+    Side,
 )
 from gait_analyzer.kinematics_reconstructor import ReconstructionType
 
 
 def analysis_to_perform(
-    subject_name: str,
-    subject_mass: float,
+    subject: Subject,
     cycles_to_analyze: range,
     static_trial: str,
     c3d_file_name: str,
@@ -22,8 +23,7 @@ def analysis_to_perform(
 
     # --- Example of analysis that must be performed in order --- #
     results = ResultManager(
-        subject_name=subject_name,
-        subject_mass=subject_mass,
+        subject=subject,
         cycles_to_analyze=cycles_to_analyze,
         static_trial=static_trial,
         result_folder=result_folder,
@@ -55,13 +55,18 @@ if __name__ == "__main__":
     # --- Example of how to get help on a GaitAnalyzer class --- #
     # helper(Operator)
 
+    # --- Create the list of participants --- #
+    subjects_to_analyze = []
+    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT))
+    # ... add other participants here
+
     # --- Example of how to run the analysis --- #
     AnalysisPerformer(
         analysis_to_perform,
-        subjects_to_analyze={"AOT_01": 69.2},  # add participants
+        subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
         result_folder="results",
-        trails_to_analyze=["_ManipStim_L200_F30_I20"],
+        trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 

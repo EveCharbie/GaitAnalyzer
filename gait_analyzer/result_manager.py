@@ -4,6 +4,7 @@ from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.events import Events
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
+from gait_analyzer.subject import Subject
 
 
 class ResultManager:
@@ -11,18 +12,14 @@ class ResultManager:
     This class contains all the results from the gait analysis and is the main class handling all types of analysis to perform on the experimental data.
     """
 
-    def __init__(
-        self, subject_name: str, subject_mass: float, cycles_to_analyze: range, static_trial: str, result_folder: str
-    ):
+    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str):
         """
         Initialize the ResultManager.
         .
         Parameters
         ----------
-        subject_name: str
-            The name of the subject
-        subject_mass: float
-            The mass of the subject
+        subject: Subject
+            The subject to analyze
         cycles_to_analyze: range
             The range of cycles to analyze
         static_trial: str
@@ -31,10 +28,8 @@ class ResultManager:
             The folder where the results will be saved. It will look like result_folder/subject_name.
         """
         # Checks:
-        if not isinstance(subject_name, str):
-            raise ValueError("subject_name must be a string")
-        if not isinstance(subject_mass, float):
-            raise ValueError("subject_mass must be an float")
+        if not isinstance(subject, Subject):
+            raise ValueError("subject must be a Subject")
         if not isinstance(cycles_to_analyze, range):
             raise ValueError("cycles_to_analyze must be a range of cycles to analyze")
         if not isinstance(static_trial, str):
@@ -43,8 +38,7 @@ class ResultManager:
             raise ValueError("result_folder must be a string")
 
         # Initial attributes
-        self.subject_name = subject_name
-        self.subject_mass = subject_mass
+        self.subject = subject
         self.cycles_to_analyze = cycles_to_analyze
         self.result_folder = result_folder
         self.static_trial = static_trial
@@ -69,8 +63,7 @@ class ResultManager:
 
         # Add ModelCreator
         self.model_creator = ModelCreator(
-            subject_name=self.subject_name,
-            subject_mass=self.subject_mass,
+            subject=self.subject,
             static_trial=self.static_trial,
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
@@ -89,7 +82,6 @@ class ResultManager:
         # Add experimental data
         self.experimental_data = ExperimentalData(
             c3d_file_name=c3d_file_name,
-            subject_name=self.subject_name,
             result_folder=self.result_folder,
             model_creator=self.model_creator,
             animate_c3d_flag=animate_c3d_flag,

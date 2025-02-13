@@ -3,8 +3,8 @@ import shutil
 from xml.etree import ElementTree as ET
 import numpy as np
 import biorbd
-import osim_to_biomod as otb
-import opensim as osim
+
+from gait_analyzer.subject import Subject
 
 
 class OsimModels:
@@ -124,8 +124,7 @@ class OsimModels:
 class ModelCreator:
     def __init__(
         self,
-        subject_name: str,
-        subject_mass: float,
+        subject: Subject,
         static_trial: str,
         models_result_folder: str,
         osim_model_type,
@@ -134,10 +133,8 @@ class ModelCreator:
     ):
 
         # Checks
-        if not isinstance(subject_name, str):
-            raise ValueError("subject_name must be a string.")
-        if not isinstance(subject_mass, float):
-            raise ValueError("subject_mass must be a float.")
+        if not isinstance(subject, Subject):
+            raise ValueError("subject must be a Subject.")
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string.")
         if not isinstance(models_result_folder, str):
@@ -148,8 +145,7 @@ class ModelCreator:
             raise ValueError("animate_model_flag must be a boolean.")
 
         # Initial attributes
-        self.subject_name = subject_name
-        self.subject_mass = subject_mass
+        self.subject = subject
         self.osim_model_type = osim_model_type
         self.static_trial = static_trial
         self.models_result_folder = models_result_folder
@@ -160,17 +156,27 @@ class ModelCreator:
         # TODO: Charbie -> can we point to the Opensim folder where all opensim's vtp files are stored
         self.vtp_geometry_path = "../../Geometry"
         self.osim_model_full_path = (
-            self.models_result_folder + "/" + osim_model_type.osim_model_name + "_" + subject_name + ".osim"
+            self.models_result_folder
+            + "/"
+            + osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".osim"
         )
         self.biorbd_model_full_path = (
-            self.models_result_folder + "/" + osim_model_type.osim_model_name + "_" + subject_name + ".bioMod"
+            self.models_result_folder
+            + "/"
+            + osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".bioMod"
         )
         self.biorbd_model_virtual_markers_full_path = (
             self.models_result_folder
             + "/"
             + osim_model_type.osim_model_name
             + "_"
-            + subject_name
+            + self.subject.subject_name
             + "_virtual_markers.bioMod"
         )
         self.new_model_created = False
@@ -199,15 +205,6 @@ class ModelCreator:
         """
         self.trc_file_path = self.static_trial.replace(".c3d", ".trc")
 
-        # # Read the c3d file
-        # c3d_adapter = osim.C3DFileAdapter()
-        # tables = c3d_adapter.read(self.static_trial)
-        # markers_table = c3d_adapter.getMarkersTable(tables)
-        #
-        # # Write the trc file
-        # sto_adapter = osim.STOFileAdapter()
-        # sto_adapter.write(markers_table.flatten(), self.trc_file_path)
-
         # Read the c3d file
         import ezc3d
 
@@ -215,8 +212,6 @@ class ModelCreator:
         labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
         frame_rate = c3d["header"]["points"]["frame_rate"]
         marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
-        # marker_data = marker_data[[0, 2, 1], :, :]  # Rotation
-        # marker_data[2, :, :] *= -1
 
         with open(self.trc_file_path, "w") as f:
             trc_file_name = os.path.basename(self.trc_file_path)
@@ -262,7 +257,7 @@ class ModelCreator:
                 rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
                 elem.text = rel_path
             elif elem.tag == "mass":
-                elem.text = f"{self.subject_mass}"
+                elem.text = f"{self.subject.subject_mass}"
             elif elem.tag == "marker_file":
                 # Due to OpenSim, this path must be relative to original_osim_model_full_path
                 trc_file_relative_path = os.path.relpath(
@@ -286,32 +281,42 @@ class ModelCreator:
             if elem.tag == "model_file":
                 elem.text = "wholebody.osim"
             elif elem.tag == "output_model_file":
-                rel_path = f"wholebody_{self.subject_name}.osim"
+                rel_path = f"wholebody_{self.subject.subject_name}.osim"
                 elem.text = rel_path
             elif elem.tag == "mass":
-                elem.text = f"{self.subject_mass}"
+                elem.text = f"{self.subject.subject_mass}"
             elif elem.tag == "marker_file":
                 elem.text = os.path.basename(self.trc_file_path)
-        tree.write(f"wholebody_{self.subject_name}.xml")
+        tree.write(f"wholebody_{self.subject.subject_name}.xml")
 
     def scale_opensim_model(self):
+        try:
+            import opensim as osim
+        except:
+            raise RuntimeError("To scale the model, you must install OpenSim.")
+
         self.new_xml_path = self.osim_model_full_path.replace(".osim", f".xml")
         # tool = osim.ScaleTool(self.new_xml_path)
-        tool = osim.ScaleTool(f"wholebody_{self.subject_name}.xml")
+        tool = osim.ScaleTool(f"wholebody_{self.subject.subject_name}.xml")
         tool.run()
 
         # Copy the output to the right place
-        shutil.copyfile(f"wholebody_{self.subject_name}.osim", self.osim_model_full_path)
-        shutil.copyfile(f"wholebody_{self.subject_name}.xml", self.new_xml_path)
+        shutil.copyfile(f"wholebody_{self.subject.subject_name}.osim", self.osim_model_full_path)
+        shutil.copyfile(f"wholebody_{self.subject.subject_name}.xml", self.new_xml_path)
 
         # Delete the temporary files
-        os.remove(f"wholebody_{self.subject_name}.osim")
-        os.remove(f"wholebody_{self.subject_name}.xml")
+        os.remove(f"wholebody_{self.subject.subject_name}.osim")
+        os.remove(f"wholebody_{self.subject.subject_name}.xml")
         os.remove(os.path.basename(self.trc_file_path))
         os.remove("wholebody.xml")
         os.remove("wholebody.osim")
 
     def create_biorbd_model(self):
+        try:
+            import osim_to_biomod as otb
+        except:
+            raise RuntimeError("To converet the osim model into a biomod, you must install osim_to_biomod.")
+
         # Convert the osim model to a biorbd model
         converter = otb.Converter(
             self.biorbd_model_full_path,  # .bioMod file to export to
@@ -536,8 +541,10 @@ class ModelCreator:
 
     def inputs(self):
         return {
-            "subject_name": self.subject_name,
+            "subject_name": self.subject.subject_name,
+            "subject_mass": self.subject.subject_mass,
             "osim_model_type": self.osim_model_type,
+            "static_trial": self.static_trial,
         }
 
     def outputs(self):

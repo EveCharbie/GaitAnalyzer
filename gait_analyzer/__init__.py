@@ -5,8 +5,9 @@ from .helper import helper
 from .kinematics_reconstructor import KinematicsReconstructor
 from .operator import Operator
 from .optimal_estimator import OptimalEstimator
-from .result_manager import ResultManager
 from .plots.plot_leg_joint_angles import PlotLegData, LegToPlot, PlotType
+from .result_manager import ResultManager
+from .subject import Subject, Side
 
 # Check if there are models and data where they should be
 import os

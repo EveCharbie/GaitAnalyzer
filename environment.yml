@@ -1,8 +1,9 @@
 name: environment
 channels:
+  - opensim-org
   - conda-forge
 dependencies:
-  - numpy = 1.25
+  - numpy
   - matplotlib
   - biorbd>=1.10.0
   - ezc3d>=1.5.17
@@ -13,4 +14,4 @@ dependencies:
   - gitpython
   - pyorerun
   - pyomeca
-  - opensim-org::opensim=4.5.1
+  - opensim=4.5.1
