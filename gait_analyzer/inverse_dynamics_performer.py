@@ -207,6 +207,7 @@ class InverseDynamicsPerformer:
             from pyorerun import BiorbdModel, PhaseRerun
         except:
             raise RuntimeError("To animate the dynamics, you must install Pyorerun.")
+
         # Add the model
         model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
@@ -222,8 +223,10 @@ class InverseDynamicsPerformer:
             self.experimental_data.markers_time_vector,
             list(self.kinematics_reconstructor.frame_range),
         )
-        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
-        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        corners_1 = np.tile(self.experimental_data.platform_corners[0], (len(force_plate_idx), 1))
+        corners_2 = np.tile(self.experimental_data.platform_corners[1], (len(force_plate_idx), 1))
+        viz.add_force_plate(num=1, corners=corners_1)
+        viz.add_force_plate(num=2, corners=corners_2)
         viz.add_force_data(
             num=1,
             force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
@@ -242,7 +245,7 @@ class InverseDynamicsPerformer:
         viz.add_animated_model(model, self.q_reintegrated)
 
         # Play
-        viz.rerun_by_frame("Kinematics reconstruction")
+        viz.rerun_by_frame("Dynamics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:

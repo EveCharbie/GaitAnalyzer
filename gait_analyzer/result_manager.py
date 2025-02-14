@@ -164,6 +164,10 @@ class ResultManager:
             raise Exception(
                 "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"
             )
+        if self.inverse_dynamics_performer is None:
+            raise Exception(
+                "Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()"
+            )
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
@@ -171,9 +175,8 @@ class ResultManager:
             biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
             events=self.events,
-            q_filtered=self.kinematics_reconstructor.q_filtered,
-            qdot=self.kinematics_reconstructor.qdot,
-            tau=self.inverse_dynamics_performer.tau,
+            kinematics_reconstructor=self.kinematics_reconstructor,
+            inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
         )

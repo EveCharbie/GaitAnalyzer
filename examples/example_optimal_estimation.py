@@ -37,7 +37,7 @@ def analysis_to_perform(
         plot_kinematics_flag=True,
         skip_if_existing=True,
     )
-    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
+    results.perform_inverse_dynamics(skip_if_existing=False, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
     results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)

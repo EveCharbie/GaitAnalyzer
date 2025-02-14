@@ -40,6 +40,9 @@ class ExperimentalData:
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
 
+        # Threshold for removing force values
+        self.force_threshold = 75
+
         # Initial attributes
         self.c3d_file_name = c3d_file_name
         self.c3d_full_file_path = "../data/" + c3d_file_name
@@ -185,6 +188,12 @@ class ExperimentalData:
                 moment_filtered[i_platform, :2, :] = (
                     0  # Remove X and Y moments (as only Z reaction moments can be applied on the foot)
                 )
+
+                # Remove the values when the force is too small since it is likely only noise
+                null_idx = np.where(np.linalg.norm(force_filtered[i_platform, :, :], axis=0) < self.force_threshold)[0]
+                cop_filtered[i_platform, :, null_idx] = 0
+                moment_filtered[i_platform, :, null_idx] = 0
+                force_filtered[i_platform, :, null_idx] = 0
 
                 # Store output in a biorbd compatible format
                 f_ext_sorted[i_platform, :3, :] = cop[:, :]
