@@ -155,8 +155,8 @@ class ExperimentalData:
             nb_platforms = len(platforms)
             units = self.marker_units  # We assume that the all position units are the same as the markers'
             self.platform_corners = []
-            self.platform_corners += [np.mean(platforms[0]["corners"] * units, axis=0)]
-            self.platform_corners += [np.mean(platforms[1]["corners"] * units, axis=0)]
+            self.platform_corners += [platforms[0]["corners"] * units]
+            self.platform_corners += [platforms[1]["corners"] * units]
 
             # Initialize arrays for storing external forces and moments
             force_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
