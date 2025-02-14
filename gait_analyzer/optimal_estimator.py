@@ -1,14 +1,18 @@
 import pickle
 import numpy as np
 
+from pyomeca import Markers
 try:
     import bioptim
 except ImportError:
     print("Skipped Bioptim import as it is not installed")
 
-from gait_analyzer import Operator
+from gait_analyzer.operator import Operator
+from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
+from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.events import Events
+
 
 
 class OptimalEstimator:
@@ -25,9 +29,8 @@ class OptimalEstimator:
         biorbd_model_path: str,
         experimental_data: ExperimentalData,
         events: Events,
-        q_filtered: np.ndarray,
-        qdot: np.ndarray,
-        tau: np.ndarray,
+        kinematics_reconstructor: KinematicsReconstructor,
+        inverse_dynamic_performer: InverseDynamicsPerformer,
         plot_solution_flag: bool,
         animate_solution_flag: bool,
     ):
@@ -45,12 +48,10 @@ class OptimalEstimator:
             The experimental data to match.
         events: Events
             The events of the gait cycle to split the trial into appropriate phases.
-        q_filtered: np.ndarray
-            The filtered joint angles.
-        qdot: np.ndarray
-            The joint velocities (finite difference).
-        tau: np.ndarray
-            The joint torques (inverse dynamics).
+        kinematics_reconstructor: KinematicsReconstructor
+            The kinematics reconstructor to use.
+        inverse_dynamic_performer: InverseDynamicsPerformer
+            The inverse dynamics performer to use.
         plot_solution_flag: bool
             If True, the solution will be plotted.
         animate_solution_flag: bool
@@ -66,21 +67,18 @@ class OptimalEstimator:
             raise ValueError("experimental_data must be an ExperimentalData")
         if not isinstance(events, Events):
             raise ValueError("events must be an Events")
-        if not isinstance(q_filtered, np.ndarray):
-            raise ValueError("q_filtered must be a np.ndarray")
-        if not isinstance(qdot, np.ndarray):
-            raise ValueError("qdot must be a np.ndarray")
-        if not isinstance(tau, np.ndarray):
-            raise ValueError("tau must be a np.ndarray")
+        if not isinstance(kinematics_reconstructor, KinematicsReconstructor):
+            raise ValueError("kinematics_reconstructor must be a KinematicsReconstructor")
+        if not isinstance(inverse_dynamic_performer, InverseDynamicsPerformer):
+            raise ValueError("inverse_dynamic_performer must be a InverseDynamicsPerformer")
 
         # Initial attributes
         self.cycle_to_analyze = cycle_to_analyze
         self.biorbd_model_path = biorbd_model_path
         self.experimental_data = experimental_data
         self.events = events
-        self.q_filtered = q_filtered
-        self.qdot = qdot
-        self.tau = tau
+        self.kinematics_reconstructor = kinematics_reconstructor
+        self.inverse_dynamic_performer = inverse_dynamic_performer
 
         # Extended attributes
         self.ocp = None
@@ -99,9 +97,9 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.generate_contact_biomods()
-        self.prepare_reduced_experimental_data(plot_exp_data_flag=False)
+        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
         self.prepare_ocp()
-        self.solve()
+        self.solve(show_online_optim=False)
         self.save_optimal_reconstruction()
         if plot_solution_flag:
             self.solution.graphs(show_bounds=True, save_name=self.get_result_file_full_path(self.experimental_data.result_folder + "/figures"))
@@ -117,13 +115,13 @@ class OptimalEstimator:
         def add_txt_per_condition(condition: str) -> str:
             # TODO: Charbie -> Until biorbd is fixed to read biomods, I will hard code the position of the contacts
             contact_text = "\n/*-------------- CONTACTS---------------\n*/\n"
-            if "heelL" in condition:
+            if "heelL" in condition and "toesL" in condition:
                 contact_text += f"contact\tLCAL\n"
                 contact_text += f"\tparent\tcalcn_l\n"
                 contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
                 contact_text += f"\taxis\txyz\n"
                 contact_text += "endcontact\n\n"
-            if "toesL" in condition:
+
                 contact_text += f"contact\tLMFH1\n"
                 contact_text += f"\tparent\tcalcn_l\n"
                 contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
@@ -133,15 +131,36 @@ class OptimalEstimator:
                 contact_text += f"contact\tLMFH5\n"
                 contact_text += f"\tparent\tcalcn_l\n"
                 contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
-                contact_text += f"\taxis\tz\n"
+                contact_text += f"\taxis\tzy\n"
                 contact_text += "endcontact\n\n"
-            if "heelR" in condition:
+
+            elif "heelL" in condition:
+                contact_text += f"contact\tLCAL\n"
+                contact_text += f"\tparent\tcalcn_l\n"
+                contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
+                contact_text += f"\taxis\txyz\n"
+                contact_text += "endcontact\n\n"
+
+            elif "toesL" in condition:
+                contact_text += f"contact\tLMFH1\n"
+                contact_text += f"\tparent\tcalcn_l\n"
+                contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
+                contact_text += f"\taxis\txz\n"
+                contact_text += "endcontact\n\n"
+
+                contact_text += f"contact\tLMFH5\n"
+                contact_text += f"\tparent\tcalcn_l\n"
+                contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
+                contact_text += f"\taxis\txyz\n"
+                contact_text += "endcontact\n\n"
+
+            if "heelR" in condition and "toesR" in condition:
                 contact_text += f"contact\tRCAL\n"
                 contact_text += f"\tparent\tcalcn_r\n"
                 contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
                 contact_text += f"\taxis\txyz\n"
                 contact_text += "endcontact\n\n"
-            if "toesR" in condition:
+
                 contact_text += f"contact\tRMFH1\n"
                 contact_text += f"\tparent\tcalcn_r\n"
                 contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
@@ -151,7 +170,27 @@ class OptimalEstimator:
                 contact_text += f"contact\tRMFH5\n"
                 contact_text += f"\tparent\tcalcn_r\n"
                 contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
-                contact_text += f"\taxis\tz\n"
+                contact_text += f"\taxis\tzy\n"
+                contact_text += "endcontact\n\n"
+
+            elif "heelR" in condition:
+                contact_text += f"contact\tRCAL\n"
+                contact_text += f"\tparent\tcalcn_r\n"
+                contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
+                contact_text += f"\taxis\txyz\n"
+                contact_text += "endcontact\n\n"
+
+            elif "toesR" in condition:
+                contact_text += f"contact\tRMFH1\n"
+                contact_text += f"\tparent\tcalcn_r\n"
+                contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
+                contact_text += f"\taxis\txz\n"
+                contact_text += "endcontact\n\n"
+
+                contact_text += f"contact\tRMFH5\n"
+                contact_text += f"\tparent\tcalcn_r\n"
+                contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
+                contact_text += f"\taxis\txyz\n"
                 contact_text += "endcontact\n\n"
 
             return contact_text
@@ -181,7 +220,7 @@ class OptimalEstimator:
                         file.write(line)
                 file.write(add_txt_per_condition(condition))
 
-    def prepare_reduced_experimental_data(self, plot_exp_data_flag: bool = False):
+    def prepare_reduced_experimental_data(self, plot_exp_data_flag: bool = False, animate_exp_data_flag: bool = False):
         """
         To reduce the optimization time, only one cycle is treated at a time
         (and the number of degrees of freedom is reduced?).
@@ -201,14 +240,15 @@ class OptimalEstimator:
         marker_end = this_sequence_markers[-1]
         marker_hop = 4
         idx_to_keep = np.arange(marker_start, marker_end, marker_hop)
+        index_to_keep_filtered_q = idx_to_keep - self.kinematics_reconstructor.frame_range.start
 
         # Skipping some DoFs to lighten the OCP
         dof_idx_to_keep = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 34, 35, 36, 37, 38])
 
         self.n_shooting = idx_to_keep.shape[0] - 1
-        self.q_exp_ocp = self.q_filtered[np.ix_(dof_idx_to_keep, idx_to_keep)]
-        self.qdot_exp_ocp = self.qdot[np.ix_(dof_idx_to_keep, idx_to_keep)]
-        self.tau_exp_ocp = self.tau[np.ix_(dof_idx_to_keep, idx_to_keep)]
+        self.q_exp_ocp = self.kinematics_reconstructor.q_filtered[np.ix_(dof_idx_to_keep, index_to_keep_filtered_q)]
+        self.qdot_exp_ocp = self.kinematics_reconstructor.qdot[np.ix_(dof_idx_to_keep, index_to_keep_filtered_q)]
+        self.tau_exp_ocp = self.inverse_dynamic_performer.tau[np.ix_(dof_idx_to_keep, index_to_keep_filtered_q)]
         self.f_ext_exp_ocp = {
             "left_leg": np.zeros((9, self.n_shooting+1)),
             "right_leg": np.zeros((9, self.n_shooting+1)),
@@ -273,6 +313,40 @@ class OptimalEstimator:
             plt.savefig('Markers_exp.png')
             plt.show()
             print(f"There are {np.sum(np.isnan(self.markers_exp_ocp))} markers missing.")
+
+        if animate_exp_data_flag:
+            try:
+                from pyorerun import BiorbdModel, PhaseRerun
+            except:
+                raise RuntimeError("To animate the initial guess, you must install Pyorerun.")
+
+            # Add the model
+            model = BiorbdModel(self.model_ocp)
+            model.options.transparent_mesh = False
+            viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting+1))
+
+            # Add experimental markers
+            markers = Markers(data=self.markers_exp_ocp, channels=list(model.marker_names))
+
+            # Add force plates to the animation
+            viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
+            viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+            viz.add_force_data(
+                num=1,
+                force_origin=self.f_ext_exp_ocp["left_leg"][:3, :],
+                force_vector=self.f_ext_exp_ocp["left_leg"][6:9, :],
+            )
+            viz.add_force_data(
+                num=2,
+                force_origin=self.f_ext_exp_ocp["right_leg"][:3, :],
+                force_vector=self.f_ext_exp_ocp["right_leg"][6:9, :],
+            )
+
+            # Add the kinematics
+            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers)
+
+            # Play
+            viz.rerun_by_frame("OCP initial guess from experimental data")
 
     def prepare_ocp(self):
         """
@@ -343,10 +417,13 @@ class OptimalEstimator:
 
         # TODO: Charbie
         x_bounds = bioptim.BoundsList()
-        # TODO: Charbie -> Change for maximal range of motion during the trial to simulate limited RoM
-        # TODO: Charbie -> Change for maximal velocity during the trial to simulate limited Power
+        # Bounds from model
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
         # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
+        # Bounds personalized to the subject's current range of motion
+        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1), max_bound=np.max(self.q_exp_ocp, axis=1), interpolation=bioptim.InterpolationType.CONSTANT)
+        # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
+        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-5, max_bound=np.max(self.qdot_exp_ocp, axis=1)+5, interpolation=bioptim.InterpolationType.CONSTANT)
 
         x_init = bioptim.InitialGuessList()
         x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=bioptim.InterpolationType.EACH_FRAME)
@@ -384,7 +461,7 @@ class OptimalEstimator:
 
     def solve(self, show_online_optim: bool = False):
         solver = bioptim.Solver.IPOPT(show_online_optim=show_online_optim)
-        solver.set_tol(1e-6)
+        solver.set_tol(1e-3)  # TODO: Charbie -> Change for a more appropriate value (just to see for now)
         self.solution = self.ocp.solve(solver=solver)
         self.time_opt = self.solution.decision_time(to_merge=bioptim.SolutionMerge.NODES, time_alignment=bioptim.TimeAlignment.STATES)
         self.q_opt = self.solution.decision_states(to_merge=bioptim.SolutionMerge.NODES)["q"]
@@ -417,9 +494,7 @@ class OptimalEstimator:
             "biorbd_model_path": self.biorbd_model_path,
             "experimental_data": self.experimental_data,
             "events": self.events,
-            "q_filtered": self.q_filtered,
-            "qdot": self.qdot,
-            "tau": self.tau,
+            "kinematics_reconstructor": self.kinematics_reconstructor,
         }
 
     def outputs(self):
