@@ -1,5 +1,6 @@
 import pickle
 import numpy as np
+import casadi as cas
 
 from pyomeca import Markers
 try:
@@ -12,6 +13,7 @@ from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.events import Events
+from gait_analyzer.subject import Subject
 
 
 
@@ -26,6 +28,7 @@ class OptimalEstimator:
     def __init__(
         self,
         cycle_to_analyze: int,
+        subject: Subject,
         biorbd_model_path: str,
         experimental_data: ExperimentalData,
         events: Events,
@@ -42,6 +45,8 @@ class OptimalEstimator:
         cycle_to_analyze: int
             The number of the cycle to analyze.
             TODO: Charbie -> Maybe we should chose the most representative cycle instead of picking one?
+        subject: Subject
+            The subject to analyze.
         biorbd_model_path: str
             The full path to the biorbd model.
         experimental_data: ExperimentalData
@@ -61,6 +66,8 @@ class OptimalEstimator:
         # Checks
         if not isinstance(cycle_to_analyze, int):
             raise ValueError("cycle_to_analyze must be an int")
+        if not isinstance(subject, Subject):
+            raise ValueError("subject must be a Subject")
         if not isinstance(biorbd_model_path, str):
             raise ValueError("biorbd_model_path must be a string")
         if not isinstance(experimental_data, ExperimentalData):
@@ -74,6 +81,7 @@ class OptimalEstimator:
 
         # Initial attributes
         self.cycle_to_analyze = cycle_to_analyze
+        self.subject = subject
         self.biorbd_model_path = biorbd_model_path
         self.experimental_data = experimental_data
         self.events = events
@@ -97,8 +105,8 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.generate_contact_biomods()
-        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
-        self.prepare_ocp()
+        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
+        self.prepare_ocp(with_contact=True)
         self.solve(show_online_optim=False)
         self.save_optimal_reconstruction()
         if plot_solution_flag:
@@ -205,6 +213,7 @@ class OptimalEstimator:
             "toesL",
             "toesL_heelR",
             "toesL_heelR_toesR",
+            "no_contacts",
         ]
         for condition in conditions:
             new_model_path = original_model_path.replace(".bioMod", f"_{condition}.bioMod")
@@ -225,7 +234,8 @@ class OptimalEstimator:
         To reduce the optimization time, only one cycle is treated at a time
         (and the number of degrees of freedom is reduced?).
         """
-        self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
+        # self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
+        self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
 
         # Only one right leg swing (while left leg in flat foot)
         swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
@@ -346,103 +356,214 @@ class OptimalEstimator:
             viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers)
 
             # Play
-            viz.rerun_by_frame("OCP initial guess from experimental data")
+            viz.rerun("OCP initial guess from experimental data")
 
-    def prepare_ocp(self):
+    def prepare_ocp(self, with_contact: bool = False):
         """
         Let's say swing phase only for now
         """
+
+        def custom_dynamics(
+                time,
+                states,
+                controls,
+                parameters,
+                algebraic_states,
+                numerical_timeseries,
+                nlp,
+        ):
+
+            q = DynamicsFunctions.get(nlp.states["q"], states)
+            qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
+            tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
+            f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
+            f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
+
+            external_forces = nlp.get_external_forces(states, controls, algebraic_states, numerical_timeseries)
+            external_forces[:3] += f_ext_residual_position
+            external_forces[6:9] += f_ext_residual_value
+
+            ddq = nlp.model.forward_dynamics()(q, qdot, tau, external_forces, nlp.parameters.cx)
+
+            return DynamicsEvaluation(dxdt=cas.vertcat(qdot, ddq), defects=None)
+
+        def custom_configure(
+                ocp, nlp, numerical_data_timeseries=None
+        ):
+            ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
+            ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
+            ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
+            ConfigureProblem.configure_contact_forces(ocp, nlp, as_states=False, as_controls=True, n_contacts=1)
+            ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics)
+            return
+
+
         try:
-            bio_model = bioptim.BiorbdModel(self.model_ocp)
+            from bioptim import (BiorbdModel,
+                                    ConfigureProblem,
+                                    DynamicsFunctions,
+                                    DynamicsEvaluation,
+                                    DynamicsFcn,
+                                    InitialGuess,
+                                    InitialGuessList,
+                                    InterpolationType,
+                                    NonLinearProgram,
+                                    ObjectiveFcn,
+                                    ObjectiveList,
+                                    OptimalControlProgram,
+                                    PhaseTransitionFcn,
+                                    PhaseTransitionList,
+                                    PhaseDynamics,
+                                    BoundsList,
+                                    ConstraintFcn,
+                                    ConstraintList,
+                                    Solver,
+                                    OdeSolver,
+                                    ExternalForceSetTimeSeries,
+                                    Node,
+                                    DynamicsList,
+                                    BiMappingList)
+            
         except:
-            raise RuntimeError("To reconstruct optimally, you must install Bioptim.")
+            raise RuntimeError("To reconstruct optimally, you must install ")
 
         print(f"Preparing optimal control problem...")
 
+        if with_contact:
+            biorbd_model_path = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
+            bio_model = BiorbdModel(biorbd_model_path)
+        else:
+            # External force set
+            external_force_set = ExternalForceSetTimeSeries(nb_frames=self.n_shooting)
+            external_force_set.add(
+                "calcn_l",
+                self.f_ext_exp_ocp["left_leg"][3:9, :-1],
+                point_of_application=self.f_ext_exp_ocp["left_leg"][:3, :-1],
+            )
+            # external_force_set.add(
+            #     "calcn_r",
+            #     self.f_ext_exp_ocp["right_leg"][3:9, :-1],
+            #     point_of_application=self.f_ext_exp_ocp["right_leg"][:3, :-1],
+            # )
+            numerical_time_series = {"external_forces": external_force_set.to_numerical_time_series()}
+            biorbd_model_path = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
+            bio_model = BiorbdModel(biorbd_model_path, external_force_set=external_force_set)
+
         nb_q = bio_model.nb_q
-        nb_root = 6
+        nb_root = 6  # Necessary because of the ground segment (model.nb_root does not work)
         nb_tau = nb_q - nb_root
 
         # Declaration of the objectives
-        objective_functions = bioptim.ObjectiveList()
+        objective_functions = ObjectiveList()
         objective_functions.add(
-            objective=bioptim.ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
             weight=1.0,
         )
-        objective_functions.add(objective=bioptim.ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=10.0, node=bioptim.Node.ALL, target=self.markers_exp_ocp)
-        objective_functions.add(objective=bioptim.ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=0.1, node=bioptim.Node.ALL, target=self.q_exp_ocp)
+        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=10.0, node=Node.ALL, target=self.markers_exp_ocp)
+        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=0.1, node=Node.ALL, target=self.q_exp_ocp)
         objective_functions.add(
-            objective=bioptim.ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", node=bioptim.Node.ALL, weight=0.01, target=self.qdot_exp_ocp
+            objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", node=Node.ALL, weight=0.01, target=self.qdot_exp_ocp
         )
-        # objective_functions.add(
-        #     objective=bioptim.ObjectiveFcn.Lagrange.TRACK_GROUND_REACTION_FORCES,
-        #     weight=0.01,
-        #     target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
-        #     contact_index=[0, 1, 2, 3, 4],
-        # )
-        # # TODO: Charbie -> track CoP ?
-        # # TODO: Charbie -> constrain the initial ground contact velocity to be the preferential treadmill speed ?
+        if not with_contact:
+            objective_functions.add(  # Minimize residual contact forces
+                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_forces", node=Node.ALL, weight=0.01,
+            )
+            objective_functions.add(  # Track CoP position
+                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_positions", node=Node.ALL, weight=0.01, target=self.f_ext_exp_ocp["left_leg"][0:3, :-1]
+            )
+        else:
+            objective_functions.add(
+                objective=ObjectiveFcn.Lagrange.TRACK_GROUND_REACTION_FORCES,
+                weight=0.01,
+                target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
+                contact_index=[0, 1, 2],
+            )
+            objective_functions.add(
+                objective=ObjectiveFcn.Lagrange.TRACK_CENTER_OF_PRESSURE,
+                weight=0.01,
+                target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
+                contact_index=[0, 1, 2],
+                associated_marker_index=["LCAL", "LMFH1", "LMFH5"],
+            )
 
-        constraints = bioptim.ConstraintList()
-        # constraints.add(
-        #     bioptim.ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z heel)
-        #     min_bound=0,
-        #     max_bound=np.inf,
-        #     node=bioptim.Node.ALL_SHOOTING,
-        #     contact_index=2,
-        # )
-        # constraints.add(
-        #     bioptim.ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH1)
-        #     min_bound=0,
-        #     max_bound=np.inf,
-        #     node=bioptim.Node.ALL_SHOOTING,
-        #     contact_index=3,
-        # )
-        # constraints.add(
-        #     bioptim.ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH5)
-        #     min_bound=0,
-        #     max_bound=np.inf,
-        #     node=bioptim.Node.ALL_SHOOTING,
-        #     contact_index=4,
-        # )
+        constraints = ConstraintList()
+        if with_contact:
+            constraints.add(
+                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z heel)
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL_SHOOTING,
+                contact_index=2,
+            )
+            constraints.add(
+                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH1)
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL_SHOOTING,
+                contact_index=3,
+            )
+            constraints.add(
+                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH5)
+                min_bound=0,
+                max_bound=np.inf,
+                node=Node.ALL_SHOOTING,
+                contact_index=4,
+            )
+            for marker in ["LCAL", "LMFH1", "LMFH5"]:
+                constraints.add(
+                    ConstraintFcn.TRACK_MARKERS_VELOCITY,  # Impose treadmill speed
+                    min_bound=self.subject.preferential_speed,
+                    max_bound=self.subject.preferential_speed,
+                    node=Node.START,  # Actually it's ALL, but the contact dynamics should take care of it (non-acceleration dynamics contraint)
+                    marker_index=marker,
+                )
 
-        dynamics = bioptim.DynamicsList()  # TODO: Charbie -> Change for muscles
-        dynamics.add(bioptim.DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase_dynamics=bioptim.PhaseDynamics.SHARED_DURING_THE_PHASE)
+        dynamics = DynamicsList()  # TODO: Charbie -> Change for muscles
+        if with_contact:
+            dynamics.add(DynamicsFcn.TORQUE_DRIVEN,
+                         with_contact=True,
+                         phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE)
+        else:
+            dynamics.add(custom_configure,
+                         dynamic_function=custom_dynamics,
+                         numerical_data_timeseries=numerical_time_series,
+                         phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
+                         )
 
-        dof_mappings = bioptim.BiMappingList()
+        dof_mappings = BiMappingList()
         dof_mappings.add(
             "tau", to_second=[None] * nb_root + list(range(nb_tau)), to_first=list(range(nb_root, nb_tau + nb_root))
         )
 
         # TODO: Charbie
-        x_bounds = bioptim.BoundsList()
+        x_bounds = BoundsList()
         # Bounds from model
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
         # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
         # Bounds personalized to the subject's current range of motion
-        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1), max_bound=np.max(self.q_exp_ocp, axis=1), interpolation=bioptim.InterpolationType.CONSTANT)
+        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1), max_bound=np.max(self.q_exp_ocp, axis=1), interpolation=InterpolationType.CONSTANT)
         # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
-        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-5, max_bound=np.max(self.qdot_exp_ocp, axis=1)+5, interpolation=bioptim.InterpolationType.CONSTANT)
+        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-5, max_bound=np.max(self.qdot_exp_ocp, axis=1)+5, interpolation=InterpolationType.CONSTANT)
 
-        x_init = bioptim.InitialGuessList()
-        x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=bioptim.InterpolationType.EACH_FRAME)
-        x_init.add("qdot", initial_guess=self.qdot_exp_ocp, interpolation=bioptim.InterpolationType.EACH_FRAME)
+        x_init = InitialGuessList()
+        x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
+        x_init.add("qdot", initial_guess=self.qdot_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
 
-        u_bounds = bioptim.BoundsList()
+        u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add(
-            "tau", min_bound=[-1000] * nb_tau, max_bound=[1000] * nb_tau, interpolation=bioptim.InterpolationType.CONSTANT
+            "tau", min_bound=[-1000] * nb_tau, max_bound=[1000] * nb_tau, interpolation=InterpolationType.CONSTANT
         )
 
-        u_init = bioptim.InitialGuessList()
-        # u_init.add("tau", initial_guess=self.tau_exp_ocp[6:, :-1], interpolation=bioptim.InterpolationType.EACH_FRAME)
+        u_init = InitialGuessList()
+        # u_init.add("tau", initial_guess=self.tau_exp_ocp[6:, :-1], interpolation=InterpolationType.EACH_FRAME)
 
         # TODO: Charbie -> Add phase transition when I have the full cycle
         # phase_transitions = PhaseTransitionList()
         # phase_transitions.add(PhaseTransitionFcn.CYCLIC, phase_pre_idx=0)
 
-        self.ocp = bioptim.OptimalControlProgram(
+        self.ocp = OptimalControlProgram(
             bio_model=bio_model,
             n_shooting=self.n_shooting,
             phase_time=self.phase_time,
@@ -460,13 +581,14 @@ class OptimalEstimator:
         )
 
     def solve(self, show_online_optim: bool = False):
-        solver = bioptim.Solver.IPOPT(show_online_optim=show_online_optim)
+        from bioptim import SolutionMerge, TimeAlignment, Solver
+        solver = Solver.IPOPT(show_online_optim=show_online_optim)
         solver.set_tol(1e-3)  # TODO: Charbie -> Change for a more appropriate value (just to see for now)
         self.solution = self.ocp.solve(solver=solver)
-        self.time_opt = self.solution.decision_time(to_merge=bioptim.SolutionMerge.NODES, time_alignment=bioptim.TimeAlignment.STATES)
-        self.q_opt = self.solution.decision_states(to_merge=bioptim.SolutionMerge.NODES)["q"]
-        self.qdot_opt = self.solution.decision_states(to_merge=bioptim.SolutionMerge.NODES)["qdot"]
-        self.tau_opt = self.solution.decision_controls(to_merge=bioptim.SolutionMerge.NODES)["tau"]
+        self.time_opt = self.solution.decision_time(to_merge=SolutionMerge.NODES, time_alignment=TimeAlignment.STATES)
+        self.q_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["q"]
+        self.qdot_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
+        self.tau_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
         self.opt_status = "CVG" if self.solution.status == 0 else "DVG"
 
     def extract_muscle_forces(self):

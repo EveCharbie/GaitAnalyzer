@@ -172,6 +172,7 @@ class ResultManager:
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
             cycle_to_analyze=cycle_to_analyze,
+            subject=self.subject,
             biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
             events=self.events,
