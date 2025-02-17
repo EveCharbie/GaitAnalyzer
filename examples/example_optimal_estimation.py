@@ -57,8 +57,7 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # TODO: ThomasAout -> could you provide preferential speed ?
-    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.5))
+    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06))
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #

@@ -41,7 +41,7 @@ class ExperimentalData:
             raise ValueError("result_folder must be a string")
 
         # Threshold for removing force values
-        self.force_threshold = 75
+        self.force_threshold = 15  # N
 
         # Initial attributes
         self.c3d_file_name = c3d_file_name
@@ -135,7 +135,6 @@ class ExperimentalData:
             self.nb_analog_frames = analogs.shape[2]
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
-            analog_names = self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]
 
             # print(analog_names)
             # emg_sorted = np.zeros((len(model_muscle_names), self.nb_analog_frames))
@@ -161,6 +160,7 @@ class ExperimentalData:
             # Initialize arrays for storing external forces and moments
             force_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             moment_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
+            tz_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             cop_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             f_ext_sorted = np.zeros((2, 9, self.nb_analog_frames))
             f_ext_sorted_filtered = np.zeros((2, 9, self.nb_analog_frames))
@@ -171,37 +171,68 @@ class ExperimentalData:
                 # Get the data
                 force = platforms[i_platform]["force"]
                 moment = platforms[i_platform]["moment"] * units
-                cop = platforms[i_platform]["center_of_pressure"] * units
-
-                # Filter center of pressure data
-                cop_filtered[i_platform] = Operator.apply_filtfilt(
-                    cop, order=4, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
-                )
+                tz = platforms[i_platform]["Tz"] * units
+                tz[:2, :] = 0  # This is the intended behavior (no moments on X and Y at the CoP)
 
                 # Filter forces and moments
+                # TODO: Charbie -> Antoine is supposed to send a ref for this filtering
                 force_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    force, order=4, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    force, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
                 )
                 moment_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    moment, order=4, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    moment, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
                 )
-                moment_filtered[i_platform, :2, :] = (
-                    0  # Remove X and Y moments (as only Z reaction moments can be applied on the foot)
+                tz_filtered[i_platform, :, :] = Operator.apply_filtfilt(
+                    tz, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
                 )
 
                 # Remove the values when the force is too small since it is likely only noise
                 null_idx = np.where(np.linalg.norm(force_filtered[i_platform, :, :], axis=0) < self.force_threshold)[0]
-                cop_filtered[i_platform, :, null_idx] = 0
-                moment_filtered[i_platform, :, null_idx] = 0
-                force_filtered[i_platform, :, null_idx] = 0
+                moment_filtered[i_platform, :, null_idx] = np.nan
+                force_filtered[i_platform, :, null_idx] = np.nan
+
+                # Do not trust the CoP from ezc3d and recompute it after filtering the forces and moments
+                cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
+                # ezc3d's CoP is expressed relatively to the center of the platforms
+                cop_ezc3d -= np.tile(np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)).T
+
+                r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
+                cop_filtered[i_platform, 0, :] = - (moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z) / force_filtered[i_platform, 2, :]
+                cop_filtered[i_platform, 1, :] = (moment_filtered[i_platform, 0, :] + force_filtered[i_platform, 1, :] * r_z) / force_filtered[i_platform, 2, :]
+                cop_filtered[i_platform, 2, :] = r_z
 
                 # Store output in a biorbd compatible format
-                f_ext_sorted[i_platform, :3, :] = cop[:, :]
+                f_ext_sorted[i_platform, :3, :] = cop_ezc3d[:, :]
                 f_ext_sorted_filtered[i_platform, :3, :] = cop_filtered[i_platform, :, :]
-                f_ext_sorted[i_platform, 3:6, :] = moment[:, :]
-                f_ext_sorted_filtered[i_platform, 3:6, :] = moment_filtered[i_platform, :, :]
+                f_ext_sorted[i_platform, 3:6, :] = tz[:, :]
+                f_ext_sorted_filtered[i_platform, 3:6, :] = tz_filtered[i_platform, :, :]
                 f_ext_sorted[i_platform, 6:9, :] = force[:, :]
                 f_ext_sorted_filtered[i_platform, 6:9, :] = force_filtered[i_platform, :, :]
+
+                if np.nanmean(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :]) > 1e-3:
+                    import matplotlib.pyplot as plt
+                    fig, axs = plt.subplots(3, 1)
+
+                    axs[0].plot(cop_filtered[0, :], '-r', label='CoP recomputed (from filtered F and M)')
+                    axs[1].plot(cop_filtered[1, :], '-r')
+                    axs[2].plot(cop_filtered[2, :], '-r')
+
+                    axs[0].plot(cop_ezc3d[0, :], '--b', label='CoP ezc3d raw')
+                    axs[1].plot(cop_ezc3d[1, :], '--b')
+                    axs[2].plot(cop_ezc3d[2, :], '--b')
+
+                    axs[0].set_xlim(0, 25000)
+                    axs[1].set_xlim(0, 25000)
+                    axs[2].set_xlim(0, 25000)
+
+                    axs[0].set_ylim(-1, 1)
+                    axs[1].set_ylim(-1, 1)
+                    axs[2].set_ylim(-0.01, 0.01)
+
+                    axs[0].legend()
+                    fig.savefig("CoP_filtering_error.png")
+                    fig.show()
+                    raise NotImplementedError("The force platform data is not computed the same way in ezc3d than in this code, see the CoP graph.")
 
             self.f_ext_sorted = f_ext_sorted
             self.f_ext_sorted_filtered = f_ext_sorted_filtered
