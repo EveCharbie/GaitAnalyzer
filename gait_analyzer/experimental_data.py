@@ -193,13 +193,13 @@ class ExperimentalData:
 
                 # Do not trust the CoP from ezc3d and recompute it after filtering the forces and moments
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
-                # ezc3d's CoP is expressed relatively to the center of the platforms
-                cop_ezc3d -= np.tile(np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)).T
 
                 r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
                 cop_filtered[i_platform, 0, :] = - (moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z) / force_filtered[i_platform, 2, :]
                 cop_filtered[i_platform, 1, :] = (moment_filtered[i_platform, 0, :] + force_filtered[i_platform, 1, :] * r_z) / force_filtered[i_platform, 2, :]
                 cop_filtered[i_platform, 2, :] = r_z
+                # The CoP must be expressed relatively to the center of the platforms
+                cop_filtered[i_platform, :, :] += np.tile(np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)).T
 
                 # Store output in a biorbd compatible format
                 f_ext_sorted[i_platform, :3, :] = cop_ezc3d[:, :]
