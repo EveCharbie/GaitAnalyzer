@@ -544,9 +544,9 @@ class OptimalEstimator:
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
         # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
         # Bounds personalized to the subject's current range of motion
-        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1), max_bound=np.max(self.q_exp_ocp, axis=1), interpolation=InterpolationType.CONSTANT)
+        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1)-0.5, max_bound=np.max(self.q_exp_ocp, axis=1)+0.5, interpolation=InterpolationType.CONSTANT)
         # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
-        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-5, max_bound=np.max(self.qdot_exp_ocp, axis=1)+5, interpolation=InterpolationType.CONSTANT)
+        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-10, max_bound=np.max(self.qdot_exp_ocp, axis=1)+10, interpolation=InterpolationType.CONSTANT)
 
         x_init = InitialGuessList()
         x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
@@ -555,11 +555,20 @@ class OptimalEstimator:
         u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add(
-            "tau", min_bound=[-1000] * nb_tau, max_bound=[1000] * nb_tau, interpolation=InterpolationType.CONSTANT
+            "tau", min_bound=[-500] * nb_q, max_bound=[500] * nb_q, interpolation=InterpolationType.CONSTANT
         )
+        if not with_contact:
+            u_bounds.add(
+                "contact_positions", min_bound=[-1] * 3, max_bound=[1] * 3, interpolation=InterpolationType.CONSTANT
+            )
+            u_bounds.add(
+                "contact_forces", min_bound=[-300] * 3, max_bound=[300] * 3, interpolation=InterpolationType.CONSTANT
+            )
 
         u_init = InitialGuessList()
-        # u_init.add("tau", initial_guess=self.tau_exp_ocp[6:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add("tau", initial_guess=self.tau_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        if not with_contact:
+            u_init.add("contact_positions", initial_guess=self.f_ext_exp_ocp["left_leg"][:3, :-1], interpolation=InterpolationType.EACH_FRAME)
 
         # TODO: Charbie -> Add phase transition when I have the full cycle
         # phase_transitions = PhaseTransitionList()
