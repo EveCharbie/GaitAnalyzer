@@ -106,7 +106,7 @@ class OptimalEstimator:
         self.tau_opt = None
         self.generate_contact_biomods()
         self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
-        self.prepare_ocp(with_contact=True)
+        self.prepare_ocp(with_contact=False)
         self.solve(show_online_optim=False)
         self.save_optimal_reconstruction()
         if plot_solution_flag:
@@ -460,6 +460,12 @@ class OptimalEstimator:
             key="tau",
             weight=1.0,
         )
+        objective_functions.add(
+            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+            key="tau",
+            weight=100.0,
+            index=[0, 1, 2, 3, 4, 5],
+        )
         objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=10.0, node=Node.ALL, target=self.markers_exp_ocp)
         objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=0.1, node=Node.ALL, target=self.q_exp_ocp)
         objective_functions.add(
@@ -467,10 +473,10 @@ class OptimalEstimator:
         )
         if not with_contact:
             objective_functions.add(  # Minimize residual contact forces
-                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_forces", node=Node.ALL, weight=0.01,
+                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_forces", node=Node.ALL_SHOOTING, weight=0.01,
             )
             objective_functions.add(  # Track CoP position
-                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_positions", node=Node.ALL, weight=0.01, target=self.f_ext_exp_ocp["left_leg"][0:3, :-1]
+                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL, key="contact_positions", node=Node.ALL_SHOOTING, weight=0.01, target=self.f_ext_exp_ocp["left_leg"][0:3, :-1]
             )
         else:
             objective_functions.add(
@@ -511,10 +517,11 @@ class OptimalEstimator:
                 contact_index=4,
             )
             for marker in ["LCAL", "LMFH1", "LMFH5"]:
+                # Impose treadmill speed
                 constraints.add(
-                    ConstraintFcn.TRACK_MARKERS_VELOCITY,  # Impose treadmill speed
-                    min_bound=self.subject.preferential_speed,
-                    max_bound=self.subject.preferential_speed,
+                    ConstraintFcn.TRACK_MARKERS_VELOCITY,
+                    min_bound=self.subject.preferential_speed-0.1,
+                    max_bound=self.subject.preferential_speed+0.1,
                     node=Node.START,  # Actually it's ALL, but the contact dynamics should take care of it (non-acceleration dynamics contraint)
                     marker_index=marker,
                 )
@@ -530,11 +537,6 @@ class OptimalEstimator:
                          numerical_data_timeseries=numerical_time_series,
                          phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
                          )
-
-        dof_mappings = BiMappingList()
-        dof_mappings.add(
-            "tau", to_second=[None] * nb_root + list(range(nb_tau)), to_first=list(range(nb_root, nb_tau + nb_root))
-        )
 
         # TODO: Charbie
         x_bounds = BoundsList()
@@ -575,7 +577,6 @@ class OptimalEstimator:
             objective_functions=objective_functions,
             constraints=constraints,
             # phase_transitions=phase_transitions,
-            variable_mappings=dof_mappings,
             use_sx=False,
             n_threads=10,
         )
