@@ -16,6 +16,7 @@ class ExperimentalData:
         c3d_file_name: str,
         result_folder: str,
         model_creator: ModelCreator,
+        markers_to_ignore: list[str],
         animate_c3d_flag: bool,
     ):
         """
@@ -31,7 +32,9 @@ class ExperimentalData:
             The folder where the results will be saved. It should look like result_folder/subject_name.
         model_creator: ModelCreator
             The subject's personalized biorbd model.
-        animate_c3d: bool
+        markers_to_ignore: list[str]
+            Supplementary markers to ignore in the analysis.
+        animate_c3d_flag: bool
             If True, the c3d file will be animated.
         """
         # Checks
@@ -47,6 +50,7 @@ class ExperimentalData:
         self.c3d_file_name = c3d_file_name
         self.c3d_full_file_path = "../data/" + c3d_file_name
         self.model_creator = model_creator
+        self.markers_to_ignore = markers_to_ignore
         self.result_folder = result_folder
 
         # Extended attributes
@@ -89,7 +93,7 @@ class ExperimentalData:
             self.marker_sampling_frequency = self.c3d["parameters"]["POINT"]["RATE"]["value"][0]  # Hz
             self.markers_dt = 1 / self.c3d["header"]["points"]["frame_rate"]
             self.nb_marker_frames = markers.shape[2]
-            exp_marker_names = self.c3d["parameters"]["POINT"]["LABELS"]["value"]
+            exp_marker_names = [m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore]
             self.marker_units = 1
             if self.c3d["parameters"]["POINT"]["UNITS"]["value"][0] == "mm":
                 self.marker_units = 0.001
@@ -98,11 +102,18 @@ class ExperimentalData:
                 raise ValueError(
                     f"The markers {supplementary_marker_names} are not in the c3d file, but are in the model."
                 )
+            elif len(self.model_marker_names) < len(exp_marker_names):
+                supplementary_marker_names = [name for name in exp_marker_names if name not in self.model_marker_names]
+                raise ValueError(
+                    f"The markers {supplementary_marker_names} are in the c3d file, but not in the model."
+                )
+
             markers_sorted = np.zeros((3, len(self.model_marker_names), self.nb_marker_frames))
             markers_sorted[:, :, :] = np.nan
             for i_marker, name in enumerate(exp_marker_names):
-                marker_idx = self.model_marker_names.index(name)
-                markers_sorted[:, marker_idx, :] = markers[:3, i_marker, :] * self.marker_units
+                if name not in self.markers_to_ignore:
+                    marker_idx = self.model_marker_names.index(name)
+                    markers_sorted[:, marker_idx, :] = markers[:3, i_marker, :] * self.marker_units
             self.markers_sorted = markers_sorted
 
         def add_virtual_markers():
@@ -209,17 +220,27 @@ class ExperimentalData:
                 f_ext_sorted[i_platform, 6:9, :] = force[:, :]
                 f_ext_sorted_filtered[i_platform, 6:9, :] = force_filtered[i_platform, :, :]
 
+                # Check if the ddata is computed the same way in ezc3d and in this code
+                is_good_trial = True
+                for i_component in range(3):
+                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 1e+4)
+                    if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
+                        is_good_trial = False
+                    cop_filtered[i_platform, i_component, bad_index] = np.nan
                 if np.nanmean(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :]) > 1e-3:
+                    is_good_trial = False
+
+                if not is_good_trial:
                     import matplotlib.pyplot as plt
-                    fig, axs = plt.subplots(3, 1)
+                    fig, axs = plt.subplots(4, 1, figsize=(10, 10))
 
-                    axs[0].plot(cop_filtered[0, :], '-r', label='CoP recomputed (from filtered F and M)')
-                    axs[1].plot(cop_filtered[1, :], '-r')
-                    axs[2].plot(cop_filtered[2, :], '-r')
+                    axs[0].plot(cop_ezc3d[0, :], '-b', label='CoP ezc3d raw')
+                    axs[1].plot(cop_ezc3d[1, :], '-b')
+                    axs[2].plot(cop_ezc3d[2, :], '-b')
 
-                    axs[0].plot(cop_ezc3d[0, :], '--b', label='CoP ezc3d raw')
-                    axs[1].plot(cop_ezc3d[1, :], '--b')
-                    axs[2].plot(cop_ezc3d[2, :], '--b')
+                    axs[0].plot(cop_filtered[i_platform, 0, :], '--r', label='CoP recomputed (from filtered F and M)')
+                    axs[1].plot(cop_filtered[i_platform, 1, :], '--r')
+                    axs[2].plot(cop_filtered[i_platform, 2, :], '--r')
 
                     axs[0].set_xlim(0, 25000)
                     axs[1].set_xlim(0, 25000)
@@ -228,6 +249,10 @@ class ExperimentalData:
                     axs[0].set_ylim(-1, 1)
                     axs[1].set_ylim(-1, 1)
                     axs[2].set_ylim(-0.01, 0.01)
+
+                    axs[3].plot(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :])
+                    axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), '--k')
+                    axs[3].set_ylabel('Error (m)')
 
                     axs[0].legend()
                     fig.savefig("CoP_filtering_error.png")

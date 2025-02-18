@@ -71,7 +71,7 @@ class ResultManager:
             animate_model_flag=animate_model_flag,
         )
 
-    def add_experimental_data(self, c3d_file_name: str, animate_c3d_flag: bool = False):
+    def add_experimental_data(self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False):
 
         # Checks
         if self.experimental_data is not None:
@@ -82,6 +82,7 @@ class ResultManager:
         # Add experimental data
         self.experimental_data = ExperimentalData(
             c3d_file_name=c3d_file_name,
+            markers_to_ignore=markers_to_ignore,
             result_folder=self.result_folder,
             model_creator=self.model_creator,
             animate_c3d_flag=animate_c3d_flag,
