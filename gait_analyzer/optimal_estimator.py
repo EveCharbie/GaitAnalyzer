@@ -112,7 +112,7 @@ class OptimalEstimator:
         if plot_solution_flag:
             self.solution.graphs(show_bounds=True, save_name=self.get_result_file_full_path(self.experimental_data.result_folder + "/figures"))
         if animate_solution_flag:
-            self.solution.animate(n_frames=0, viewer="pyorerun", show_now=True)
+            self.animate_solution()
         self.extract_muscle_forces()
 
     def generate_contact_biomods(self):
@@ -559,7 +559,7 @@ class OptimalEstimator:
         )
         if not with_contact:
             u_bounds.add(
-                "contact_positions", min_bound=[-1] * 3, max_bound=[1] * 3, interpolation=InterpolationType.CONSTANT
+                "contact_positions", min_bound=[0, 0, -0.0001], max_bound=[1.5, 1.5, 0.0001], interpolation=InterpolationType.CONSTANT
             )
             u_bounds.add(
                 "contact_forces", min_bound=[-300] * 3, max_bound=[300] * 3, interpolation=InterpolationType.CONSTANT
@@ -600,6 +600,43 @@ class OptimalEstimator:
         self.qdot_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
         self.tau_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
         self.opt_status = "CVG" if self.solution.status == 0 else "DVG"
+
+
+    def animate_solution(self):
+
+        try:
+            from pyorerun import BiorbdModel, PhaseRerun
+        except:
+            raise RuntimeError("To animate the optimal solution, you must install Pyorerun.")
+
+        # Add the model
+        model = BiorbdModel(self.model_ocp)
+        model.options.transparent_mesh = False
+        viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting+1))
+
+        # Add experimental markers
+        markers = Markers(data=self.markers_exp_ocp, channels=list(model.marker_names))
+
+        # Add force plates to the animation
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        viz.add_force_data(
+            num=1,
+            force_origin=self.f_ext_exp_ocp["left_leg"][:3, :],
+            force_vector=self.f_ext_exp_ocp["left_leg"][6:9, :],
+        )
+        viz.add_force_data(
+            num=2,
+            force_origin=self.f_ext_exp_ocp["right_leg"][:3, :],
+            force_vector=self.f_ext_exp_ocp["right_leg"][6:9, :],
+        )
+
+        # Add the kinematics
+        viz.add_animated_model(model, self.q_opt, tracked_markers=markers)
+
+        # Play
+        viz.rerun("OCP optimal solution")
+
 
     def extract_muscle_forces(self):
         # TODO: Charbie -> Extract muscle forces from the solution
