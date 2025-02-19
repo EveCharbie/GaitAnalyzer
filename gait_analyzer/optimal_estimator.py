@@ -547,8 +547,12 @@ class OptimalEstimator:
         # Bounds from model
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
         # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
-        # Bounds personalized to the subject's current range of motion
-        x_bounds.add("q", min_bound=self.q_exp_ocp-0.5, max_bound=self.q_exp_ocp+0.5, interpolation=InterpolationType.EACH_FRAME)
+        # Bounds personalized to the subject's current kinematics
+        min_q = self.q_exp_ocp[:, :] - 0.3
+        min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
+        max_q = self.q_exp_ocp[:, :] + 0.3
+        max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
+        x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
         # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
         x_bounds.add("qdot", min_bound=self.qdot_exp_ocp-10, max_bound=self.qdot_exp_ocp+10, interpolation=InterpolationType.EACH_FRAME)
 
