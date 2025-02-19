@@ -422,7 +422,9 @@ class OptimalEstimator:
                                     ExternalForceSetTimeSeries,
                                     Node,
                                     DynamicsList,
-                                    BiMappingList)
+                                    BiMappingList,
+                                 DefectType,
+                                     )
             
         except:
             raise RuntimeError("To reconstruct optimally, you must install ")
@@ -459,17 +461,17 @@ class OptimalEstimator:
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
-            weight=1.0,
+            weight=0.001,
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
-            weight=100.0,
+            weight=1.0,
             index=[0, 1, 2, 3, 4, 5],
         )
         objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100.0, node=Node.ALL, target=self.markers_exp_ocp)
         objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=1000.0, node=Node.ALL, marker_index=["RCAL", "RMFH1", "RMFH5"], target=self.markers_exp_ocp[:, r_foot_marker_index, :])
-        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=0.1, node=Node.ALL, target=self.q_exp_ocp)
+        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=1.0, node=Node.ALL, target=self.q_exp_ocp)
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", node=Node.ALL, weight=0.01, target=self.qdot_exp_ocp
         )
@@ -546,9 +548,9 @@ class OptimalEstimator:
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
         # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
         # Bounds personalized to the subject's current range of motion
-        x_bounds.add("q", min_bound=np.min(self.q_exp_ocp, axis=1)-0.5, max_bound=np.max(self.q_exp_ocp, axis=1)+0.5, interpolation=InterpolationType.CONSTANT)
+        x_bounds.add("q", min_bound=self.q_exp_ocp-0.5, max_bound=self.q_exp_ocp+0.5, interpolation=InterpolationType.EACH_FRAME)
         # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
-        x_bounds.add("qdot", min_bound=np.min(self.qdot_exp_ocp, axis=1)-10, max_bound=np.max(self.qdot_exp_ocp, axis=1)+10, interpolation=InterpolationType.CONSTANT)
+        x_bounds.add("qdot", min_bound=self.qdot_exp_ocp-10, max_bound=self.qdot_exp_ocp+10, interpolation=InterpolationType.EACH_FRAME)
 
         x_init = InitialGuessList()
         x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
@@ -588,6 +590,7 @@ class OptimalEstimator:
             objective_functions=objective_functions,
             constraints=constraints,
             # phase_transitions=phase_transitions,
+            # ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3),
             use_sx=False,
             n_threads=10,
         )
