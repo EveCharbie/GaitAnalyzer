@@ -452,6 +452,7 @@ class OptimalEstimator:
         nb_q = bio_model.nb_q
         nb_root = 6  # Necessary because of the ground segment (model.nb_root does not work)
         nb_tau = nb_q - nb_root
+        r_foot_marker_index = np.array([bio_model.marker_index(f"RCAL"), bio_model.marker_index(f"RMFH1"), bio_model.marker_index(f"RMFH5")])
 
         # Declaration of the objectives
         objective_functions = ObjectiveList()
@@ -466,7 +467,8 @@ class OptimalEstimator:
             weight=100.0,
             index=[0, 1, 2, 3, 4, 5],
         )
-        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=10.0, node=Node.ALL, target=self.markers_exp_ocp)
+        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100.0, node=Node.ALL, target=self.markers_exp_ocp)
+        objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=1000.0, node=Node.ALL, marker_index=["RCAL", "RMFH1", "RMFH5"], target=self.markers_exp_ocp[:, r_foot_marker_index, :])
         objective_functions.add(objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=0.1, node=Node.ALL, target=self.q_exp_ocp)
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", node=Node.ALL, weight=0.01, target=self.qdot_exp_ocp
