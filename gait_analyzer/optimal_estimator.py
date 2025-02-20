@@ -393,7 +393,7 @@ class OptimalEstimator:
             ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
             ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
             ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
-            ConfigureProblem.configure_contact_forces(ocp, nlp, as_states=False, as_controls=True, n_contacts=1)
+            ConfigureProblem.configure_translational_forces(ocp, nlp, as_states=False, as_controls=True, n_contacts=1)
             ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics)
             return
 
@@ -484,7 +484,7 @@ class OptimalEstimator:
             )
         else:
             objective_functions.add(
-                objective=ObjectiveFcn.Lagrange.TRACK_GROUND_REACTION_FORCES,
+                objective=ObjectiveFcn.Lagrange.TRACK_TOTAL_REACTION_FORCES,
                 weight=0.01,
                 target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
                 contact_index=[0, 1, 2],
@@ -494,7 +494,6 @@ class OptimalEstimator:
                 weight=0.01,
                 target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
                 contact_index=[0, 1, 2],
-                associated_marker_index=["LCAL", "LMFH1", "LMFH5"],
             )
 
         constraints = ConstraintList()
@@ -542,7 +541,6 @@ class OptimalEstimator:
                          phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
                          )
 
-        # TODO: Charbie
         x_bounds = BoundsList()
         # Bounds from model
         # x_bounds["q"] = bio_model.bounds_from_ranges("q")
@@ -594,7 +592,8 @@ class OptimalEstimator:
             objective_functions=objective_functions,
             constraints=constraints,
             # phase_transitions=phase_transitions,
-            # ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3),
+            # ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3, defects_type=DefectType.IMPLICIT),
+            ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3),
             use_sx=False,
             n_threads=10,
         )
