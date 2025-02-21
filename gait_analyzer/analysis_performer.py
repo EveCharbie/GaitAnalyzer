@@ -178,6 +178,14 @@ class AnalysisPerformer:
                     f"Please put the static trial file here {os.path.abspath(subject_data_folder)} and name it [...]_static.c3d"
                 )
 
+            # Loop over files to find the functional trials
+            functional_trials_full_file_paths = {}
+            for data_file in os.listdir(subject_data_folder):
+                if data_file.endswith("functional.c3d"):
+                    joint_name = data_file.split("_")
+                    full_path = f"../data/{subject_name}/{data_file}"
+                    functional_trials_full_file_paths[joint_name] = full_path
+
             # Define subject specific paths
             result_folder = f"{self.result_folder}/{subject_name}"
             self.figures_result_folder = f"{result_folder}/figures"

@@ -28,7 +28,10 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
+    results.create_model(osim_model_type=OsimModels.WholeBody(),
+                         adjust_model_joint_centers=False, ######
+                         skip_if_existing=False,
+                         animate_model_flag=True)
     results.add_experimental_data(c3d_file_name=c3d_file_name, animate_c3d_flag=False)
     results.add_events(plot_phases_flag=False)
     results.reconstruct_kinematics(

@@ -1,10 +1,32 @@
+"""
+To create a biorbd model, you must provide the following information:
+    - subject mass in the Subject object
+    - subject name in the Subject object
+    - osim model type in the ModelCreator object
+    - static trial file named [...]_static.c3d
+
+If you want to adjust the joint center positions based on functional movments, you must provide the following information:
+    - functional trial files named [...]_[joint-name]_functional.c3d
+"""
+
+
 import os
+from enum import Enum
 import shutil
 from xml.etree import ElementTree as ET
 import numpy as np
 import biorbd
 
 from gait_analyzer.subject import Subject
+
+
+class FileState(Enum):
+    """
+    An enumeration to define the existence of a file.
+    """
+    CREATED = "created"
+    LOADED = "loaded"
+    DOES_NOT_EXIST = "does not exist"
 
 
 class OsimModels:
@@ -117,6 +139,10 @@ class OsimModels:
             ]
 
         @property
+        def markers_to_use(self):
+            return ["LHJC", "RHJC", "RKJC", "RAJC", "LKJC", "LAJC", "REJC", "RSJC", "RWJC", "LSJC", "LEJC", "LWJC"]
+
+        @property
         def markers_to_ignore(self):
             return ["LHJC", "RHJC", "RKJC", "RAJC", "LKJC", "LAJC", "REJC", "RSJC", "RWJC", "LSJC", "LEJC", "LWJC"]
 
@@ -126,8 +152,10 @@ class ModelCreator:
         self,
         subject: Subject,
         static_trial: str,
+        functional_trials: list[str],
         models_result_folder: str,
         osim_model_type,
+        adjust_model_joint_centers: bool,
         skip_if_existing: bool,
         animate_model_flag: bool,
     ):
@@ -137,8 +165,14 @@ class ModelCreator:
             raise ValueError("subject must be a Subject.")
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string.")
+        if not isinstance(functional_trials, list):
+            raise ValueError("functional_trials must be a list.")
+        if not all(isinstance(trial, str) for trial in functional_trials):
+            raise ValueError("functional_trials must be a list of strings.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
+        if not isinstance(adjust_model_joint_centers, bool):
+            raise ValueError("adjust_model_joint_centers must be a boolean.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
         if not isinstance(animate_model_flag, bool):
@@ -148,6 +182,7 @@ class ModelCreator:
         self.subject = subject
         self.osim_model_type = osim_model_type
         self.static_trial = static_trial
+        self.functional_trials = functional_trials
         self.models_result_folder = models_result_folder
 
         # Extended attributes
@@ -179,25 +214,32 @@ class ModelCreator:
             + self.subject.subject_name
             + "_virtual_markers.bioMod"
         )
-        self.new_model_created = False
+        self.biorbd_model_created = FileState.DOES_NOT_EXIST
+        self.functional_model_created = FileState.DOES_NOT_EXIST
 
         # Create the models
         if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
             print(f"The model {self.biorbd_model_full_path} is being created...")
             self.convert_c3d_to_trc()
             self.personalize_xml_file_hacky()
+            print(f"Scaling through OpenSim...")
             self.scale_opensim_model()
             self.create_biorbd_model()
+            if adjust_model_joint_centers:
+                self.locate_joint_centers()
         else:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
+            self.biorbd_model_created = FileState.LOADED
         self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
 
         if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
-            self.extended_model_for_EKF()
+            if not adjust_model_joint_centers:
+                self.extended_model_for_EKF()
 
         if animate_model_flag:
             self.animate_model()
 
+    # --- OpenSim treatment ------------------------------------------------------------------------------------------ #
     def convert_c3d_to_trc(self):
         """
         This function reads the c3d static file and converts it into a trc file that will be used to scale the model in OpenSim.
@@ -311,6 +353,7 @@ class ModelCreator:
         os.remove("wholebody.xml")
         os.remove("wholebody.osim")
 
+    # --- Biorbd treatment ------------------------------------------------------------------------------------------- #
     def create_biorbd_model(self):
         try:
             import osim_to_biomod as otb
@@ -335,7 +378,7 @@ class ModelCreator:
         )
         converter.convert_file()
         self.sketchy_replace_biomod_lines()
-        self.new_model_created = True
+        self.biorbd_model_created = FileState.CREATED
 
     def sketchy_replace_biomod_lines(self):
         """
@@ -521,6 +564,11 @@ class ModelCreator:
                 )
                 file.write("endmarker\n")
 
+    # --- Joint center treatment (SCORE & SARA) ---------------------------------------------------------------------- #
+    def locate_joint_centers(self):
+        pass
+
+
     def animate_model(self):
         """
         Animate the model
@@ -545,14 +593,16 @@ class ModelCreator:
             "subject_mass": self.subject.subject_mass,
             "osim_model_type": self.osim_model_type,
             "static_trial": self.static_trial,
+            "functional_trials": self.functional_trials,
         }
 
     def outputs(self):
         return {
             "biorbd_model_full_path": self.biorbd_model_full_path,
             "open_sim_model_full_path": self.osim_model_full_path,
-            "biorbd_model": self.biorbd_model,
-            "new_model_created": self.new_model_created,
+            "biorbd_model_created": self.biorbd_model_created.value,
             "biorbd_model_virtual_markers_full_path": self.biorbd_model_virtual_markers_full_path,
             "markers_for_virtual": self.markers_for_virtual,
+            "functional_model_created": self.functional_model_created.value,
+            "biorbd_model": self.biorbd_model,
         }
