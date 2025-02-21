@@ -105,7 +105,7 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.generate_contact_biomods()
-        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
+        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
         self.prepare_ocp(with_contact=False)
         self.solve(show_online_optim=False)
         self.save_optimal_reconstruction()
@@ -640,7 +640,7 @@ class OptimalEstimator:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_opt, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_opt.T, tracked_markers=markers)
 
         # Play
         viz.rerun("OCP optimal solution")
