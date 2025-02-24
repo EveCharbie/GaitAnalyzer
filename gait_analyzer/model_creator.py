@@ -9,7 +9,6 @@ If you want to adjust the joint center positions based on functional movments, y
     - functional trial files named [...]_[joint-name]_functional.c3d
 """
 
-
 import os
 from enum import Enum
 import shutil
@@ -24,6 +23,7 @@ class FileState(Enum):
     """
     An enumeration to define the existence of a file.
     """
+
     CREATED = "created"
     LOADED = "loaded"
     DOES_NOT_EXIST = "does not exist"
@@ -567,7 +567,6 @@ class ModelCreator:
     # --- Joint center treatment (SCORE & SARA) ---------------------------------------------------------------------- #
     def locate_joint_centers(self):
         pass
-
 
     def animate_model(self):
         """

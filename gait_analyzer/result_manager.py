@@ -52,7 +52,13 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
 
-    def create_model(self, osim_model_type, adjust_model_joint_centers: bool, skip_if_existing: bool, animate_model_flag: bool = False):
+    def create_model(
+        self,
+        osim_model_type,
+        adjust_model_joint_centers: bool,
+        skip_if_existing: bool,
+        animate_model_flag: bool = False,
+    ):
         """
         Create and add the biorbd model to the ResultManager
         """
