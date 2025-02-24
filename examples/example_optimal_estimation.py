@@ -32,7 +32,8 @@ def analysis_to_perform(
     results.add_experimental_data(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
     )
-    results.add_events(skip_if_existing=True, plot_phases_flag=False)
+    # results.add_cyclic_events(skip_if_existing=True, plot_phases_flag=False)
+    results.add_unique_events(skip_if_existing=False, plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     # )
     subjects_to_analyze.append(
-        Subject(subject_name="VIF_01", subject_mass=71.0, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+        Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
     # ... add other participants here
 
@@ -73,8 +74,8 @@ if __name__ == "__main__":
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
         result_folder="results",
-        trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
-        skip_if_existing=True,
+        # trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
+        skip_if_existing=False,
     )
 
     # --- Example of how to plot the joint angles --- #

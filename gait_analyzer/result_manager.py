@@ -1,10 +1,11 @@
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
-from gait_analyzer.events import Events
+from gait_analyzer.cyclic_events import CyclicEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject
+from gait_analyzer.unique_events import UniqueEvents
 
 
 class ResultManager:
@@ -90,7 +91,7 @@ class ResultManager:
             animate_c3d_flag=animate_c3d_flag,
         )
 
-    def add_events(self, skip_if_existing: bool, plot_phases_flag: bool = False):
+    def add_cyclic_events(self, skip_if_existing: bool, plot_phases_flag: bool = False):
 
         # Checks
         if self.model_creator is None:
@@ -98,13 +99,30 @@ class ResultManager:
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is not None:
-            raise Exception("Events already added")
+            raise Exception("CyclicEvents or UniqueEvents were already added to the ResultManager")
 
         # Add events
-        self.events = Events(
+        self.events = CyclicEvents(
             experimental_data=self.experimental_data,
             skip_if_existing=skip_if_existing,
             plot_phases_flag=plot_phases_flag,
+        )
+
+    def add_unique_events(self, skip_if_existing: bool, plot_phases_flag: bool = False):
+
+        # Checks
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception(
+                "Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.events is not None:
+            raise Exception("CyclicEvents or UniqueEvents were already added to the ResultManager")
+
+        # Add events
+        self.events = UniqueEvents(
+            experimental_data=self.experimental_data,
+            skip_if_existing=skip_if_existing,
         )
 
     def reconstruct_kinematics(
@@ -120,7 +138,7 @@ class ResultManager:
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is None:
-            raise Exception("Please run the events detection first by running ResultManager.add_events()")
+            raise Exception("Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()")
         if self.kinematics_reconstructor is not None:
             raise Exception("kinematics_reconstructor already added")
 
@@ -170,7 +188,7 @@ class ResultManager:
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is None:
-            raise Exception("Please run the events detection first by running ResultManager.add_events()")
+            raise Exception("Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()")
         if self.kinematics_reconstructor is None:
             raise Exception(
                 "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"

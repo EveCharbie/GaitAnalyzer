@@ -118,7 +118,7 @@ class OsimModels:
 
         @property
         def markers_to_ignore(self):
-            return ["LHJC", "RHJC", "RKJC", "RAJC", "LKJC", "LAJC", "REJC", "RSJC", "RWJC", "LSJC", "LEJC", "LWJC"]
+            return []
 
 
 class ModelCreator:
@@ -210,6 +210,11 @@ class ModelCreator:
 
         c3d = ezc3d.c3d(self.static_trial)
         labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
+
+        # TODO: FloEthv -> When this study is completed, please remove this hacky fix
+        if "STER" in labels:
+            labels[labels.index("STER")] = "STR"
+
         frame_rate = c3d["header"]["points"]["frame_rate"]
         marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
 
@@ -431,7 +436,7 @@ class ModelCreator:
                 elif i_line + 1 == 1016:  # Toes Flexion
                     file.write(
                         line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
+                            "-1.0471975499999999 1.0471975499999999", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
                         )
                     )
                 elif i_line + 1 == 1089:  # Torso Rotation X
@@ -452,21 +457,21 @@ class ModelCreator:
                             "-1.5707963300000001 1.5707963300000001", f"{-45 * np.pi / 180} {45 * np.pi / 180}"
                         )
                     )
-                elif i_line + 1 == 1203:  # Head and neck Rotation X
+                elif i_line + 1 == 1198:  # Head and neck Rotation X
                     file.write(line.replace("-1.74533 1.0471975499999999", f"{-50 * np.pi / 180} {45 * np.pi / 180}"))
                 elif i_line + 1 in [
-                    1311,
-                    1312,
-                    1313,
-                    1314,
-                    1483,
-                    1484,
-                    2142,
-                    2143,
-                    2144,
-                    2145,
-                    3214,
-                    2315,
+                    1306,
+                    1307,
+                    1308,
+                    1309,
+                    1478,
+                    1479,
+                    2137,
+                    2138,
+                    2139,
+                    2140,
+                    2309,
+                    2310,
                 ]:  # Uncomment ranges
                     file.write(line.replace("// ", ""))
                 else:

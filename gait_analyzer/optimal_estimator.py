@@ -13,7 +13,7 @@ from gait_analyzer.operator import Operator
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.experimental_data import ExperimentalData
-from gait_analyzer.events import Events
+from gait_analyzer.cyclic_events import CyclicEvents
 from gait_analyzer.subject import Subject
 
 
@@ -31,7 +31,7 @@ class OptimalEstimator:
         subject: Subject,
         biorbd_model_path: str,
         experimental_data: ExperimentalData,
-        events: Events,
+        events: CyclicEvents,
         kinematics_reconstructor: KinematicsReconstructor,
         inverse_dynamic_performer: InverseDynamicsPerformer,
         plot_solution_flag: bool,
@@ -51,7 +51,7 @@ class OptimalEstimator:
             The full path to the biorbd model.
         experimental_data: ExperimentalData
             The experimental data to match.
-        events: Events
+        events: CyclicEvents
             The events of the gait cycle to split the trial into appropriate phases.
         kinematics_reconstructor: KinematicsReconstructor
             The kinematics reconstructor to use.
@@ -72,8 +72,8 @@ class OptimalEstimator:
             raise ValueError("biorbd_model_path must be a string")
         if not isinstance(experimental_data, ExperimentalData):
             raise ValueError("experimental_data must be an ExperimentalData")
-        if not isinstance(events, Events):
-            raise ValueError("events must be an Events")
+        if not isinstance(events, CyclicEvents):
+            raise ValueError("events must be an CyclicEvents")
         if not isinstance(kinematics_reconstructor, KinematicsReconstructor):
             raise ValueError("kinematics_reconstructor must be a KinematicsReconstructor")
         if not isinstance(inverse_dynamic_performer, InverseDynamicsPerformer):

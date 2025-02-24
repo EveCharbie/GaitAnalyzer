@@ -8,14 +8,14 @@ from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
 
 
-class Events:
+class CyclicEvents:
     """
     This class contains all the events detected from the experimental data.
     """
 
     def __init__(self, experimental_data: ExperimentalData, skip_if_existing: bool, plot_phases_flag: bool):
         """
-        Initialize the Events.
+        Initialize the CyclicEvents.
         .
         Parameters
         ----------
@@ -44,6 +44,7 @@ class Events:
         # Initial attributes
         self.experimental_data = experimental_data
         self.is_loaded_events = False
+        self.type = "cyclic"
 
         # Extended attributes
         self.events = {
