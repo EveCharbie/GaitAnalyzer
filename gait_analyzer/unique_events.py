@@ -79,20 +79,17 @@ class UniqueEvents:
         """
         Detect the heel touch event when the vertical GRF reaches a certain threshold
         """
-
-        plt.figure()
-        plt.plot(self.experimental_data.f_ext_sorted[0, 8, :], '-r')
-        plt.plot(self.experimental_data.f_ext_sorted[1, 8, :], '-g')
-        plt.plot(self.experimental_data.f_ext_sorted[2, 8, :], '-b')
         for i_platform in range(len(self.experimental_data.platform_corners)):
             grf_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[i_platform, 8, :], 21)
             index = np.abs(grf_y_filtered) > self.minimal_vertical_force_threshold
-            first_indices_of_a_bloc = np.where(index[1:].astype(int) - index[:-1].astype(int) == 0)[0] + 1
-            self.events[i_platform]["heel_touch"] = first_indices_of_a_bloc
-            plt.plot(first_indices_of_a_bloc, grf_y_filtered[first_indices_of_a_bloc], 'o')
+            first_indices_of_a_bloc = np.where(index[1:].astype(int) - index[:-1].astype(int) == 1)
+            if len(first_indices_of_a_bloc) > 0:
+                first_indices_of_a_bloc = first_indices_of_a_bloc[0] + 1
+            else:
+                first_indices_of_a_bloc = 0
 
-        plt.savefig("tempo_GRF.png")
-        plt.show()
+            self.events[i_platform]["heel_touch"] = first_indices_of_a_bloc
+
 
     def detect_toes_off(self):
         """
@@ -101,7 +98,11 @@ class UniqueEvents:
         for i_platform in range(len(self.experimental_data.platform_corners)):
             grf_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[i_platform, 8, :], 21)
             index = np.abs(grf_y_filtered) > self.minimal_vertical_force_threshold
-            last_indices_of_a_bloc = np.where(index[1:].astype(int) - index[:-1].astype(int) == -1)[0]
+            last_indices_of_a_bloc = np.where(index[1:].astype(int) - index[:-1].astype(int) == -1)
+            if len(last_indices_of_a_bloc) > 0:
+                last_indices_of_a_bloc = last_indices_of_a_bloc[0]
+            else:
+                last_indices_of_a_bloc = self.experimental_data.f_ext_sorted[i_platform, 8, :].shape[0]
             self.events[i_platform]["toes_off"] = last_indices_of_a_bloc
 
 
@@ -110,10 +111,12 @@ class UniqueEvents:
         self.detect_toes_off()
         self.detect_heel_touch()
 
-    def get_frame_range(self):
+    def get_frame_range(self, cycles_to_analyze):
         """
         Get the frame range to analyze.
         """
+        if cycles_to_analyze is not None:
+            raise NotImplementedError("All frames should be analyzed for now.")
         return np.arange(0, len(self.experimental_data.markers_time_vector))
 
     def get_result_file_full_path(self, result_folder=None):

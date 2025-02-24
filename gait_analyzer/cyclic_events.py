@@ -625,8 +625,10 @@ class CyclicEvents:
             self.experimental_data.markers_time_vector,
             self.events["right_leg_heel_touch"],
         )
-        start_frame = heel_touches[cycles_to_analyze.start]
-        end_frame = heel_touches[cycles_to_analyze.stop]
+        start_cycle = 0 if cycles_to_analyze is None else cycles_to_analyze.start
+        end_cycle = -1 if cycles_to_analyze is None else cycles_to_analyze.stop
+        start_frame = heel_touches[start_cycle]
+        end_frame = heel_touches[end_cycle]
         return range(start_frame, end_frame)
 
     def get_result_file_full_path(self, result_folder=None):

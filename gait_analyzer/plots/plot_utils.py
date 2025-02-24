@@ -158,6 +158,56 @@ def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, su
 
     return cycles
 
+def split_cycle(data: np.ndarray, cycle_start: int, cycle_end: int, plot_type: PlotType, subject_mass: float) -> list[np.ndarray]:
+    """
+    This function extract one cycle.
+    .
+    Parameters
+    ----------
+    data: np.ndarray (data_dim, frames_dim)
+        The data to split into cycles
+    cycle_start: int
+        The index of the beginning of the cycle
+    cycle_end: int
+        The index of the end of the cycle
+    plot_type: PlotType
+        The type of plot to split the data for
+    subject_mass: float
+        The mass of the subject in kg
+    .
+    Returns
+    -------
+    cycles: list[np.ndarray] nb_cycles x (data_dim, frames_dim)
+        The data split into cycles
+    """
+    # Checks
+    if not isinstance(data, np.ndarray):
+        raise ValueError("data must be a numpy array.")
+    if data.ndim != 2:
+        raise ValueError("data must be a 2D numpy array.")
+    if data.shape[0] == 0 or data.shape[1] == 0:
+        raise ValueError("data must not be empty.")
+    if data.shape[1] < cycle_start or data.shape[1] < cycle_end:
+        raise RuntimeError(
+            f"Watch out, you are trying to plot data shape {data.shape}, and the code expects shape (nb_data_dim, nb_frames)."
+            f"Your frame dimension {data.shape[1]} is too short for the event indices ({cycle_start}, {cycle_end})."
+        )
+
+    unit_conversion = get_unit_conversion_factor(plot_type, subject_mass)
+    cycles = []
+    current_cycle = data[:, cycle_start : cycle_end]
+    if isinstance(unit_conversion, np.ndarray):
+        if current_cycle.shape[0] != unit_conversion.shape[0]:
+            raise NotImplementedError(
+                "Due to a temporary design, the unit conversion factor must be the same length as the data dimension. If you encounter this error, please ping EveCharbie in a GitHub issue."
+            )
+        else:
+            unit_conversion_array = np.tile(unit_conversion, (current_cycle.shape[1], 1)).T
+    else:
+        unit_conversion_array = unit_conversion
+    cycles += [current_cycle * unit_conversion_array]
+
+    return cycles
 
 def mean_cycles(
     data: list[np.ndarray], index_to_keep: list[int], nb_frames_interp: int

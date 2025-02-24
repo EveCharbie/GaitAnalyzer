@@ -15,7 +15,7 @@ from gait_analyzer.kinematics_reconstructor import ReconstructionType
 
 def analysis_to_perform(
     subject: Subject,
-    cycles_to_analyze: range,
+    cycles_to_analyze: range | None,
     static_trial: str,
     c3d_file_name: str,
     result_folder: str,
@@ -40,7 +40,7 @@ def analysis_to_perform(
         plot_kinematics_flag=True,
         skip_if_existing=True,
     )
-    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
+    # results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
     # results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
@@ -72,10 +72,11 @@ if __name__ == "__main__":
     AnalysisPerformer(
         analysis_to_perform,
         subjects_to_analyze=subjects_to_analyze,
-        cycles_to_analyze=range(5, -5),
+        # cycles_to_analyze=range(5, -5),
+        cycles_to_analyze=None,
         result_folder="results",
         # trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
 
     # --- Example of how to plot the joint angles --- #
@@ -83,7 +84,8 @@ if __name__ == "__main__":
         result_folder="results",
         leg_to_plot=LegToPlot.RIGHT,
         plot_type=PlotType.Q,
-        conditions_to_compare=["_ManipStim_L200_F30_I20"],
+        unique_event_to_split=[lambda data: data["events"][0]["heel_touch"], lambda data: data["events"][2]["heel_touch"]],
+        conditions_to_compare=["_Cond0006"],
     )
     plot.draw_plot()
     plot.save("results/AOT_01_Q_plot_temporary.png")

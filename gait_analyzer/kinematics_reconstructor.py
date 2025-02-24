@@ -10,6 +10,7 @@ from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.cyclic_events import CyclicEvents
+from gait_analyzer.unique_events import UniqueEvents
 
 
 class ReconstructionType(Enum):
@@ -141,7 +142,7 @@ class KinematicsReconstructor:
         experimental_data: ExperimentalData,
         model_creator: ModelCreator,
         events: CyclicEvents,
-        cycles_to_analyze: range,
+        cycles_to_analyze: range | None,
         reconstruction_type: ReconstructionType | list[ReconstructionType],
         skip_if_existing: bool,
         animate_kinematics_flag: bool,
@@ -158,7 +159,7 @@ class KinematicsReconstructor:
             The biorbd model to use for the kinematics reconstruction
         events: CyclicEvents
             The events to use for the kinematics reconstruction since we exploit the fact that the movement is cyclic
-        cycles_to_analyze: range
+        cycles_to_analyze: range | None
             The range of cycles to analyze
         reconstruction_type: ReconstructionType
             The type of algorithm to use to perform the reconstruction
@@ -181,8 +182,10 @@ class KinematicsReconstructor:
             )
         if not isinstance(model_creator, ModelCreator):
             raise ValueError("model_creator must be an instance of ModelCreator.")
-        if not isinstance(events, CyclicEvents):
-            raise ValueError("events must be an instance of CyclicEvents.")
+        if not (isinstance(events, CyclicEvents) or isinstance(events, UniqueEvents)):
+            raise ValueError("events must be an instance of CyclicEvents or UniqueEvents.")
+        if isinstance(events, UniqueEvents) and cycles_to_analyze is not None:
+            raise NotImplementedError("If events is an instance of UniqueEvents, cycles_to_analyze must be None for now.")
         if not isinstance(reconstruction_type, ReconstructionType) and not isinstance(reconstruction_type, list):
             raise ValueError(
                 "reconstruction_type must be an instance of ReconstructionType or a list of ReconstructionType."
