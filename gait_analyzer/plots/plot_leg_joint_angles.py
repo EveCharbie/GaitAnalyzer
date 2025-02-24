@@ -23,7 +23,6 @@ class PlotLegData(PlotAbstract):
         # Prepare the plot
         self.get_plot_indices_and_labels()
 
-
     def get_data_to_split(self, data):
         if self.plot_type == PlotType.GRF:
             if self.leg_to_plot == LegToPlot.LEFT:
