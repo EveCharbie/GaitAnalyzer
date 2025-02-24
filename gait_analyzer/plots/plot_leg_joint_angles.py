@@ -1,8 +1,6 @@
-import numpy as np
 
-from gait_analyzer.operator import Operator
 from gait_analyzer.plots.plot_abstract import PlotAbstract, EventIndexType
-from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_unit_names
+from gait_analyzer.plots.plot_utils import LegToPlot, PlotType
 
 
 class PlotLegData(PlotAbstract):
