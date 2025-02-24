@@ -42,7 +42,7 @@ def analysis_to_perform(
     results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
+    # results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
 
     return results
 
@@ -59,9 +59,11 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06))
+    # subjects_to_analyze.append(
+    #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+    # )
     subjects_to_analyze.append(
-        Subject(subject_name="VIF_01", subject_mass=71.0, dominant_leg=Side.RIGHT, preferential_speed=1.06)  # ?  # ?
+        Subject(subject_name="VIF_01", subject_mass=71.0, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
     # ... add other participants here
 
@@ -71,9 +73,8 @@ if __name__ == "__main__":
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
-        trails_to_analyze=["_Cond0009"],  # If not specified, all trials will be analyzed
-        skip_if_existing=False,
+        trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
+        skip_if_existing=True,
     )
 
     # --- Example of how to plot the joint angles --- #
