@@ -71,7 +71,9 @@ class ResultManager:
             animate_model_flag=animate_model_flag,
         )
 
-    def add_experimental_data(self, c3d_file_name: str, animate_c3d_flag: bool = False):
+    def add_experimental_data(
+        self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False
+    ):
 
         # Checks
         if self.experimental_data is not None:
@@ -82,12 +84,13 @@ class ResultManager:
         # Add experimental data
         self.experimental_data = ExperimentalData(
             c3d_file_name=c3d_file_name,
+            markers_to_ignore=markers_to_ignore,
             result_folder=self.result_folder,
             model_creator=self.model_creator,
             animate_c3d_flag=animate_c3d_flag,
         )
 
-    def add_events(self, plot_phases_flag):
+    def add_events(self, skip_if_existing: bool, plot_phases_flag: bool = False):
 
         # Checks
         if self.model_creator is None:
@@ -98,7 +101,11 @@ class ResultManager:
             raise Exception("Events already added")
 
         # Add events
-        self.events = Events(experimental_data=self.experimental_data, plot_phases_flag=plot_phases_flag)
+        self.events = Events(
+            experimental_data=self.experimental_data,
+            skip_if_existing=skip_if_existing,
+            plot_phases_flag=plot_phases_flag,
+        )
 
     def reconstruct_kinematics(
         self,
@@ -129,7 +136,9 @@ class ResultManager:
             plot_kinematics_flag=plot_kinematics_flag,
         )
 
-    def perform_inverse_dynamics(self, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False):
+    def perform_inverse_dynamics(
+        self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
+    ):
         # Checks
         if self.model_creator is None:
             raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
@@ -146,11 +155,14 @@ class ResultManager:
         self.inverse_dynamics_performer = InverseDynamicsPerformer(
             self.experimental_data,
             self.kinematics_reconstructor,
+            skip_if_existing=skip_if_existing,
             reintegrate_flag=reintegrate_flag,
             animate_dynamics_flag=animate_dynamics_flag,
         )
 
-    def estimate_optimally(self):
+    def estimate_optimally(
+        self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False
+    ):
 
         # Checks
         if self.model_creator is None:
@@ -163,13 +175,18 @@ class ResultManager:
             raise Exception(
                 "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"
             )
+        if self.inverse_dynamics_performer is None:
+            raise Exception("Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()")
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
+            cycle_to_analyze=cycle_to_analyze,
+            subject=self.subject,
             biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
             experimental_data=self.experimental_data,
             events=self.events,
-            q_filtered=self.kinematics_reconstructor.q_filtered,
-            qdot=self.kinematics_reconstructor.qdot,
-            tau=self.inverse_dynamics_performer.tau,
+            kinematics_reconstructor=self.kinematics_reconstructor,
+            inverse_dynamic_performer=self.inverse_dynamics_performer,
+            plot_solution_flag=plot_solution_flag,
+            animate_solution_flag=animate_solution_flag,
         )

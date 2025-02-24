@@ -195,6 +195,9 @@ class KinematicsReconstructor:
         self.cycles_to_analyze = cycles_to_analyze
         self.reconstruction_type = reconstruction_type
 
+        # Parameters of the reconstruction
+        self.acceptance_threshold = 0.1  # 10 cm
+
         # Extended attributes
         self.frame_range = None
         self.markers = None
@@ -291,7 +294,7 @@ class KinematicsReconstructor:
                 f"75 percentile between : {np.min(np.percentile(residuals[:, self.frame_range], 75, axis=0))} and "
                 f"{np.max(np.percentile(residuals[:, self.frame_range], 75, axis=0))}"
             )
-            if np.all(np.percentile(residuals, 75, axis=0) < 0.05):
+            if np.all(np.percentile(residuals, 75, axis=0) < self.acceptance_threshold):
                 is_successful_reconstruction = True
                 break
 

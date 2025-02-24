@@ -109,7 +109,7 @@ class Operator:
     @staticmethod
     def from_marker_frame_to_analog_frame(
         analogs_time_vector: np.ndarray, markers_time_vector: np.ndarray, marker_idx: int | list[int]
-    ) -> int | list[int]:
+    ) -> int | list[int] | np.ndarray[int]:
         """
         This function converts a marker frame index into an analog frame index since the analogs are sampled at a higher frequency than the markers.
         .
@@ -119,12 +119,12 @@ class Operator:
             The time vector of the analogs
         markers_time_vector: np.ndarray
             The time vector of the markers
-        marker_idx: int | list[int]
+        marker_idx: int | list[int] | np.ndarray[int]
             The analog frame index to convert
         .
         Returns
         -------
-        analog_idx: int | list[int]
+        analog_idx: int | list[int] | np.ndarray[int]
             The analog frame index
         """
         analog_to_marker_ratio = int(round(analogs_time_vector.shape[0] / markers_time_vector.shape[0]))
@@ -133,14 +133,20 @@ class Operator:
             analog_idx = all_idx[marker_idx]
         elif isinstance(marker_idx, list):
             analog_idx = [all_idx[idx] for idx in marker_idx]
+        elif isinstance(marker_idx, np.ndarray):
+            if len(marker_idx.shape) != 1:
+                raise ValueError("marker_idx must be a 1D numpy array.")
+            analog_idx = np.zeros_like(marker_idx).astype(int)
+            for i_idx in range(marker_idx.shape[0]):
+                analog_idx[i_idx] = all_idx[marker_idx[i_idx]]
         else:
-            raise ValueError("marker_idx must be an int or a list of int.")
+            raise ValueError("marker_idx must be an int or a list of int or a np.ndarray of int.")
         return analog_idx
 
     @staticmethod
     def from_analog_frame_to_marker_frame(
-        analogs_time_vector: np.ndarray, markers_time_vector: np.ndarray, analog_idx: int | list[int]
-    ) -> int | list[int]:
+        analogs_time_vector: np.ndarray, markers_time_vector: np.ndarray, analog_idx: int | list[int] | np.ndarray[int]
+    ) -> int | list[int] | np.ndarray[int]:
         """
         This function converts an analog frame index into a marker frame index since the analogs are sampled at a higher frequency than the markers.
         .
@@ -150,12 +156,12 @@ class Operator:
             The time vector of the analogs
         markers_time_vector: np.ndarray
             The time vector of the markers
-        analog_idx: int | list[int]
+        analog_idx: int | list[int] | np.ndarray[int]
             The marker frame index to convert
         .
         Returns
         -------
-        marker_idx: int | list[int]
+        marker_idx: int | list[int] | np.ndarray[int]
             The marker frame index
         """
         analog_to_marker_ratio = int(round(analogs_time_vector.shape[0] / markers_time_vector.shape[0]))
@@ -163,6 +169,12 @@ class Operator:
             marker_idx = int(round(analog_idx / analog_to_marker_ratio))
         elif isinstance(analog_idx, list):
             marker_idx = [int(round(idx / analog_to_marker_ratio)) for idx in analog_idx]
+        elif isinstance(analog_idx, np.ndarray):
+            if len(analog_idx.shape) != 1:
+                raise ValueError("analog_idx must be a 1D numpy array.")
+            marker_idx = np.zeros_like(analog_idx).astype(int)
+            for i_idx in range(analog_idx.shape[0]):
+                marker_idx[i_idx] = int(np.round(analog_idx[i_idx] / analog_to_marker_ratio))
         else:
-            raise ValueError("analog_idx must be an int or a list of int.")
+            raise ValueError("analog_idx must be an int or a list of int or a np.ndarray of int.")
         return marker_idx

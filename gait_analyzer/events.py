@@ -1,4 +1,5 @@
 import pickle
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps
@@ -12,7 +13,7 @@ class Events:
     This class contains all the events detected from the experimental data.
     """
 
-    def __init__(self, experimental_data: ExperimentalData, plot_phases_flag: bool = False):
+    def __init__(self, experimental_data: ExperimentalData, skip_if_existing: bool, plot_phases_flag: bool):
         """
         Initialize the Events.
         .
@@ -20,12 +21,20 @@ class Events:
         ----------
         experimental_data: ExperimentalData
             The experimental data from the trial
+        skip_if_existing: bool
+            If True, the events will not be recalculated if they already exist
+        plot_phases_flag: bool
+            If True, the phases will be plotted
         """
         # Checks
         if not isinstance(experimental_data, ExperimentalData):
             raise ValueError(
                 "experimental_data must be an instance of ExperimentalData. You can declare it by running ExperimentalData(file_path)."
             )
+        if not isinstance(skip_if_existing, bool):
+            raise ValueError("skip_if_existing must be a boolean")
+        if not isinstance(plot_phases_flag, bool):
+            raise ValueError("plot_phases_flag must be a boolean")
 
         # Parameters of the detection algorithm
         self.minimal_vertical_force_threshold = 50  # TODO: Charbie -> cite article and make it weight dependent
@@ -34,6 +43,7 @@ class Events:
 
         # Initial attributes
         self.experimental_data = experimental_data
+        self.is_loaded_events = False
 
         # Extended attributes
         self.events = {
@@ -69,10 +79,38 @@ class Events:
             "toesL_heelR": np.zeros((nb_analog_frames,)),
             "toesL_heelR_toesR": np.zeros((nb_analog_frames,)),
         }
-        print("Detecting events...")
-        self.find_event_timestamps()
+
+        if skip_if_existing and self.check_if_existing():
+            self.is_loaded_events = True
+        else:
+            print("Detecting events...")
+            self.find_event_timestamps()
+            self.save_events()
+
         if plot_phases_flag:
             self.plot_events()
+
+    def check_if_existing(self):
+        """
+        Check if the events detection already exists.
+        If it exists, load the events.
+        .
+        Returns
+        -------
+        bool
+            If the events detection already exists
+        """
+        result_file_full_path = self.get_result_file_full_path()
+        if os.path.exists(result_file_full_path):
+            with open(result_file_full_path, "rb") as file:
+                data = pickle.load(file)
+                self.events = data["events"]
+                self.phases_right_leg = data["phases_right_leg"]
+                self.phases_left_leg = data["phases_left_leg"]
+                self.phases = data["phases"]
+            return True
+        else:
+            return False
 
     def detect_heel_touch(self, show_debug_plot_flag: bool):
         """
@@ -616,4 +654,5 @@ class Events:
             "phases_left_leg": self.phases_left_leg,
             "phases_right_leg": self.phases_right_leg,
             "phases": self.phases,
+            "is_loaded_events": self.is_loaded_events,
         }
