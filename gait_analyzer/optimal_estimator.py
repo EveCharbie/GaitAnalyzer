@@ -112,7 +112,7 @@ class OptimalEstimator:
         if plot_solution_flag:
             self.solution.graphs(
                 show_bounds=True,
-                save_name=self.get_result_file_full_path(self.experimental_data.result_folder + "/figures"),
+                save_name=self.get_result_file_full_path(self.experimental_data.result_folder + "/figures")[:-4],
             )
         if animate_solution_flag:
             self.animate_solution()
