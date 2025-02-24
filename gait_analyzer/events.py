@@ -90,7 +90,6 @@ class Events:
         if plot_phases_flag:
             self.plot_events()
 
-
     def check_if_existing(self):
         """
         Check if the events detection already exists.

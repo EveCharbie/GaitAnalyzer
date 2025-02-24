@@ -93,7 +93,9 @@ class ExperimentalData:
             self.marker_sampling_frequency = self.c3d["parameters"]["POINT"]["RATE"]["value"][0]  # Hz
             self.markers_dt = 1 / self.c3d["header"]["points"]["frame_rate"]
             self.nb_marker_frames = markers.shape[2]
-            exp_marker_names = [m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore]
+            exp_marker_names = [
+                m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore
+            ]
             self.marker_units = 1
             if self.c3d["parameters"]["POINT"]["UNITS"]["value"][0] == "mm":
                 self.marker_units = 0.001
@@ -104,9 +106,7 @@ class ExperimentalData:
                 )
             elif len(self.model_marker_names) < len(exp_marker_names):
                 supplementary_marker_names = [name for name in exp_marker_names if name not in self.model_marker_names]
-                raise ValueError(
-                    f"The markers {supplementary_marker_names} are in the c3d file, but not in the model."
-                )
+                raise ValueError(f"The markers {supplementary_marker_names} are in the c3d file, but not in the model.")
 
             markers_sorted = np.zeros((3, len(self.model_marker_names), self.nb_marker_frames))
             markers_sorted[:, :, :] = np.nan
@@ -206,11 +206,18 @@ class ExperimentalData:
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
 
                 r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
-                cop_filtered[i_platform, 0, :] = - (moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z) / force_filtered[i_platform, 2, :]
-                cop_filtered[i_platform, 1, :] = (moment_filtered[i_platform, 0, :] + force_filtered[i_platform, 1, :] * r_z) / force_filtered[i_platform, 2, :]
+                cop_filtered[i_platform, 0, :] = (
+                    -(moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z)
+                    / force_filtered[i_platform, 2, :]
+                )
+                cop_filtered[i_platform, 1, :] = (
+                    moment_filtered[i_platform, 0, :] + force_filtered[i_platform, 1, :] * r_z
+                ) / force_filtered[i_platform, 2, :]
                 cop_filtered[i_platform, 2, :] = r_z
                 # The CoP must be expressed relatively to the center of the platforms
-                cop_filtered[i_platform, :, :] += np.tile(np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)).T
+                cop_filtered[i_platform, :, :] += np.tile(
+                    np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)
+                ).T
 
                 # Store output in a biorbd compatible format
                 f_ext_sorted[i_platform, :3, :] = cop_ezc3d[:, :]
@@ -223,7 +230,7 @@ class ExperimentalData:
                 # Check if the ddata is computed the same way in ezc3d and in this code
                 is_good_trial = True
                 for i_component in range(3):
-                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 1e+4)
+                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 1e4)
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
@@ -232,15 +239,16 @@ class ExperimentalData:
 
                 if not is_good_trial:
                     import matplotlib.pyplot as plt
+
                     fig, axs = plt.subplots(4, 1, figsize=(10, 10))
 
-                    axs[0].plot(cop_ezc3d[0, :], '-b', label='CoP ezc3d raw')
-                    axs[1].plot(cop_ezc3d[1, :], '-b')
-                    axs[2].plot(cop_ezc3d[2, :], '-b')
+                    axs[0].plot(cop_ezc3d[0, :], "-b", label="CoP ezc3d raw")
+                    axs[1].plot(cop_ezc3d[1, :], "-b")
+                    axs[2].plot(cop_ezc3d[2, :], "-b")
 
-                    axs[0].plot(cop_filtered[i_platform, 0, :], '--r', label='CoP recomputed (from filtered F and M)')
-                    axs[1].plot(cop_filtered[i_platform, 1, :], '--r')
-                    axs[2].plot(cop_filtered[i_platform, 2, :], '--r')
+                    axs[0].plot(cop_filtered[i_platform, 0, :], "--r", label="CoP recomputed (from filtered F and M)")
+                    axs[1].plot(cop_filtered[i_platform, 1, :], "--r")
+                    axs[2].plot(cop_filtered[i_platform, 2, :], "--r")
 
                     axs[0].set_xlim(0, 25000)
                     axs[1].set_xlim(0, 25000)
@@ -251,13 +259,15 @@ class ExperimentalData:
                     axs[2].set_ylim(-0.01, 0.01)
 
                     axs[3].plot(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :])
-                    axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), '--k')
-                    axs[3].set_ylabel('Error (m)')
+                    axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), "--k")
+                    axs[3].set_ylabel("Error (m)")
 
                     axs[0].legend()
                     fig.savefig("CoP_filtering_error.png")
                     fig.show()
-                    raise NotImplementedError("The force platform data is not computed the same way in ezc3d than in this code, see the CoP graph.")
+                    raise NotImplementedError(
+                        "The force platform data is not computed the same way in ezc3d than in this code, see the CoP graph."
+                    )
 
             self.f_ext_sorted = f_ext_sorted
             self.f_ext_sorted_filtered = f_ext_sorted_filtered

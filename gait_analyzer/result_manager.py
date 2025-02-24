@@ -71,7 +71,9 @@ class ResultManager:
             animate_model_flag=animate_model_flag,
         )
 
-    def add_experimental_data(self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False):
+    def add_experimental_data(
+        self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False
+    ):
 
         # Checks
         if self.experimental_data is not None:
@@ -99,7 +101,11 @@ class ResultManager:
             raise Exception("Events already added")
 
         # Add events
-        self.events = Events(experimental_data=self.experimental_data, skip_if_existing=skip_if_existing, plot_phases_flag=plot_phases_flag)
+        self.events = Events(
+            experimental_data=self.experimental_data,
+            skip_if_existing=skip_if_existing,
+            plot_phases_flag=plot_phases_flag,
+        )
 
     def reconstruct_kinematics(
         self,
@@ -130,7 +136,9 @@ class ResultManager:
             plot_kinematics_flag=plot_kinematics_flag,
         )
 
-    def perform_inverse_dynamics(self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False):
+    def perform_inverse_dynamics(
+        self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
+    ):
         # Checks
         if self.model_creator is None:
             raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
@@ -152,7 +160,9 @@ class ResultManager:
             animate_dynamics_flag=animate_dynamics_flag,
         )
 
-    def estimate_optimally(self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False):
+    def estimate_optimally(
+        self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False
+    ):
 
         # Checks
         if self.model_creator is None:
@@ -166,9 +176,7 @@ class ResultManager:
                 "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"
             )
         if self.inverse_dynamics_performer is None:
-            raise Exception(
-                "Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()"
-            )
+            raise Exception("Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()")
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(

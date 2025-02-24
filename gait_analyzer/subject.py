@@ -34,7 +34,6 @@ class Subject:
         self.dominant_leg = dominant_leg
         self.preferential_speed = preferential_speed
 
-
     def outputs(self):
         return {
             "subject_name": self.subject_name,
