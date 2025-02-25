@@ -12,7 +12,6 @@ from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.cyclic_events import CyclicEvents
 from gait_analyzer.unique_events import UniqueEvents
 
-
 class ReconstructionType(Enum):
     """
     Type of reconstruction to perform
