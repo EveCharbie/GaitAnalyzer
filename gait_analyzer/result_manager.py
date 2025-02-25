@@ -32,7 +32,9 @@ class ResultManager:
         if not isinstance(subject, Subject):
             raise ValueError("subject must be a Subject")
         if not (isinstance(cycles_to_analyze, range) or cycles_to_analyze is None):
-            raise ValueError("cycles_to_analyze must be a range of cycles to analyze or None if all frames should be analyzed.")
+            raise ValueError(
+                "cycles_to_analyze must be a range of cycles to analyze or None if all frames should be analyzed."
+            )
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string")
         if not isinstance(result_folder, str):
@@ -114,8 +116,7 @@ class ResultManager:
         if self.model_creator is None:
             raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
         if self.experimental_data is None:
-            raise Exception(
-                "Please add the experimental data first by running ResultManager.add_experimental_data()")
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is not None:
             raise Exception("CyclicEvents or UniqueEvents were already added to the ResultManager")
 
@@ -138,7 +139,9 @@ class ResultManager:
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is None:
-            raise Exception("Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()")
+            raise Exception(
+                "Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()"
+            )
         if self.kinematics_reconstructor is not None:
             raise Exception("kinematics_reconstructor already added")
 
@@ -188,7 +191,9 @@ class ResultManager:
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.events is None:
-            raise Exception("Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()")
+            raise Exception(
+                "Please run the events detection first by running ResultManager.add_cyclic_events() or ResultManager.add_unique_events()"
+            )
         if self.kinematics_reconstructor is None:
             raise Exception(
                 "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"

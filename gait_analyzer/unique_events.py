@@ -43,10 +43,13 @@ class UniqueEvents:
         self.type = "unique"
 
         # Extended attributes
-        self.events = [{
-            "heel_touch": [],  # heel strike
-            "toes_off": [],  # beginning of swing
-        } for _ in range(len(experimental_data.platform_corners))]
+        self.events = [
+            {
+                "heel_touch": [],  # heel strike
+                "toes_off": [],  # beginning of swing
+            }
+            for _ in range(len(experimental_data.platform_corners))
+        ]
 
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_events = True
@@ -54,7 +57,6 @@ class UniqueEvents:
             print("Detecting events...")
             self.find_event_timestamps()
             self.save_events()
-
 
     def check_if_existing(self):
         """
@@ -90,7 +92,6 @@ class UniqueEvents:
 
             self.events[i_platform]["heel_touch"] = first_indices_of_a_bloc
 
-
     def detect_toes_off(self):
         """
         Detect the toes off event when the vertical GRF is lower than a threshold
@@ -104,7 +105,6 @@ class UniqueEvents:
             else:
                 last_indices_of_a_bloc = self.experimental_data.f_ext_sorted[i_platform, 8, :].shape[0]
             self.events[i_platform]["toes_off"] = last_indices_of_a_bloc
-
 
     def find_event_timestamps(self):
         # Detect events

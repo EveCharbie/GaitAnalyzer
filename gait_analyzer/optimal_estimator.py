@@ -574,7 +574,7 @@ class OptimalEstimator:
             )
         else:
             objective_functions.add(
-                objective=ObjectiveFcn.Lagrange.TRACK_TOTAL_REACTION_FORCES,
+                objective=ObjectiveFcn.Lagrange.TRACK_SUM_REACTION_FORCES,
                 weight=0.01,
                 target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
                 contact_index=[0, 1, 2],

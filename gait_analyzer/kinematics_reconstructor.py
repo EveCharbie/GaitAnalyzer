@@ -185,7 +185,9 @@ class KinematicsReconstructor:
         if not (isinstance(events, CyclicEvents) or isinstance(events, UniqueEvents)):
             raise ValueError("events must be an instance of CyclicEvents or UniqueEvents.")
         if isinstance(events, UniqueEvents) and cycles_to_analyze is not None:
-            raise NotImplementedError("If events is an instance of UniqueEvents, cycles_to_analyze must be None for now.")
+            raise NotImplementedError(
+                "If events is an instance of UniqueEvents, cycles_to_analyze must be None for now."
+            )
         if not isinstance(reconstruction_type, ReconstructionType) and not isinstance(reconstruction_type, list):
             raise ValueError(
                 "reconstruction_type must be an instance of ReconstructionType or a list of ReconstructionType."

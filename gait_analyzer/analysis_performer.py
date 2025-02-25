@@ -47,7 +47,9 @@ class AnalysisPerformer:
             if not isinstance(subject, Subject):
                 raise ValueError("All elements of subjects_to_analyze must be Subject")
         if not (isinstance(cycles_to_analyze, range) or cycles_to_analyze is None):
-            raise ValueError("cycles_to_analyze must be a range of cycles to analyze or None if all cycles should be analyzed.")
+            raise ValueError(
+                "cycles_to_analyze must be a range of cycles to analyze or None if all cycles should be analyzed."
+            )
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
         if not isinstance(trails_to_analyze, list) and trails_to_analyze is not None:

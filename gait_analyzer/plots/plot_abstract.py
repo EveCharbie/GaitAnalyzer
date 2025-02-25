@@ -14,13 +14,19 @@ class EventIndexType(Enum):
     """
     If the index of the events should be expressed in the analogs or in the markers time vector.
     """
+
     MARKERS = "markers"
     ANALOGS = "analogs"
 
 
 class PlotAbstract:
     def __init__(
-        self, result_folder: str, leg_to_plot: LegToPlot, conditions_to_compare: list[str], get_data_to_split: callable, unique_event_to_split: list[callable] = None
+        self,
+        result_folder: str,
+        leg_to_plot: LegToPlot,
+        conditions_to_compare: list[str],
+        get_data_to_split: callable,
+        unique_event_to_split: list[callable] = None,
     ):
         # Checks
         if not isinstance(result_folder, str):
@@ -39,7 +45,9 @@ class PlotAbstract:
             if not isinstance(unique_event_to_split, list):
                 raise ValueError("unique_event_to_split must be a list or None")
             if len(unique_event_to_split) != 2:
-                raise ValueError("unique_event_to_split must be a list of two functions (one to get the beginning and one to get the end of the event)")
+                raise ValueError(
+                    "unique_event_to_split must be a list of two functions (one to get the beginning and one to get the end of the event)"
+                )
         if not all(callable(event) for event in unique_event_to_split):
             raise ValueError("unique_event_to_split must be a list of callables")
 
@@ -73,7 +81,7 @@ class PlotAbstract:
             )
             start_cycle = 0 if cycles_to_analyze is None else cycles_to_analyze.start
             end_cycle = -1 if cycles_to_analyze is None else cycles_to_analyze.stop
-            events_idx_q = np.array(event_idx_markers)[start_cycle : end_cycle]
+            events_idx_q = np.array(event_idx_markers)[start_cycle:end_cycle]
             events_idx_q -= events_idx_q[0]
             event_index = list(events_idx_q)
         return event_index

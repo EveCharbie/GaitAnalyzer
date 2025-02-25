@@ -28,17 +28,17 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
+    # results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=False, animate_model_flag=False)
     results.add_experimental_data(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
     )
-    # results.add_cyclic_events(skip_if_existing=True, plot_phases_flag=False)
-    results.add_unique_events(skip_if_existing=False, plot_phases_flag=False)
+    results.add_cyclic_events(skip_if_existing=False, plot_phases_flag=False)
+    # results.add_unique_events(skip_if_existing=False, plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
     # results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
@@ -60,12 +60,12 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # subjects_to_analyze.append(
-    #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-    # )
     subjects_to_analyze.append(
-        Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+        Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
+    # subjects_to_analyze.append(
+    #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+    # )
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #
@@ -75,8 +75,8 @@ if __name__ == "__main__":
         # cycles_to_analyze=range(5, -5),
         cycles_to_analyze=None,
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L200_F30_I20"],  # If not specified, all trials will be analyzed
-        skip_if_existing=True,
+        # trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
+        skip_if_existing=False,
     )
 
     # --- Example of how to plot the joint angles --- #
@@ -84,7 +84,10 @@ if __name__ == "__main__":
         result_folder="results",
         leg_to_plot=LegToPlot.RIGHT,
         plot_type=PlotType.Q,
-        unique_event_to_split=[lambda data: data["events"][0]["heel_touch"], lambda data: data["events"][2]["heel_touch"]],
+        unique_event_to_split=[
+            lambda data: data["events"][0]["heel_touch"],
+            lambda data: data["events"][2]["heel_touch"],
+        ],
         conditions_to_compare=["_Cond0006"],
     )
     plot.draw_plot()

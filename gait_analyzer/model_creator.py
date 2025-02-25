@@ -245,31 +245,31 @@ class ModelCreator:
                     frame_data.extend([f"{pos[0]:.5f}", f"{pos[1]:.5f}", f"{pos[2]:.5f}"])
                 f.write("\t".join(frame_data) + "\n")
 
-    def personalize_xml_file(self):
-        """
-        This function should not be used right now, but it is still the real way to personalize the xml file.
-        We are waiting for OpenSim to fix their path bug.
-        """
-        self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
-        # Modify the original xml with the participants information
-        tree = ET.parse(self.osim_model_type.xml_setup_file)
-        root = tree.getroot()
-        for elem in root.iter():
-            if elem.tag == "model_file":
-                elem.text = os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-            elif elem.tag == "output_model_file":
-                # Due to OpenSim, this path must be relative to xml
-                rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
-                elem.text = rel_path
-            elif elem.tag == "mass":
-                elem.text = f"{self.subject.subject_mass}"
-            elif elem.tag == "marker_file":
-                # Due to OpenSim, this path must be relative to original_osim_model_full_path
-                trc_file_relative_path = os.path.relpath(
-                    self.trc_file_path, os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-                )[3:]
-                elem.text = trc_file_relative_path
-        tree.write(self.new_xml_path)
+    # def personalize_xml_file(self):
+    #     """
+    #     This function should not be used right now, but it is still the real way to personalize the xml file.
+    #     We are waiting for OpenSim to fix their path bug.
+    #     """
+    #     self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
+    #     # Modify the original xml with the participants information
+    #     tree = ET.parse(self.osim_model_type.xml_setup_file)
+    #     root = tree.getroot()
+    #     for elem in root.iter():
+    #         if elem.tag == "model_file":
+    #             elem.text = os.path.abspath(self.osim_model_type.original_osim_model_full_path)
+    #         elif elem.tag == "output_model_file":
+    #             # Due to OpenSim, this path must be relative to xml
+    #             rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
+    #             elem.text = rel_path
+    #         elif elem.tag == "mass":
+    #             elem.text = f"{self.subject.subject_mass}"
+    #         elif elem.tag == "marker_file":
+    #             # Due to OpenSim, this path must be relative to original_osim_model_full_path
+    #             trc_file_relative_path = os.path.relpath(
+    #                 self.trc_file_path, os.path.abspath(self.osim_model_type.original_osim_model_full_path)
+    #             )[3:]
+    #             elem.text = trc_file_relative_path
+    #     tree.write(self.new_xml_path)
 
     def personalize_xml_file_hacky(self):
         """
