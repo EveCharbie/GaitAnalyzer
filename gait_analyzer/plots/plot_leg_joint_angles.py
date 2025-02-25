@@ -1,13 +1,15 @@
-import numpy as np
-
-from gait_analyzer.operator import Operator
 from gait_analyzer.plots.plot_abstract import PlotAbstract, EventIndexType
-from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, PlotType, get_unit_names
+from gait_analyzer.plots.plot_utils import LegToPlot, PlotType
 
 
 class PlotLegData(PlotAbstract):
     def __init__(
-        self, result_folder: str, leg_to_plot: LegToPlot, plot_type: PlotType, conditions_to_compare: list[str]
+        self,
+        result_folder: str,
+        leg_to_plot: LegToPlot,
+        plot_type: PlotType,
+        conditions_to_compare: list[str],
+        unique_event_to_split: dict = None,
     ):
         # Checks
         if not isinstance(plot_type, PlotType):
@@ -18,7 +20,9 @@ class PlotLegData(PlotAbstract):
         self.event_index_type = EventIndexType.ANALOGS if self.plot_type == PlotType.GRF else EventIndexType.MARKERS
 
         # Initialize the parent class (PlotAbstract)
-        super(PlotLegData, self).__init__(result_folder, leg_to_plot, conditions_to_compare, self.get_data_to_split)
+        super(PlotLegData, self).__init__(
+            result_folder, leg_to_plot, conditions_to_compare, self.get_data_to_split, unique_event_to_split
+        )
 
         # Prepare the plot
         self.get_plot_indices_and_labels()

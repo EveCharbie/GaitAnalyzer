@@ -7,17 +7,26 @@ import matplotlib.pyplot as plt
 from matplotlib import colormaps
 
 from gait_analyzer.operator import Operator
-from gait_analyzer.plots.plot_utils import split_cycles, mean_cycles, LegToPlot, get_unit_names
+from gait_analyzer.plots.plot_utils import split_cycle, split_cycles, mean_cycles, LegToPlot, get_unit_names
 
 
 class EventIndexType(Enum):
+    """
+    If the index of the events should be expressed in the analogs or in the markers time vector.
+    """
+
     MARKERS = "markers"
     ANALOGS = "analogs"
 
 
 class PlotAbstract:
     def __init__(
-        self, result_folder: str, leg_to_plot: LegToPlot, conditions_to_compare: list[str], get_data_to_split: callable
+        self,
+        result_folder: str,
+        leg_to_plot: LegToPlot,
+        conditions_to_compare: list[str],
+        get_data_to_split: callable,
+        unique_event_to_split: dict = None,
     ):
         # Checks
         if not isinstance(result_folder, str):
@@ -32,12 +41,22 @@ class PlotAbstract:
             raise ValueError("conditions_to_compare must be a list of strings")
         if not callable(get_data_to_split):
             raise ValueError("get_data_to_split must be a callable")
+        if unique_event_to_split is not None:
+            if not isinstance(unique_event_to_split, dict):
+                raise ValueError("unique_event_to_split must be a list or None")
+            if list(unique_event_to_split.keys()) != ["event_index_type", "start", "stop"]:
+                raise ValueError(
+                    "unique_event_to_split must be a dict with keys event_index_type (weather to express the index in marker indices of analog indices), start a callable giving the first frame of the cycle, and stop a callable giving the last frame of the cycle."
+                )
+        if not (callable(unique_event_to_split["start"]) and callable(unique_event_to_split["stop"])):
+            raise ValueError("unique_event_to_split must be a dict of callables")
 
         # Initial attributes
         self.result_folder = result_folder
         self.conditions_to_compare = conditions_to_compare
         self.leg_to_plot = leg_to_plot
         self.get_data_to_split = get_data_to_split
+        self.unique_event_to_split = unique_event_to_split
 
         # Extended attributes
         self.cycles_data = None
@@ -60,7 +79,9 @@ class PlotAbstract:
                 markers_time_vector,
                 event,
             )
-            events_idx_q = np.array(event_idx_markers)[cycles_to_analyze.start : cycles_to_analyze.stop]
+            start_cycle = 0 if cycles_to_analyze is None else cycles_to_analyze.start
+            end_cycle = -1 if cycles_to_analyze is None else cycles_to_analyze.stop
+            events_idx_q = np.array(event_idx_markers)[start_cycle:end_cycle]
             events_idx_q -= events_idx_q[0]
             event_index = list(events_idx_q)
         return event_index
@@ -80,16 +101,45 @@ class PlotAbstract:
                 )
 
             if condition_name in self.conditions_to_compare:
-                event_index = self.get_event_index(
-                    event=data["events"]["right_leg_heel_touch"],
-                    cycles_to_analyze=data["cycles_to_analyze"],
-                    analog_time_vector=data["analogs_time_vector"],
-                    markers_time_vector=data["markers_time_vector"],
-                )
-                data_to_split = self.get_data_to_split(data)
-                this_cycles_data = split_cycles(
-                    data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
-                )
+                if isinstance(data["events"], list):
+                    cycle_start = self.unique_event_to_split["start"](data)
+                    cycle_end = self.unique_event_to_split["stop"](data)
+                    if self.unique_event_to_split["event_index_type"] == EventIndexType.ANALOGS:
+                        cycle_start_idx = cycle_start
+                        cycle_end_idx = cycle_end
+                    elif self.unique_event_to_split["event_index_type"] == EventIndexType.MARKERS:
+                        cycle_start_idx = Operator.from_analog_frame_to_marker_frame(
+                            data["analogs_time_vector"],
+                            data["markers_time_vector"],
+                            cycle_start,
+                        )
+                        cycle_end_idx = Operator.from_analog_frame_to_marker_frame(
+                            data["analogs_time_vector"],
+                            data["markers_time_vector"],
+                            cycle_end,
+                        )
+                    else:
+                        raise ValueError("event_index_type must be a EventIndexType.")
+
+                    data_to_split = self.get_data_to_split(data)
+                    this_cycles_data = split_cycle(
+                        data_to_split,
+                        cycle_start_idx,
+                        cycle_end_idx,
+                        plot_type=self.plot_type,
+                        subject_mass=subject_mass,
+                    )
+                else:
+                    event_index = self.get_event_index(
+                        event=data["events"]["right_leg_heel_touch"],
+                        cycles_to_analyze=data["cycles_to_analyze"],
+                        analog_time_vector=data["analogs_time_vector"],
+                        markers_time_vector=data["markers_time_vector"],
+                    )
+                    data_to_split = self.get_data_to_split(data)
+                    this_cycles_data = split_cycles(
+                        data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
+                    )
         return this_cycles_data, condition_name
 
     def prepare_cycles(self):

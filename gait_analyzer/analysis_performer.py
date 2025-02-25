@@ -14,7 +14,7 @@ class AnalysisPerformer:
         self,
         analysis_to_perform: callable,
         subjects_to_analyze: list[Subject],
-        cycles_to_analyze: range = range(5, -5),
+        cycles_to_analyze: range | None = None,
         result_folder: str = "../results/",
         trails_to_analyze: list[str] = None,
         skip_if_existing: bool = False,
@@ -28,7 +28,7 @@ class AnalysisPerformer:
             The analysis to perform
         subjects_to_analyze: list[Subject]
             The list of subjects to analyze
-        cycles_to_analyze: range
+        cycles_to_analyze: range | cycles_to_analyze
             The range of cycles to analyze
         result_folder: str
             The folder where the results will be saved. It will look like result_folder/subject_name.
@@ -46,8 +46,10 @@ class AnalysisPerformer:
         for subject in subjects_to_analyze:
             if not isinstance(subject, Subject):
                 raise ValueError("All elements of subjects_to_analyze must be Subject")
-        if not isinstance(cycles_to_analyze, range):
-            raise ValueError("cycles_to_analyze must be a range of cycles to analyze")
+        if not (isinstance(cycles_to_analyze, range) or cycles_to_analyze is None):
+            raise ValueError(
+                "cycles_to_analyze must be a range of cycles to analyze or None if all cycles should be analyzed."
+            )
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
         if not isinstance(trails_to_analyze, list) and trails_to_analyze is not None:
@@ -122,7 +124,7 @@ class AnalysisPerformer:
         """
 
         result_dict = self.get_version()
-        result_dict["cycles_to_analyze"] = self.cycles_to_analyze
+        result_dict["cycles_to_analyze"] = self.cycles_to_analyze if self.cycles_to_analyze is not None else 0
         for attr_name in dir(results):
             attr = getattr(results, attr_name)
             if not callable(attr) and not attr_name.startswith("__"):
@@ -193,7 +195,7 @@ class AnalysisPerformer:
             # Loop over all data files
             for data_file in os.listdir(subject_data_folder):
                 # Files that we should not analyze
-                if data_file.endswith("Statique.c3d") or not data_file.endswith(".c3d"):
+                if data_file.endswith("static.c3d") or not data_file.endswith(".c3d"):
                     continue
                 if self.trails_to_analyze is not None and not any(
                     trail in data_file for trail in self.trails_to_analyze

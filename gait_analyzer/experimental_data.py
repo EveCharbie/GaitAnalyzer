@@ -96,6 +96,11 @@ class ExperimentalData:
             exp_marker_names = [
                 m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore
             ]
+
+            # TODO: FloEthv -> When this study is completed, please remove this hacky fix
+            if "STER" in exp_marker_names:
+                exp_marker_names[exp_marker_names.index("STER")] = "STR"
+
             self.marker_units = 1
             if self.c3d["parameters"]["POINT"]["UNITS"]["value"][0] == "mm":
                 self.marker_units = 0.001
@@ -165,16 +170,16 @@ class ExperimentalData:
             nb_platforms = len(platforms)
             units = self.marker_units  # We assume that the all position units are the same as the markers'
             self.platform_corners = []
-            self.platform_corners += [platforms[0]["corners"] * units]
-            self.platform_corners += [platforms[1]["corners"] * units]
+            for platform in platforms:
+                self.platform_corners += [platform["corners"] * units]
 
             # Initialize arrays for storing external forces and moments
             force_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             moment_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             tz_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             cop_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
-            f_ext_sorted = np.zeros((2, 9, self.nb_analog_frames))
-            f_ext_sorted_filtered = np.zeros((2, 9, self.nb_analog_frames))
+            f_ext_sorted = np.zeros((nb_platforms, 9, self.nb_analog_frames))
+            f_ext_sorted_filtered = np.zeros((nb_platforms, 9, self.nb_analog_frames))
 
             # Process force platform data
             for i_platform in range(nb_platforms):
@@ -234,7 +239,7 @@ class ExperimentalData:
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
-                if np.nanmean(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :]) > 1e-3:
+                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-3:
                     is_good_trial = False
 
                 if not is_good_trial:
