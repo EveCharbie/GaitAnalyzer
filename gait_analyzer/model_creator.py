@@ -192,7 +192,7 @@ class ModelCreator:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
         self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
 
-        if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
+        if not (skip_if_existing and os.path.isfile(self.biorbd_model_virtual_markers_full_path)):
             self.extended_model_for_EKF()
 
         if animate_model_flag:

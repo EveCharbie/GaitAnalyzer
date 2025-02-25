@@ -9,7 +9,7 @@ class PlotLegData(PlotAbstract):
         leg_to_plot: LegToPlot,
         plot_type: PlotType,
         conditions_to_compare: list[str],
-        unique_event_to_split: list[callable] = None,
+        unique_event_to_split: dict = None,
     ):
         # Checks
         if not isinstance(plot_type, PlotType):

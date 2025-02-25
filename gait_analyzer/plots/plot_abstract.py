@@ -26,7 +26,7 @@ class PlotAbstract:
         leg_to_plot: LegToPlot,
         conditions_to_compare: list[str],
         get_data_to_split: callable,
-        unique_event_to_split: list[callable] = None,
+        unique_event_to_split: dict = None,
     ):
         # Checks
         if not isinstance(result_folder, str):
@@ -42,14 +42,14 @@ class PlotAbstract:
         if not callable(get_data_to_split):
             raise ValueError("get_data_to_split must be a callable")
         if unique_event_to_split is not None:
-            if not isinstance(unique_event_to_split, list):
+            if not isinstance(unique_event_to_split, dict):
                 raise ValueError("unique_event_to_split must be a list or None")
-            if len(unique_event_to_split) != 2:
+            if list(unique_event_to_split.keys()) != ["event_index_type", "start", "stop"]:
                 raise ValueError(
-                    "unique_event_to_split must be a list of two functions (one to get the beginning and one to get the end of the event)"
+                    "unique_event_to_split must be a dict with keys event_index_type (weather to express the index in marker indices of analog indices), start a callable giving the first frame of the cycle, and stop a callable giving the last frame of the cycle."
                 )
-        if not all(callable(event) for event in unique_event_to_split):
-            raise ValueError("unique_event_to_split must be a list of callables")
+        if not (callable(unique_event_to_split["start"]) and callable(unique_event_to_split["stop"])):
+            raise ValueError("unique_event_to_split must be a dict of callables")
 
         # Initial attributes
         self.result_folder = result_folder
@@ -102,11 +102,28 @@ class PlotAbstract:
 
             if condition_name in self.conditions_to_compare:
                 if isinstance(data["events"], list):
-                    cycle_start = self.unique_event_to_split[0](data)
-                    cycle_end = self.unique_event_to_split[1](data)
+                    cycle_start = self.unique_event_to_split["start"](data)
+                    cycle_end = self.unique_event_to_split["stop"](data)
+                    if self.unique_event_to_split["event_index_type"] == EventIndexType.ANALOGS:
+                        cycle_start_idx = cycle_start
+                        cycle_end_idx = cycle_end
+                    elif self.unique_event_to_split["event_index_type"]== EventIndexType.MARKERS:
+                        cycle_start_idx = Operator.from_analog_frame_to_marker_frame(
+                            data["analogs_time_vector"],
+                            data["markers_time_vector"],
+                            cycle_start,
+                        )
+                        cycle_end_idx = Operator.from_analog_frame_to_marker_frame(
+                            data["analogs_time_vector"],
+                            data["markers_time_vector"],
+                            cycle_end,
+                        )
+                    else:
+                        raise ValueError("event_index_type must be a EventIndexType.")
+
                     data_to_split = self.get_data_to_split(data)
                     this_cycles_data = split_cycle(
-                        data_to_split, cycle_start, cycle_end, plot_type=self.plot_type, subject_mass=subject_mass
+                        data_to_split, cycle_start_idx, cycle_end_idx, plot_type=self.plot_type, subject_mass=subject_mass
                     )
                 else:
                     event_index = self.get_event_index(
