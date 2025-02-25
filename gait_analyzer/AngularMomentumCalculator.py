@@ -1,91 +1,47 @@
-import biorbd
 import numpy as np
 
-
 class AngularMomentumCalculator:
-    def __init__(self, biorbdmodel, q_filtered, qdot):
-        self.biorbdmodel = biorbdmodel
+    def __init__(self, biorbd_model, q_filtered, qdot, subject_mass, subject_height):
+        self.biorbd_model = biorbd_model  # Ajout du modèle Biorbd
         self.q = q_filtered
         self.qdot = qdot
-
-        # Extraire les masses et matrices d'inertie depuis le modèle
-        self.mass, self.inertias = self.extract_mass_inertias()
-
-        # Calcul des positions et vitesses du centre de masse de chaque segment à toutes les frames
-        self.com_positions, self.com_velocities = self.calculate_com_positions_velocities()
-
-    def extract_mass_inertias(self):
-        """ Récupère les masses et matrices d'inertie depuis le modèle bioMod """
-        mass = []
-        inertias = []
-        for i in range(self.biorbdmodel.nbSegment()):
-            segment = self.biorbdmodel.segment(i)
-            mass.append(segment.characteristics().mass())
-            inertias.append(segment.characteristics().inertia().to_array())  # Matrice d'inertie sous forme de numpy array
-        return np.array(mass), np.array(inertias)
-
-    def calculate_com_positions_velocities(self):
-        """
-        Calcule la position et la vitesse du centre de masse de chaque segment pour toutes les frames.
-        """
-        n_frames = self.q.shape[1]  # Nombre de frames
-        n_segments = self.biorbdmodel.nbSegment()
-
-        com_positions = np.zeros((n_segments, n_frames, 3))  # Stocke les positions des CoM
-        com_velocities = np.zeros((n_segments, n_frames, 3))  # Stocke les vitesses des CoM
-
-        for f in range(n_frames):
-            for i in range(n_segments):
-                com_positions[i, f, :] = self.biorbdmodel.CoMbySegment(self.q[:, f], i).to_array()
-                com_velocities[i, f, :] = self.biorbdmodel.CoMdotBySegment(self.q[:, f], self.qdot[:, f], i).to_array()
-
-        return com_positions, com_velocities
-
-    # def angular_momentum_trunk(self, index_trunk):
-    #     """
-    #     Calcule le moment angulaire du tronc sur toutes les frames.
-    #     """
-    #     H_trunk = np.zeros((self.q.shape[1], 3))  # Stocke H pour toutes les frames
-    #
-    #     for f in range(self.q.shape[1]):
-    #         r_trunk = self.com_positions[index_trunk, f]  # Position du centre de masse du tronc
-    #         v_trunk = self.com_velocities[index_trunk, f]  # Vitesse du centre de masse du tronc
-    #         m_trunk = self.mass[index_trunk]  # Masse du tronc
-    #         I_trunk = self.inertias[index_trunk]  # Matrice d'inertie
-    #         omega_trunk = self.qdot[:, f]  # Vitesse angulaire du tronc (à adapter si nécessaire)
-    #
-    #         # Calcul du moment angulaire
-    #         H_trunk[f, :] = np.cross(r_trunk, m_trunk * v_trunk) + np.dot(I_trunk, omega_trunk)
-    #
-    #     return H_trunk
+        self.subject_mass = subject_mass
+        self.subject_height = subject_height
+        self.H_total = None  # Initialisation du moment cinétique total
+        self.H_total_normalized = None  # Initialisation du moment cinétique normalisé
 
     def calculate_angular_momentum(self):
         """
-        Calcule le moment angulaire total en 3D en appliquant la formule :
-        H = Σ ( r_i ∧ (m_i * v_i) + I_i * ω_i )
+        Calcule le moment cinétique total en 3D pour toutes les frames.
         """
-        n_segments = len(self.mass)
-        n_frames = self.q.shape[1]
-        H_total = np.zeros((n_frames, 3))  # Stocke H pour toutes les frames
+        n_frames = self.q.shape[1]  # Nombre de frames
+
+        # Initialisation de H_total (matrice de taille n_frames x 3)
+        self.H_total = np.zeros((n_frames, 3))
 
         for f in range(n_frames):
-            for i in range(n_segments):
-                r_i = self.com_positions[i, f]  # Position du centre de masse du segment i
-                v_i = self.com_velocities[i, f]  # Vitesse du centre de masse du segment i
-                m_i = self.mass[i]  # Masse du segment i
-                I_i = self.inertias[i]  # Matrice d'inertie du segment i
-                omega_i = self.qdot[:, f]  # Vitesse angulaire du segment i (à adapter si besoin)
+            H_f = np.array([
+                m.to_array() for m in self.biorbd_model.CalcSegmentsAngularMomentum(self.q[:, f], self.qdot[:, f], True)
+            ])
+            self.H_total[f, :] += np.sum(H_f, axis=0)
 
-                # Calcul du moment angulaire pour le segment i
-                H_i = np.cross(r_i, m_i * v_i) + np.dot(I_i, omega_i)
+        return self.H_total
 
-                # Ajouter au moment angulaire total
-                H_total[f, :] += H_i
+    def normalize_angular_momentum(self):
+        """
+        Normalise le moment cinétique total par (Masse totale * Hauteur * sqrt(g * Hauteur)) pour chaque frame.
+        """
+        if self.H_total is None:  # Vérifie si H_total a déjà été calculé
+            self.calculate_angular_momentum()
 
-        return H_total
+        g = 9.80665  # Accélération gravitationnelle en m/s²
+        normalization_factor = self.subject_mass * self.subject_height * np.sqrt(g * self.subject_height)
+
+        # Normalisation sur toutes les frames
+        self.H_total_normalized = self.H_total / normalization_factor
+        return self.H_total_normalized
 
     def outputs(self):
         return {
-            "whole body angular momentum": self.calculate_angular_momentum(),
-            # "angular momentum of trunk": self.angular_momentum_trunk(index_trunk),
+            "whole body angular momentum": self.H_total_normalized,
         }

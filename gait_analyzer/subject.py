@@ -11,7 +11,7 @@ class Subject:
     This class contains all the subject information.
     """
 
-    def __init__(self, subject_name: str, subject_mass: float, dominant_leg: Side, preferential_speed: float):
+    def __init__(self, subject_name: str, subject_mass: float, subject_height: float, dominant_leg: Side, preferential_speed: float):
         """
         Initialize the SubjectList.
         """
@@ -31,6 +31,7 @@ class Subject:
         # Initial attributes
         self.subject_name = subject_name
         self.subject_mass = subject_mass
+        self.subject_height = subject_height
         self.dominant_leg = dominant_leg
         self.preferential_speed = preferential_speed
 
