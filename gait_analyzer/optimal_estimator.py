@@ -402,6 +402,7 @@ class OptimalEstimator:
             # Add the model
             model = BiorbdModel(self.model_ocp)
             model.options.transparent_mesh = False
+            model.options.show_gravity = True
             viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
             # Add experimental markers
@@ -721,6 +722,7 @@ class OptimalEstimator:
         # Add the model
         model = BiorbdModel(self.model_ocp)
         model.options.transparent_mesh = False
+        model.options.show_gravity = True
         viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
         # Add experimental markers

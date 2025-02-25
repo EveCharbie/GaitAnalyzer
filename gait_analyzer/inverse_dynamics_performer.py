@@ -211,6 +211,7 @@ class InverseDynamicsPerformer:
         # Add the model
         model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
+        model.options.show_gravity = True
         viz = PhaseRerun(self.kinematics_reconstructor.t)
 
         # Add experimental markers

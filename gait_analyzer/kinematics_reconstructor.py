@@ -400,6 +400,7 @@ class KinematicsReconstructor:
         # Model
         model = BiorbdModel(self.biorbd_model)
         model.options.transparent_mesh = False
+        model.options.show_gravity = True
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]

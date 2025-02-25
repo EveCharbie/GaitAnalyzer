@@ -553,6 +553,7 @@ class ModelCreator:
         # Model
         model = BiorbdModel(self.biorbd_model_virtual_markers_full_path)
         model.options.transparent_mesh = False
+        model.options.show_gravity = True
 
         # Visualization
         viz = PhaseRerun(np.linspace(0, 1, 10))
