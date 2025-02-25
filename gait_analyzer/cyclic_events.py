@@ -14,7 +14,13 @@ class CyclicEvents:
     This class contains all the events detected from the experimental data.
     """
 
-    def __init__(self, experimental_data: ExperimentalData, force_plate_sides: list[Side], skip_if_existing: bool, plot_phases_flag: bool):
+    def __init__(
+        self,
+        experimental_data: ExperimentalData,
+        force_plate_sides: list[Side],
+        skip_if_existing: bool,
+        plot_phases_flag: bool,
+    ):
         """
         Initialize the CyclicEvents.
         .
@@ -128,8 +134,12 @@ class CyclicEvents:
         """
         Detect the heel touch event when the antero-posterior GRF reaches a certain threshold after the swing phase
         """
-        grf_left_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 7, :], 21)
-        grf_right_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 7, :], 21)
+        grf_left_y_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 7, :], 21
+        )
+        grf_right_y_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 7, :], 21
+        )
 
         # Left
         swing_timings = np.where(self.phases_left_leg["swing"])[0]
@@ -204,8 +214,12 @@ class CyclicEvents:
         """
         Detect the toes touch event when the vertical GRF is maximal
         """
-        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 35)
-        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 35)
+        grf_left_z_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 35
+        )
+        grf_right_z_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 35
+        )
 
         swing_timings = np.where(self.phases_left_leg["swing"])[0]
         left_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
@@ -375,8 +389,12 @@ class CyclicEvents:
         """
         Detect the swing phase when the vertical GRF is lower than a threshold
         """
-        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 21)
-        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 21)
+        grf_left_z_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 21
+        )
+        grf_right_z_filtered = Operator.moving_average(
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 21
+        )
         self.phases_left_leg["swing"][:] = np.abs(grf_left_z_filtered) < self.minimal_vertical_force_threshold
         self.phases_right_leg["swing"][:] = np.abs(grf_right_z_filtered) < self.minimal_vertical_force_threshold
 

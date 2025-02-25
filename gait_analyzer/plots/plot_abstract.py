@@ -107,7 +107,7 @@ class PlotAbstract:
                     if self.unique_event_to_split["event_index_type"] == EventIndexType.ANALOGS:
                         cycle_start_idx = cycle_start
                         cycle_end_idx = cycle_end
-                    elif self.unique_event_to_split["event_index_type"]== EventIndexType.MARKERS:
+                    elif self.unique_event_to_split["event_index_type"] == EventIndexType.MARKERS:
                         cycle_start_idx = Operator.from_analog_frame_to_marker_frame(
                             data["analogs_time_vector"],
                             data["markers_time_vector"],
@@ -123,7 +123,11 @@ class PlotAbstract:
 
                     data_to_split = self.get_data_to_split(data)
                     this_cycles_data = split_cycle(
-                        data_to_split, cycle_start_idx, cycle_end_idx, plot_type=self.plot_type, subject_mass=subject_mass
+                        data_to_split,
+                        cycle_start_idx,
+                        cycle_end_idx,
+                        plot_type=self.plot_type,
+                        subject_mass=subject_mass,
                     )
                 else:
                     event_index = self.get_event_index(
