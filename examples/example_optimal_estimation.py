@@ -9,8 +9,9 @@ from gait_analyzer import (
     PlotType,
     Subject,
     Side,
+    ReconstructionType,
+    EventIndexType,
 )
-from gait_analyzer.kinematics_reconstructor import ReconstructionType
 
 
 def analysis_to_perform(
@@ -32,13 +33,13 @@ def analysis_to_perform(
     results.add_experimental_data(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
     )
-    # results.add_cyclic_events(skip_if_existing=False, plot_phases_flag=False)
-    results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
+    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
     # results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
@@ -60,39 +61,40 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # subjects_to_analyze.append(
-    #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-    # )
     subjects_to_analyze.append(
-        Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+        Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
+    # subjects_to_analyze.append(
+    #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+    # )
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #
     AnalysisPerformer(
         analysis_to_perform,
         subjects_to_analyze=subjects_to_analyze,
-        # cycles_to_analyze=range(5, -5),
-        cycles_to_analyze=None,
+        cycles_to_analyze=range(5, -5),
+        # cycles_to_analyze=None,
         result_folder="results",
         # trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 
     # --- Example of how to plot the joint angles --- #
-    plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.Q,
-        unique_event_to_split=[
-            lambda data: data["events"][0]["heel_touch"],
-            lambda data: data["events"][2]["heel_touch"],
-        ],
-        conditions_to_compare=["_Cond0006"],
-    )
-    plot.draw_plot()
-    plot.save("results/AOT_01_Q_plot_temporary.png")
-    plot.show()
+    # plot = PlotLegData(
+    #     result_folder="results",
+    #     leg_to_plot=LegToPlot.RIGHT,
+    #     plot_type=PlotType.Q,
+    #     unique_event_to_split={
+    #         "event_index_type": EventIndexType.MARKERS,
+    #         "start": lambda data: int(data["events"][0]["heel_touch"][0]),
+    #         "stop": lambda data: int(data["events"][2]["heel_touch"][0]),
+    #     },
+    #     conditions_to_compare=["_Cond0006"],
+    # )
+    # plot.draw_plot()
+    # plot.save("results/AOT_01_Q_plot_temporary.png")
+    # plot.show()
 
     # --- Example of how to plot the joint torques --- #
     plot = PlotLegData(

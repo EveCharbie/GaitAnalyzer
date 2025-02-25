@@ -6,6 +6,7 @@ from matplotlib import colormaps
 
 from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
+from gait_analyzer.subject import Side
 
 
 class CyclicEvents:
@@ -13,7 +14,7 @@ class CyclicEvents:
     This class contains all the events detected from the experimental data.
     """
 
-    def __init__(self, experimental_data: ExperimentalData, skip_if_existing: bool, plot_phases_flag: bool):
+    def __init__(self, experimental_data: ExperimentalData, force_plate_sides: list[Side], skip_if_existing: bool, plot_phases_flag: bool):
         """
         Initialize the CyclicEvents.
         .
@@ -21,6 +22,8 @@ class CyclicEvents:
         ----------
         experimental_data: ExperimentalData
             The experimental data from the trial
+        force_plate_sides: list[Side]
+            The legs to associate with each of the two force plates
         skip_if_existing: bool
             If True, the events will not be recalculated if they already exist
         plot_phases_flag: bool
@@ -31,6 +34,12 @@ class CyclicEvents:
             raise ValueError(
                 "experimental_data must be an instance of ExperimentalData. You can declare it by running ExperimentalData(file_path)."
             )
+        if not isinstance(force_plate_sides, list):
+            raise ValueError("force_plate_sides must be a list of Side")
+        if not all(isinstance(side, Side) for side in force_plate_sides):
+            raise ValueError("All elements of force_plate_sides must be Side")
+        if len(force_plate_sides) != 2:
+            raise NotImplementedError("For now, CylicEvents only supports two force plates, one for each foot.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean")
         if not isinstance(plot_phases_flag, bool):
@@ -43,6 +52,8 @@ class CyclicEvents:
 
         # Initial attributes
         self.experimental_data = experimental_data
+        self.right_leg_index = force_plate_sides.index(Side.RIGHT)
+        self.left_leg_index = force_plate_sides.index(Side.LEFT)
         self.is_loaded_events = False
         self.type = "cyclic"
 
@@ -117,8 +128,8 @@ class CyclicEvents:
         """
         Detect the heel touch event when the antero-posterior GRF reaches a certain threshold after the swing phase
         """
-        grf_left_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[0, 7, :], 21)
-        grf_right_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[1, 7, :], 21)
+        grf_left_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 7, :], 21)
+        grf_right_y_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 7, :], 21)
 
         # Left
         swing_timings = np.where(self.phases_left_leg["swing"])[0]
@@ -193,8 +204,8 @@ class CyclicEvents:
         """
         Detect the toes touch event when the vertical GRF is maximal
         """
-        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[0, 8, :], 35)
-        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[1, 8, :], 35)
+        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 35)
+        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 35)
 
         swing_timings = np.where(self.phases_left_leg["swing"])[0]
         left_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
@@ -265,7 +276,7 @@ class CyclicEvents:
                 )
                 plt.plot(
                     self.experimental_data.analogs_time_vector,
-                    self.experimental_data.f_ext_sorted[0, 8, :],
+                    self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :],
                     label="Vertical Left GRF",
                 )
                 plt.plot(
@@ -319,7 +330,7 @@ class CyclicEvents:
                 )
                 plt.plot(
                     self.experimental_data.analogs_time_vector,
-                    self.experimental_data.f_ext_sorted[0, 8, :],
+                    self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :],
                     label="Vertical Left GRF",
                 )
                 plt.plot(
@@ -364,8 +375,8 @@ class CyclicEvents:
         """
         Detect the swing phase when the vertical GRF is lower than a threshold
         """
-        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[0, 8, :], 21)
-        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[1, 8, :], 21)
+        grf_left_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :], 21)
+        grf_right_z_filtered = Operator.moving_average(self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :], 21)
         self.phases_left_leg["swing"][:] = np.abs(grf_left_z_filtered) < self.minimal_vertical_force_threshold
         self.phases_right_leg["swing"][:] = np.abs(grf_right_z_filtered) < self.minimal_vertical_force_threshold
 
@@ -468,38 +479,38 @@ class CyclicEvents:
 
         axs[0].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[0, 6, :],
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 6, :],
             "-r",
             label="Medio-lateral",
         )
         axs[0].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[0, 7, :],
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 7, :],
             "-g",
             label="Antero-posterior",
         )
         axs[0].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[0, 8, :],
+            self.experimental_data.f_ext_sorted[self.left_leg_index, 8, :],
             "-b",
             label="Vertical",
         )
 
         axs[1].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[1, 6, :],
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 6, :],
             "-r",
             label="Medio-lateral",
         )
         axs[1].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[1, 7, :],
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 7, :],
             "-g",
             label="Antero-posterior",
         )
         axs[1].plot(
             self.experimental_data.analogs_time_vector,
-            self.experimental_data.f_ext_sorted[1, 8, :],
+            self.experimental_data.f_ext_sorted[self.right_leg_index, 8, :],
             "-b",
             label="Vertical",
         )

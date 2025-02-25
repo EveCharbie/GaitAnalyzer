@@ -4,7 +4,7 @@ from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.cyclic_events import CyclicEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
-from gait_analyzer.subject import Subject
+from gait_analyzer.subject import Subject, Side
 from gait_analyzer.unique_events import UniqueEvents
 
 
@@ -93,7 +93,7 @@ class ResultManager:
             animate_c3d_flag=animate_c3d_flag,
         )
 
-    def add_cyclic_events(self, skip_if_existing: bool, plot_phases_flag: bool = False):
+    def add_cyclic_events(self, force_plate_sides: list[Side], skip_if_existing: bool, plot_phases_flag: bool = False):
 
         # Checks
         if self.model_creator is None:
@@ -106,6 +106,7 @@ class ResultManager:
         # Add events
         self.events = CyclicEvents(
             experimental_data=self.experimental_data,
+            force_plate_sides=force_plate_sides,
             skip_if_existing=skip_if_existing,
             plot_phases_flag=plot_phases_flag,
         )
