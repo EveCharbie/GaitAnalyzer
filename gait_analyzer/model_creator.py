@@ -118,7 +118,7 @@ class OsimModels:
 
         @property
         def markers_to_ignore(self):
-            return ["LHJC", "RHJC", "RKJC", "RAJC", "LKJC", "LAJC", "REJC", "RSJC", "RWJC", "LSJC", "LEJC", "LWJC"]
+            return []
 
 
 class ModelCreator:
@@ -192,7 +192,7 @@ class ModelCreator:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
         self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
 
-        if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
+        if not (skip_if_existing and os.path.isfile(self.biorbd_model_virtual_markers_full_path)):
             self.extended_model_for_EKF()
 
         if animate_model_flag:
@@ -210,6 +210,11 @@ class ModelCreator:
 
         c3d = ezc3d.c3d(self.static_trial)
         labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
+
+        # TODO: FloEthv -> When this study is completed, please remove this hacky fix
+        if "STER" in labels:
+            labels[labels.index("STER")] = "STR"
+
         frame_rate = c3d["header"]["points"]["frame_rate"]
         marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
 
@@ -240,31 +245,31 @@ class ModelCreator:
                     frame_data.extend([f"{pos[0]:.5f}", f"{pos[1]:.5f}", f"{pos[2]:.5f}"])
                 f.write("\t".join(frame_data) + "\n")
 
-    def personalize_xml_file(self):
-        """
-        This function should not be used right now, but it is still the real way to personalize the xml file.
-        We are waiting for OpenSim to fix their path bug.
-        """
-        self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
-        # Modify the original xml with the participants information
-        tree = ET.parse(self.osim_model_type.xml_setup_file)
-        root = tree.getroot()
-        for elem in root.iter():
-            if elem.tag == "model_file":
-                elem.text = os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-            elif elem.tag == "output_model_file":
-                # Due to OpenSim, this path must be relative to xml
-                rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
-                elem.text = rel_path
-            elif elem.tag == "mass":
-                elem.text = f"{self.subject.subject_mass}"
-            elif elem.tag == "marker_file":
-                # Due to OpenSim, this path must be relative to original_osim_model_full_path
-                trc_file_relative_path = os.path.relpath(
-                    self.trc_file_path, os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-                )[3:]
-                elem.text = trc_file_relative_path
-        tree.write(self.new_xml_path)
+    # def personalize_xml_file(self):
+    #     """
+    #     This function should not be used right now, but it is still the real way to personalize the xml file.
+    #     We are waiting for OpenSim to fix their path bug.
+    #     """
+    #     self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
+    #     # Modify the original xml with the participants information
+    #     tree = ET.parse(self.osim_model_type.xml_setup_file)
+    #     root = tree.getroot()
+    #     for elem in root.iter():
+    #         if elem.tag == "model_file":
+    #             elem.text = os.path.abspath(self.osim_model_type.original_osim_model_full_path)
+    #         elif elem.tag == "output_model_file":
+    #             # Due to OpenSim, this path must be relative to xml
+    #             rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
+    #             elem.text = rel_path
+    #         elif elem.tag == "mass":
+    #             elem.text = f"{self.subject.subject_mass}"
+    #         elif elem.tag == "marker_file":
+    #             # Due to OpenSim, this path must be relative to original_osim_model_full_path
+    #             trc_file_relative_path = os.path.relpath(
+    #                 self.trc_file_path, os.path.abspath(self.osim_model_type.original_osim_model_full_path)
+    #             )[3:]
+    #             elem.text = trc_file_relative_path
+    #     tree.write(self.new_xml_path)
 
     def personalize_xml_file_hacky(self):
         """
@@ -431,7 +436,7 @@ class ModelCreator:
                 elif i_line + 1 == 1016:  # Toes Flexion
                     file.write(
                         line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
+                            "-1.0471975499999999 1.0471975499999999", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
                         )
                     )
                 elif i_line + 1 == 1089:  # Torso Rotation X
@@ -452,21 +457,21 @@ class ModelCreator:
                             "-1.5707963300000001 1.5707963300000001", f"{-45 * np.pi / 180} {45 * np.pi / 180}"
                         )
                     )
-                elif i_line + 1 == 1203:  # Head and neck Rotation X
+                elif i_line + 1 == 1198:  # Head and neck Rotation X
                     file.write(line.replace("-1.74533 1.0471975499999999", f"{-50 * np.pi / 180} {45 * np.pi / 180}"))
                 elif i_line + 1 in [
-                    1311,
-                    1312,
-                    1313,
-                    1314,
-                    1483,
-                    1484,
-                    2142,
-                    2143,
-                    2144,
-                    2145,
-                    3214,
-                    2315,
+                    1306,
+                    1307,
+                    1308,
+                    1309,
+                    1478,
+                    1479,
+                    2137,
+                    2138,
+                    2139,
+                    2140,
+                    2309,
+                    2310,
                 ]:  # Uncomment ranges
                     file.write(line.replace("// ", ""))
                 else:
@@ -548,6 +553,7 @@ class ModelCreator:
         # Model
         model = BiorbdModel(self.biorbd_model_virtual_markers_full_path)
         model.options.transparent_mesh = False
+        model.options.show_gravity = True
 
         # Visualization
         viz = PhaseRerun(np.linspace(0, 1, 10))
