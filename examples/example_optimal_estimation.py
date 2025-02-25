@@ -76,8 +76,8 @@ if __name__ == "__main__":
         cycles_to_analyze=range(5, -5),
         # cycles_to_analyze=None,
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
-        skip_if_existing=False,
+        trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
+        skip_if_existing=True,
     )
 
     # --- Example of how to plot the joint angles --- #
@@ -95,6 +95,17 @@ if __name__ == "__main__":
     # plot.draw_plot()
     # plot.save("results/AOT_01_Q_plot_temporary.png")
     # plot.show()
+
+    # --- Example of how to plot the joint angular velocities--- #
+    plot = PlotLegData(
+        result_folder="results",
+        leg_to_plot=LegToPlot.RIGHT,
+        plot_type=PlotType.QDOT,
+        conditions_to_compare=["_ManipStim_L400_F50_I20"],
+    )
+    plot.draw_plot()
+    plot.save("results/AOT_01_QDOT_plot_temporary.png")
+    plot.show()
 
     # --- Example of how to plot the joint torques --- #
     plot = PlotLegData(
