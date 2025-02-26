@@ -176,11 +176,9 @@ cython_debug/
 
 data/
 
-results/
-
 examples/sandbox/
 
-models/OpenSim_models/Geometry/
+examples/results/
 
 *.png
 
