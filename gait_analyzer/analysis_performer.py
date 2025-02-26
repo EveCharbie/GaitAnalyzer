@@ -151,7 +151,6 @@ class AnalysisPerformer:
         # For matlab analysis
         savemat(result_file_name + ".mat", result_dict)
 
-
     def check_for_geometry_files(self):
         """
         This function is necessary since it is not possible to exclude the examples/results/ folder from the git repository while tracking the examples/results/Geometry/ folder.
@@ -168,12 +167,15 @@ class AnalysisPerformer:
             # If the folder exists, check if the files are the same size (if not replace the file)
             for file in os.listdir("../models/OpenSim_models/Geometry/"):
                 if os.path.exists(f"../examples/results/Geometry/{file}"):
-                    if os.path.getsize(f"../models/OpenSim_models/Geometry/{file}") != os.path.getsize(f"../examples/results/Geometry/{file}"):
+                    if os.path.getsize(f"../models/OpenSim_models/Geometry/{file}") != os.path.getsize(
+                        f"../examples/results/Geometry/{file}"
+                    ):
                         print(f"Copying {file}.vtp to the folder examples/results/Geometry/")
-                        shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
+                        shutil.copyfile(
+                            f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}"
+                        )
                 else:
                     shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
-
 
     def run_analysis(self):
         """
