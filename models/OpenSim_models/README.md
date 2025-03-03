@@ -1,3 +1,8 @@
 # wholebody
 This model was adapted from Hammer et al. 2010.
 Whole body model that consists of 23 bodies, 42 degrees of freedom and 30 muscles. The whole-body geometric model and the lower limbs, pelvis and upper limbs anthropometry are based on the running model of Hammer et al. 2010 which consists of 12 segments and 29 degrees of freedom. Extra segments and degrees of freedom were later added based on Dumas et al. 2007. Muscles …Each lower extremity had seven degrees-of-freedom; the hip was modeled as a ball-and-socket joint (3 dofs), the knee was modeled as a revolute joint with 1 dof, the ankle was modeled as 2 revolute joints and feet toes with one revolute joint. The pelvis joint was model as a free flyer joint (6 dofs) to allow the model to translate and rotate in the 3D space, the lumbar motion was modeled as a ball-and-socket joint (3 dofs) (Anderson and Pandy, 1999) and the neck joint was modeled as a ball-and-socket joint (3 dofs). Mass properties of the torso and head (including the neck) segments were estimated from Dumas et al., 2007. Each arm consisted of 8 degrees-of-freedom; the shoulder was modeled as a ball-and-socket joint (3 dofs), the elbow and forearm rotation were each modeled with revolute joints (1 dof) (Holzbaur et al., 2005), the wrist flexion and deviation were each modeled with revolute joints and the hand fingers were modeled with 1 revolute joint. Mass properties for the arms were estimated from 1 and de Leva, 1996. The model also include 30 superficial muscles of the whole body.
+
+
+# VTP files
+All vtp files were taken from [opensim-models](https://github.com/opensim-org/opensim-models/Geometry) in February 2025.
+These files were originally distributed with a Apache 2.0 License.

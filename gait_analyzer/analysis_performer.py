@@ -5,6 +5,7 @@ import git
 from datetime import date
 import subprocess
 import json
+import shutil
 
 from gait_analyzer.subject import Subject
 
@@ -71,6 +72,7 @@ class AnalysisPerformer:
         self.models_result_folder = None
 
         # Run the analysis
+        self.check_for_geometry_files()
         self.run_analysis()
 
     @staticmethod
@@ -148,6 +150,32 @@ class AnalysisPerformer:
             pickle.dump(result_dict, f)
         # For matlab analysis
         savemat(result_file_name + ".mat", result_dict)
+
+    def check_for_geometry_files(self):
+        """
+        This function is necessary since it is not possible to exclude the examples/results/ folder from the git repository while tracking the examples/results/Geometry/ folder.
+        So, it was chosen to track the vtps from the models/OpenSim_models/Geometry/ folder and copy them to the examples/results/Geometry/ folder.
+        This is not a bad solution since the vtp files are needed if a user wants to open the osim model in OpenSim.
+        """
+        # If the folder does not exist, create it and fill it with all the geometry files
+        if not os.path.exists("../examples/results/Geometry/"):
+            print("Copying the Geometry .vtp files to the folder examples/results/Geometry/")
+            os.makedirs("../examples/results/Geometry/")
+            for file in os.listdir("../models/OpenSim_models/Geometry/"):
+                shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
+        else:
+            # If the folder exists, check if the files are the same size (if not replace the file)
+            for file in os.listdir("../models/OpenSim_models/Geometry/"):
+                if os.path.exists(f"../examples/results/Geometry/{file}"):
+                    if os.path.getsize(f"../models/OpenSim_models/Geometry/{file}") != os.path.getsize(
+                        f"../examples/results/Geometry/{file}"
+                    ):
+                        print(f"Copying {file}.vtp to the folder examples/results/Geometry/")
+                        shutil.copyfile(
+                            f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}"
+                        )
+                else:
+                    shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
 
     def run_analysis(self):
         """
