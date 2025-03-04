@@ -224,27 +224,49 @@ class OptimalEstimator:
                 lines = file.readlines()
             with open(new_model_path, "w+", encoding="utf-8") as file:
                 for i_line, line in enumerate(lines):
-                    if i_line + 1 in [558, 559, 560, 1014, 1015, 1016]:
+                    if i_line + 1 in [
+                        557,  # toes_r_mtp_angle_r
+                        558,
+                        559,
+                        571,  # toes_r_rotation_1 (range)
+                        572,
+                        584,  # toes_r_rotation_2 (range)
+                        585,
+                        1038,  # toes_r_mtp_angle_l
+                        1039,
+                        1040,
+                        1052,  # toes_l_rotation_1 (range)
+                        1053,
+                        1065,  # toes_l_rotation_2 (range)
+                        1066]:
                         pass  # Remove the toes rotations
                     elif i_line + 1 in [
-                        1586,
-                        1587,
-                        1588,
-                        1654,
-                        1655,
-                        1656,
-                        1914,
-                        1915,
-                        1916,
-                        2417,
-                        2418,
-                        2419,
-                        2485,
-                        2486,
-                        2487,
-                        2745,
-                        2746,
-                        2747,
+                        1636,  # lunate_r_rotation_transform
+                        1637,
+                        1638,
+                        1704,  # hand_r_translation
+                        1705,
+                        1706,
+                        1964,  # fingers_r_translation
+                        1965,
+                        1966,
+                        2467,  # lunate_l_rotation_transform
+                        2468,
+                        2469,
+                        2535,  # hand_l_translation
+                        2536,
+                        2537,
+                        2795,  # fingers_l_translation
+                        2796,
+                        2797,
+                    ]:
+                        pass
+                    elif i_line + 1 in [
+                        1251,  # head_and_neck_rotation_transform
+                        1252,
+                        1253,
+                        1254,
+                        1255,
                     ]:
                         pass  # Remove the hands rotations
                     else:
@@ -428,7 +450,7 @@ class OptimalEstimator:
             # Play
             viz.rerun("OCP initial guess from experimental data")
 
-    def prepare_ocp(self, with_contact: bool = False):
+    def prepare_ocp(self, with_rigid_contact: bool = False):
         """
         Let's say swing phase only for now
         """

@@ -76,7 +76,7 @@ if __name__ == "__main__":
         cycles_to_analyze=range(5, -5),
         # cycles_to_analyze=None,
         result_folder="results",
-        trails_to_analyze=["_ManipStim_L400_F50_I20"],  # If not specified, all trials will be analyzed
+        trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
         skip_if_existing=True,
     )
 
