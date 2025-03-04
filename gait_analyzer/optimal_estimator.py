@@ -105,8 +105,8 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.generate_contact_biomods()
-        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
-        self.prepare_ocp(with_contact=False)
+        self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
+        self.prepare_ocp(with_contact=True)
         self.solve(show_online_optim=False)
         self.save_optimal_reconstruction()
         if plot_solution_flag:
@@ -433,7 +433,7 @@ class OptimalEstimator:
         Let's say swing phase only for now
         """
 
-        def custom_dynamics(
+        def custom_dynamics_no_contact(
             time,
             states,
             controls,
@@ -457,12 +457,58 @@ class OptimalEstimator:
 
             return DynamicsEvaluation(dxdt=cas.vertcat(qdot, ddq), defects=None)
 
-        def custom_configure(ocp, nlp, numerical_data_timeseries=None):
+        def custom_configure_no_contact(ocp, nlp, numerical_data_timeseries=None):
             ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
             ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
             ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
             ConfigureProblem.configure_translational_forces(ocp, nlp, as_states=False, as_controls=True, n_contacts=1)
-            ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics)
+            ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics_no_contact)
+            return
+
+        def custom_dynamics_with_contacts(
+            time,
+            states,
+            controls,
+            parameters,
+            algebraic_states,
+            numerical_timeseries,
+            nlp,
+        ):
+
+            q = DynamicsFunctions.get(nlp.states["q"], states)
+            qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
+            tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
+            # f_ext = DynamicsFunctions.get(nlp.algebraic_states["contact_forces"], algebraic_states)
+
+            external_forces = nlp.get_external_forces(states, controls, algebraic_states, numerical_timeseries)
+
+            q_ddot_computed = DynamicsFunctions.forward_dynamics(nlp, q, qdot, tau, with_contact=False, external_forces=external_forces)
+            dxdt = nlp.cx(nlp.states.shape, q_ddot_computed.shape[1])
+            dxdt[nlp.states["q"].index, :] = cas.horzcat(*[qdot for _ in range(q_ddot_computed.shape[1])])
+            dxdt[nlp.states["qdot"].index, :] = q_ddot_computed
+
+            # Defects
+            slope_q = DynamicsFunctions.get(nlp.states_dot["qdot"], nlp.states_dot.scaled.cx)
+            slope_qdot = DynamicsFunctions.get(nlp.states_dot["qddot"], nlp.states_dot.scaled.cx)
+            tau_id = DynamicsFunctions.inverse_dynamics(nlp, q, slope_q, slope_qdot, with_contact=False, external_forces=external_forces)
+            # defects = nlp.cx(slope_q.shape[0] + tau_id.shape[0], tau_id.shape[1])
+
+            defects = []
+            for _ in range(tau_id.shape[1]):
+                defects.append(cas.horzcat(qdot - slope_q, tau - tau_id))
+
+            # defects[: dq.shape[0], :] = cas.horzcat(*dq_defects)
+            # # We modified on purpose the size of the tau to keep the zero in the defects in order to respect the dynamics
+            # defects[dq.shape[0] :, :] = tau - tau_id
+
+            return DynamicsEvaluation(dxdt, defects)
+
+        def custom_configure_with_contacts(ocp, nlp, numerical_data_timeseries=None):
+            ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
+            ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
+            ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
+            ConfigureProblem.configure_rigid_contact_forces(ocp, nlp, as_states=False, as_algebraic_states=True, as_controls=True)
+            ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics_with_contacts)
             return
 
         try:
@@ -623,12 +669,14 @@ class OptimalEstimator:
         dynamics = DynamicsList()  # TODO: Charbie -> Change for muscles
         if with_contact:
             dynamics.add(
-                DynamicsFcn.TORQUE_DRIVEN, with_contact=True, phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE
+                custom_configure_with_contacts,
+                dynamic_function=custom_dynamics_with_contacts,
+                phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE
             )
         else:
             dynamics.add(
-                custom_configure,
-                dynamic_function=custom_dynamics,
+                custom_configure_no_contact,
+                dynamic_function=custom_dynamics_no_contact,
                 numerical_data_timeseries=numerical_time_series,
                 phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
             )
@@ -694,8 +742,8 @@ class OptimalEstimator:
             objective_functions=objective_functions,
             constraints=constraints,
             # phase_transitions=phase_transitions,
-            # ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3, defects_type=DefectType.IMPLICIT),
-            ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3),
+            ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3, defects_type=DefectType.IMPLICIT),
+            # ode_solver=OdeSolver.COLLOCATION(polynomial_degree=3),
             use_sx=False,
             n_threads=10,
         )

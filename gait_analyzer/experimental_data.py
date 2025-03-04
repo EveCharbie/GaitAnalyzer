@@ -239,7 +239,7 @@ class ExperimentalData:
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
-                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-3:
+                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-2:
                     is_good_trial = False
 
                 if not is_good_trial:

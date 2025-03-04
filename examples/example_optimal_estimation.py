@@ -33,18 +33,18 @@ def analysis_to_perform(
     results.add_experimental_data(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
     )
-    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
+    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
     # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
-        plot_kinematics_flag=True,
+        plot_kinematics_flag=False,
         skip_if_existing=True,
     )
-    # results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
+    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    # results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=True)
+    results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=False)
 
     return results
 
