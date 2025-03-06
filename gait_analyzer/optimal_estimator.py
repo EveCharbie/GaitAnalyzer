@@ -450,10 +450,92 @@ class OptimalEstimator:
             # Play
             viz.rerun("OCP initial guess from experimental data")
 
-    def prepare_ocp(self, with_rigid_contact: bool = False):
+    def prepare_ocp(self, with_contact: bool = False):
         """
         Let's say swing phase only for now
         """
+        def marker_velocity(controller):
+            marker_velocities = []
+            for marker_name in ["LCAL", "LMFH1", "LMFH5"]:
+                marker_index = controller.model.marker_index(marker_name)
+                qs = cas.horzcat(*([controller.states["q"].cx_start] + controller.states["q"].cx_intermediates))
+                qdots = cas.horzcat(*([controller.states["qdot"].cx_start] + controller.states["qdot"].cx_intermediates))
+                for i_sn in range(len(qs)):
+                    marker_velocity = controller.model.marker_velocity(marker_index)(qs[i_sn], qdots[i_sn])
+                    marker_velocities += [marker_velocity]
+            return cas.vertcat(*marker_velocities)
+
+        def get_forces_on_each_point(controller):
+            contact_forces = controller.algebraic_states["rigid_contact_forces"].cx_start
+
+            # Rearrange the forces to get all 3 components for each contact point
+            forces_on_each_point = None
+            current_index = 0
+            for i_contact in range(controller.model.nb_rigid_contacts):
+                available_axes = np.array(controller.model.rigid_contact_axes_index(i_contact))
+                contact_force_idx = range(current_index, current_index + available_axes.shape[0])
+                current_force = cas.MX.zeros(3)
+                for i, contact_to_add in enumerate(contact_force_idx):
+                    current_force[available_axes[i]] += contact_forces[contact_to_add]
+                current_index += available_axes.shape[0]
+                if forces_on_each_point is not None:
+                    forces_on_each_point = cas.horzcat(forces_on_each_point, current_force)
+                else:
+                    forces_on_each_point = current_force
+            return forces_on_each_point
+
+        def minimize_sum_reaction_forces(
+            controller,
+            contact_index: tuple[str, ...] | tuple[int, ...] | list[str | int],
+        ):
+
+            forces_on_each_point = get_forces_on_each_point(controller)
+
+            total_force = controller.cx.zeros(3, 1)
+            for contact in contact_index:
+                idx = controller.model.contact_index(contact) if isinstance(contact, str) else contact
+                total_force += forces_on_each_point[:, idx]
+
+            return total_force
+
+        def minimize_center_of_pressure(
+            controller,
+            contact_index: tuple[str, ...] | tuple[int, ...] | list[str | int],
+        ):
+
+            forces_on_each_point = get_forces_on_each_point(controller)
+
+            total_force = controller.cx.zeros(3, 1)
+            position_of_each_point = None
+            weighted_sum = controller.cx.zeros(3, 1)
+            for contact in contact_index:
+                idx = controller.model.contact_index(contact) if isinstance(contact, str) else contact
+
+                # Compute the sum of the forces on the points of interest
+                total_force += forces_on_each_point[:, idx]
+
+                # Get the position of all the contact points of interest
+                this_contact_position = controller.model.rigid_contact_position(idx)(
+                    controller.q, controller.parameters.cx
+                )
+                position_of_each_point = (
+                    cas.horzcat(position_of_each_point, this_contact_position)
+                    if position_of_each_point is not None
+                    else this_contact_position
+                )
+
+                # Weighted sum
+                weighted_sum += forces_on_each_point[:, idx] * this_contact_position
+
+            # Compute the mean position weighted by the force magnitude
+            center_of_pressure = controller.cx.zeros(3, 1)
+            for i_component in range(3):
+                # Avoid division by zero if the force is too small
+                center_of_pressure[i_component] = cas.if_else(
+                    total_force[i_component] ** 2 < 1e-8, 0, weighted_sum[i_component] / total_force[i_component]
+                )
+
+            return center_of_pressure
 
         def custom_dynamics_no_contact(
             time,
@@ -471,7 +553,7 @@ class OptimalEstimator:
             f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
             f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
-            external_forces = nlp.get_external_forces(states, controls, algebraic_states, numerical_timeseries)
+            external_forces = nlp.get_external_forces("external_forces", states, controls, algebraic_states, numerical_timeseries)
             external_forces[:3] += f_ext_residual_position
             external_forces[6:9] += f_ext_residual_value
 
@@ -502,12 +584,12 @@ class OptimalEstimator:
             tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
             # f_ext = DynamicsFunctions.get(nlp.algebraic_states["contact_forces"], algebraic_states)
 
-            external_forces = nlp.get_external_forces(states, controls, algebraic_states, numerical_timeseries)
+            external_forces = nlp.get_external_forces("rigid_contact_forces", states, controls, algebraic_states, numerical_timeseries)
 
-            q_ddot_computed = DynamicsFunctions.forward_dynamics(nlp, q, qdot, tau, with_contact=False, external_forces=external_forces)
-            dxdt = nlp.cx(nlp.states.shape, q_ddot_computed.shape[1])
-            dxdt[nlp.states["q"].index, :] = cas.horzcat(*[qdot for _ in range(q_ddot_computed.shape[1])])
-            dxdt[nlp.states["qdot"].index, :] = q_ddot_computed
+            # q_ddot_computed = DynamicsFunctions.forward_dynamics(nlp, q, qdot, tau, with_contact=False, external_forces=external_forces)
+            # dxdt = nlp.cx(nlp.states.shape, q_ddot_computed.shape[1])
+            # dxdt[nlp.states["q"].index, :] = cas.horzcat(*[qdot for _ in range(q_ddot_computed.shape[1])])
+            # dxdt[nlp.states["qdot"].index, :] = q_ddot_computed
 
             # Defects
             slope_q = DynamicsFunctions.get(nlp.states_dot["qdot"], nlp.states_dot.scaled.cx)
@@ -515,21 +597,20 @@ class OptimalEstimator:
             tau_id = DynamicsFunctions.inverse_dynamics(nlp, q, slope_q, slope_qdot, with_contact=False, external_forces=external_forces)
             # defects = nlp.cx(slope_q.shape[0] + tau_id.shape[0], tau_id.shape[1])
 
-            defects = []
-            for _ in range(tau_id.shape[1]):
-                defects.append(cas.horzcat(qdot - slope_q, tau - tau_id))
+            defects = cas.horzcat(qdot - slope_q, tau - tau_id)
 
             # defects[: dq.shape[0], :] = cas.horzcat(*dq_defects)
             # # We modified on purpose the size of the tau to keep the zero in the defects in order to respect the dynamics
             # defects[dq.shape[0] :, :] = tau - tau_id
 
-            return DynamicsEvaluation(dxdt, defects)
+            return DynamicsEvaluation(None, defects)
 
         def custom_configure_with_contacts(ocp, nlp, numerical_data_timeseries=None):
             ConfigureProblem.configure_q(ocp, nlp, as_states=True, as_controls=False)
-            ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False)
+            ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False, as_states_dot=True)
+            ConfigureProblem.configure_qddot(ocp, nlp, as_states=False, as_controls=False, as_states_dot=True)
             ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
-            ConfigureProblem.configure_rigid_contact_forces(ocp, nlp, as_states=False, as_algebraic_states=True, as_controls=True)
+            ConfigureProblem.configure_rigid_contact_forces(ocp, nlp, as_states=False, as_algebraic_states=True, as_controls=False)
             ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics_with_contacts)
             return
 
@@ -560,12 +641,15 @@ class OptimalEstimator:
                 DynamicsList,
                 BiMappingList,
                 DefectType,
+                PenaltyController,
             )
 
         except:
             raise RuntimeError("To reconstruct optimally, you must install ")
 
         print(f"Preparing optimal control problem...")
+
+        polynomial_degree = 3
 
         if with_contact:
             biorbd_model_path = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
@@ -627,7 +711,37 @@ class OptimalEstimator:
             weight=0.01,
             target=self.qdot_exp_ocp,
         )
-        if not with_contact:
+        if with_contact:
+            # Explicit
+            # objective_functions.add(
+            #     objective=ObjectiveFcn.Lagrange.TRACK_SUM_REACTION_FORCES,
+            #     weight=0.01,
+            #     target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
+            #     contact_index=[0, 1, 2],
+            # )
+            # objective_functions.add(
+            #     objective=ObjectiveFcn.Lagrange.TRACK_CENTER_OF_PRESSURE,
+            #     weight=0.01,
+            #     target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
+            #     contact_index=[0, 1, 2],
+            # )
+            # Implicit
+            objective_functions.add(
+                minimize_sum_reaction_forces,
+                custom_type=ObjectiveFcn.Lagrange,
+                node=Node.ALL_SHOOTING,
+                weight=0.01,
+                target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
+                contact_index=[0, 1, 2],
+            )
+            objective_functions.add(
+                minimize_center_of_pressure,
+                custom_type=ObjectiveFcn.Lagrange,
+                weight=0.01,
+                target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
+                contact_index=[0, 1, 2],
+            )
+        else:
             objective_functions.add(  # Minimize residual contact forces
                 objective=ObjectiveFcn.Lagrange.TRACK_CONTROL,
                 key="contact_forces",
@@ -641,52 +755,49 @@ class OptimalEstimator:
                 weight=0.01,
                 target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
             )
-        else:
-            objective_functions.add(
-                objective=ObjectiveFcn.Lagrange.TRACK_SUM_REACTION_FORCES,
-                weight=0.01,
-                target=self.f_ext_exp_ocp["left_leg"][6:9, :-1],
-                contact_index=[0, 1, 2],
-            )
-            objective_functions.add(
-                objective=ObjectiveFcn.Lagrange.TRACK_CENTER_OF_PRESSURE,
-                weight=0.01,
-                target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
-                contact_index=[0, 1, 2],
-            )
 
         constraints = ConstraintList()
         if with_contact:
+            # Explicit
+            # constraints.add(
+            #     ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z heel)
+            #     min_bound=0,
+            #     max_bound=np.inf,
+            #     node=Node.ALL_SHOOTING,
+            #     contact_index=2,
+            # )
+            # constraints.add(
+            #     ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH1)
+            #     min_bound=0,
+            #     max_bound=np.inf,
+            #     node=Node.ALL_SHOOTING,
+            #     contact_index=3,
+            # )
+            # constraints.add(
+            #     ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH5)
+            #     min_bound=0,
+            #     max_bound=np.inf,
+            #     node=Node.ALL_SHOOTING,
+            #     contact_index=4,
+            # )
+            # for marker in ["LCAL", "LMFH1", "LMFH5"]:
+            #     # Impose treadmill speed
+            #     constraints.add(
+            #         ConstraintFcn.TRACK_MARKERS_VELOCITY,
+            #         min_bound=self.subject.preferential_speed - 0.1,
+            #         max_bound=self.subject.preferential_speed + 0.1,
+            #         node=Node.START,  # Actually it's ALL, but the contact dynamics should take care of it (non-acceleration dynamics contraint)
+            #         marker_index=marker,
+            #     )
+
+            # Implicit
+            # Impose marker velocity to be the treadmill speed
             constraints.add(
-                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z heel)
-                min_bound=0,
-                max_bound=np.inf,
-                node=Node.ALL_SHOOTING,
-                contact_index=2,
+                marker_velocity,
+                min_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree+1),
+                max_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree+1),
+                node=Node.ALL,
             )
-            constraints.add(
-                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH1)
-                min_bound=0,
-                max_bound=np.inf,
-                node=Node.ALL_SHOOTING,
-                contact_index=3,
-            )
-            constraints.add(
-                ConstraintFcn.TRACK_CONTACT_FORCES,  # Only pushing on the floor, no pulling (Z LMFH5)
-                min_bound=0,
-                max_bound=np.inf,
-                node=Node.ALL_SHOOTING,
-                contact_index=4,
-            )
-            for marker in ["LCAL", "LMFH1", "LMFH5"]:
-                # Impose treadmill speed
-                constraints.add(
-                    ConstraintFcn.TRACK_MARKERS_VELOCITY,
-                    min_bound=self.subject.preferential_speed - 0.1,
-                    max_bound=self.subject.preferential_speed + 0.1,
-                    node=Node.START,  # Actually it's ALL, but the contact dynamics should take care of it (non-acceleration dynamics contraint)
-                    marker_index=marker,
-                )
 
         dynamics = DynamicsList()  # TODO: Charbie -> Change for muscles
         if with_contact:
