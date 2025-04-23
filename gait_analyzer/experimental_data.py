@@ -84,7 +84,7 @@ class ExperimentalData:
         """
 
         def load_model():
-            self.model_marker_names = [m.to_string() for m in self.model_creator.biorbd_model.markerNames()]
+            self.model_marker_names = [m.to_string() for m in self.model_creator.biorbd_model.markerNames() if m.to_string() not in self.markers_to_ignore]
             # model_muscle_names = [m.to_string() for m in self.model_creator.biorbd_model.muscleNames()]
 
         def sort_markers():

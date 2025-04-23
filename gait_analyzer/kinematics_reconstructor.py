@@ -398,7 +398,7 @@ class KinematicsReconstructor:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
         # Model
-        model = BiorbdModel(self.biorbd_model)
+        model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
         model.options.show_gravity = True
 

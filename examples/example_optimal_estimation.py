@@ -29,18 +29,24 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
+
     results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
+
+    markers_to_ignore = []  # ["U1", "U2", "U3", "U4"]  # Flo's data
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False  # Flo's data
+        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore
     )
-    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
-    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
+
+    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
+    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)  # Flo's data
+
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=False,
         skip_if_existing=True,
     )
+
     results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #

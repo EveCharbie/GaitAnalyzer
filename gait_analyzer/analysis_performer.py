@@ -19,6 +19,7 @@ class AnalysisPerformer:
         result_folder: str = "../results/",
         trails_to_analyze: list[str] = None,
         skip_if_existing: bool = False,
+        **kwargs
     ):
         """
         Initialize the AnalysisPerformer.
@@ -37,6 +38,8 @@ class AnalysisPerformer:
             The list of trails to analyze. If None, all the trails will be analyzed.
         skip_if_existing: bool
             If True, the analysis will not be performed if the results already exist.
+        **kwargs: Any
+            Any additional arguments to pass to the analysis_to_perform function
         """
 
         # Checks:
@@ -66,6 +69,7 @@ class AnalysisPerformer:
         self.result_folder = result_folder
         self.trails_to_analyze = trails_to_analyze
         self.skip_if_existing = skip_if_existing
+        self.kwargs = kwargs
 
         # Extended attributes
         self.figures_result_folder = None
@@ -246,5 +250,6 @@ class AnalysisPerformer:
                     static_trial_full_file_path,
                     c3d_file_name,
                     result_folder,
+                    **self.kwargs,
                 )
                 self.save_subject_results(results, result_file_name)
