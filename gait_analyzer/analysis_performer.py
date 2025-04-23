@@ -19,7 +19,7 @@ class AnalysisPerformer:
         result_folder: str = "../results/",
         trails_to_analyze: list[str] = None,
         skip_if_existing: bool = False,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the AnalysisPerformer.

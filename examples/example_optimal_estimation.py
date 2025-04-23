@@ -33,9 +33,7 @@ def analysis_to_perform(
     results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
 
     markers_to_ignore = []  # ["U1", "U2", "U3", "U4"]  # Flo's data
-    results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore
-    )
+    results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore)
 
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
     # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)  # Flo's data

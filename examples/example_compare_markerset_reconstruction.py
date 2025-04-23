@@ -29,9 +29,7 @@ def analysis_to_perform(
 
     results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
 
-    results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore
-    )
+    results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore)
 
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
 
@@ -73,13 +71,31 @@ if __name__ == "__main__":
         cycles_to_analyze=range(5, -5),
         result_folder="results",
         skip_if_existing=False,
-        markers_to_ignore=["RTHI1", "RTHI2", "RTHI3",
-                            "LTHI1", "LTHI2", "LTHI3",
-                            "RLEG1", "RLEG2", "RLEG3",
-                            "LLEG1", "LLEG2", "LLEG3",
-                            "RAMR1", "RARM2", "RARM3",
-                            "RFARM1", "RFARM2", "RFARM3",
-                            "LARM1", "LARM2", "LARM3",
-                            "LFARM1", "LFARM2", "LFARM3"],
+        markers_to_ignore=[
+            "RTHI1",
+            "RTHI2",
+            "RTHI3",
+            "LTHI1",
+            "LTHI2",
+            "LTHI3",
+            "RLEG1",
+            "RLEG2",
+            "RLEG3",
+            "LLEG1",
+            "LLEG2",
+            "LLEG3",
+            "RAMR1",
+            "RARM2",
+            "RARM3",
+            "RFARM1",
+            "RFARM2",
+            "RFARM3",
+            "LARM1",
+            "LARM2",
+            "LARM3",
+            "LFARM1",
+            "LFARM2",
+            "LFARM3",
+        ],
     )
     os.rename("results/inv_kin_gait_self_speed.pkl", "results/inv_kin_gait_self_speed_no_clusters.pkl")

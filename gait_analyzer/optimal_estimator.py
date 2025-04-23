@@ -238,7 +238,8 @@ class OptimalEstimator:
                         1052,  # toes_l_rotation_1 (range)
                         1053,
                         1065,  # toes_l_rotation_2 (range)
-                        1066]:
+                        1066,
+                    ]:
                         pass  # Remove the toes rotations
                     elif i_line + 1 in [
                         1636,  # lunate_r_rotation_transform
@@ -454,12 +455,15 @@ class OptimalEstimator:
         """
         Let's say swing phase only for now
         """
+
         def marker_velocity(controller):
             marker_velocities = []
             for marker_name in ["LCAL", "LMFH1", "LMFH5"]:
                 marker_index = controller.model.marker_index(marker_name)
                 qs = cas.horzcat(*([controller.states["q"].cx_start] + controller.states["q"].cx_intermediates))
-                qdots = cas.horzcat(*([controller.states["qdot"].cx_start] + controller.states["qdot"].cx_intermediates))
+                qdots = cas.horzcat(
+                    *([controller.states["qdot"].cx_start] + controller.states["qdot"].cx_intermediates)
+                )
                 for i_sn in range(len(qs)):
                     marker_velocity = controller.model.marker_velocity(marker_index)(qs[i_sn], qdots[i_sn])
                     marker_velocities += [marker_velocity]
@@ -553,7 +557,9 @@ class OptimalEstimator:
             f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
             f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
-            external_forces = nlp.get_external_forces("external_forces", states, controls, algebraic_states, numerical_timeseries)
+            external_forces = nlp.get_external_forces(
+                "external_forces", states, controls, algebraic_states, numerical_timeseries
+            )
             external_forces[:3] += f_ext_residual_position
             external_forces[6:9] += f_ext_residual_value
 
@@ -584,7 +590,9 @@ class OptimalEstimator:
             tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
             # f_ext = DynamicsFunctions.get(nlp.algebraic_states["contact_forces"], algebraic_states)
 
-            external_forces = nlp.get_external_forces("rigid_contact_forces", states, controls, algebraic_states, numerical_timeseries)
+            external_forces = nlp.get_external_forces(
+                "rigid_contact_forces", states, controls, algebraic_states, numerical_timeseries
+            )
 
             # q_ddot_computed = DynamicsFunctions.forward_dynamics(nlp, q, qdot, tau, with_contact=False, external_forces=external_forces)
             # dxdt = nlp.cx(nlp.states.shape, q_ddot_computed.shape[1])
@@ -594,7 +602,9 @@ class OptimalEstimator:
             # Defects
             slope_q = DynamicsFunctions.get(nlp.states_dot["qdot"], nlp.states_dot.scaled.cx)
             slope_qdot = DynamicsFunctions.get(nlp.states_dot["qddot"], nlp.states_dot.scaled.cx)
-            tau_id = DynamicsFunctions.inverse_dynamics(nlp, q, slope_q, slope_qdot, with_contact=False, external_forces=external_forces)
+            tau_id = DynamicsFunctions.inverse_dynamics(
+                nlp, q, slope_q, slope_qdot, with_contact=False, external_forces=external_forces
+            )
             # defects = nlp.cx(slope_q.shape[0] + tau_id.shape[0], tau_id.shape[1])
 
             defects = cas.horzcat(qdot - slope_q, tau - tau_id)
@@ -610,7 +620,9 @@ class OptimalEstimator:
             ConfigureProblem.configure_qdot(ocp, nlp, as_states=True, as_controls=False, as_states_dot=True)
             ConfigureProblem.configure_qddot(ocp, nlp, as_states=False, as_controls=False, as_states_dot=True)
             ConfigureProblem.configure_tau(ocp, nlp, as_states=False, as_controls=True)
-            ConfigureProblem.configure_rigid_contact_forces(ocp, nlp, as_states=False, as_algebraic_states=True, as_controls=False)
+            ConfigureProblem.configure_rigid_contact_forces(
+                ocp, nlp, as_states=False, as_algebraic_states=True, as_controls=False
+            )
             ConfigureProblem.configure_dynamics_function(ocp, nlp, custom_dynamics_with_contacts)
             return
 
@@ -794,8 +806,8 @@ class OptimalEstimator:
             # Impose marker velocity to be the treadmill speed
             constraints.add(
                 marker_velocity,
-                min_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree+1),
-                max_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree+1),
+                min_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree + 1),
+                max_bound=[self.subject.preferential_speed, 0.0, 0.0] * 3 * (polynomial_degree + 1),
                 node=Node.ALL,
             )
 
@@ -804,7 +816,7 @@ class OptimalEstimator:
             dynamics.add(
                 custom_configure_with_contacts,
                 dynamic_function=custom_dynamics_with_contacts,
-                phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE
+                phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
             )
         else:
             dynamics.add(
