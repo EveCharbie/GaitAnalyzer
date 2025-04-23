@@ -4,9 +4,6 @@ from gait_analyzer import (
     ResultManager,
     OsimModels,
     AnalysisPerformer,
-    PlotLegData,
-    LegToPlot,
-    PlotType,
     Subject,
     Side,
     ReconstructionType,
@@ -36,13 +33,13 @@ def analysis_to_perform(
         c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore
     )
 
-    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False)
 
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=True,
         plot_kinematics_flag=False,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
 
     return results

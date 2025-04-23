@@ -206,7 +206,7 @@ class KinematicsReconstructor:
         # Extended attributes
         self.frame_range = None
         self.markers = None
-        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
+        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_full_path)
         self.t = None
         self.q = None
         self.q_filtered = None
@@ -268,7 +268,7 @@ class KinematicsReconstructor:
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
         self.frame_range = self.events.get_frame_range(self.cycles_to_analyze)
-        markers = self.experimental_data.markers_sorted_with_virtual
+        markers = self.experimental_data.markers_sorted
 
         q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
@@ -444,7 +444,7 @@ class KinematicsReconstructor:
         else:
             reconstruction_type = self.reconstruction_type.value
         return {
-            "biorbd_model": self.model_creator.biorbd_model_virtual_markers_full_path,
+            "biorbd_model": self.model_creator.biorbd_model_full_path,
             "reconstruction_type": reconstruction_type,
             "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,

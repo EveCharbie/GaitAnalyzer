@@ -61,7 +61,6 @@ class ExperimentalData:
         self.marker_units = None
         self.nb_marker_frames = None
         self.markers_sorted = None
-        self.markers_sorted_with_virtual = None
         self.analogs_sampling_frequency = None
         self.platform_corners = None
         self.analogs_dt = None
@@ -120,26 +119,6 @@ class ExperimentalData:
                     marker_idx = self.model_marker_names.index(name)
                     markers_sorted[:, marker_idx, :] = markers[:3, i_marker, :] * self.marker_units
             self.markers_sorted = markers_sorted
-
-        def add_virtual_markers():
-            """
-            This function augments the marker set with virtual markers to improve the extended Kalman filter kinematics reconstruction.
-            """
-            markers_for_virtual = self.model_creator.markers_for_virtual
-            markers_sorted_with_virtual = np.zeros(
-                (3, len(self.model_marker_names) + len(markers_for_virtual.keys()), self.nb_marker_frames)
-            )
-            markers_sorted_with_virtual[:, : len(self.model_marker_names), :] = self.markers_sorted[:, :, :]
-            for i_marker, name in enumerate(markers_for_virtual.keys()):
-                exp_marker_position = np.zeros((3, len(markers_for_virtual[name]), self.nb_marker_frames))
-                for i in range(len(markers_for_virtual[name])):
-                    exp_marker_position[:, i, :] = self.markers_sorted[
-                        :, self.model_marker_names.index(markers_for_virtual[name][i]), :
-                    ]
-                markers_sorted_with_virtual[:, len(self.model_marker_names) + i_marker, :] = np.mean(
-                    exp_marker_position, axis=1
-                )
-            self.markers_sorted_with_virtual = markers_sorted_with_virtual
 
         def sort_analogs():
             """
@@ -284,7 +263,6 @@ class ExperimentalData:
         # Perform the initial treatment
         load_model()
         sort_markers()
-        add_virtual_markers()
         sort_analogs()
         extract_force_platform_data()
         compute_time_vectors()

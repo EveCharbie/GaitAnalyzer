@@ -358,7 +358,7 @@ class OptimalEstimator:
             self.f_ext_exp_ocp["right_leg"][:, i_frame] = np.mean(
                 self.experimental_data.f_ext_sorted[1, :, idx_analogs - 5 : idx_analogs + 5], axis=1
             )
-        self.markers_exp_ocp = self.experimental_data.markers_sorted_with_virtual[:, :, idx_to_keep]
+        self.markers_exp_ocp = self.experimental_data.markers_sorted[:, :, idx_to_keep]
         self.phase_time = (
             self.experimental_data.markers_time_vector[idx_to_keep[-1]]
             - self.experimental_data.markers_time_vector[idx_to_keep[0]]
