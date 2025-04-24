@@ -183,7 +183,7 @@ class ResultManager:
         )
 
     def estimate_optimally(
-        self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False
+        self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False, implicit_contacts: bool = False
     ):
 
         # Checks
@@ -213,4 +213,5 @@ class ResultManager:
             inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
+            implicit_contacts=implicit_contacts,
         )
