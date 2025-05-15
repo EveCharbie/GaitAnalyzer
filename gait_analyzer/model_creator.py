@@ -1,9 +1,19 @@
 import os
-import shutil
-from xml.etree import ElementTree as ET
+from copy import deepcopy
 import numpy as np
 import biorbd
 
+from biobuddy import (
+    BiomechanicalModelReal,
+    MuscleType,
+    MuscleStateType,
+    ScaleTool,
+    RangeOfMotion,
+    Ranges,
+    C3dData,
+    RotoTransMatrix,
+    MarkerReal,
+)
 from gait_analyzer.subject import Subject
 
 
@@ -120,6 +130,175 @@ class OsimModels:
         def markers_to_ignore(self):
             return []
 
+        @property
+        def ranges_to_adjust(self):
+            return {"pelvis_translation": [
+                                            [-3, 3],
+                                            [-3, 3],
+                                            [-3, 3],
+                                        ],
+                    "pelvis_rotation_transform": [
+                                            [-np.pi/4, np.pi/4],
+                                            [-np.pi/4, np.pi/4],
+                                            [-np.pi, np.pi],
+                                        ],
+                    "femur_r_rotation_transform": [
+                                            [-40*np.pi/180, 120*np.pi/180],
+                                            [-60*np.pi/180, 30*np.pi/180],
+                                            [-30 * np.pi / 180, 30 * np.pi / 180],
+                                        ],
+                    "tibia_r_rotation_transform": [
+                                            [-150 * np.pi / 180, 0.0],
+                                        ],
+                    "talus_r_ankle_angle_r": [
+                                            [-50 * np.pi / 180, 30 * np.pi / 180],   # Ankle Flexion
+                                        ],
+                    "calcn_r_subtalar_angle_r": [
+                                            [-15 * np.pi / 180, 15 * np.pi / 180],   # Ankle Inversion
+                                        ],
+                    "toes_r_rotation_transform": [
+                                            [-50 * np.pi / 180, 60 * np.pi / 180],   # Toes Flexion
+                                        ],
+                    "femur_l_rotation_transform": [
+                                            [-40*np.pi/180, 120*np.pi/180],
+                                            [-60*np.pi/180, 30*np.pi/180],
+                                            [-30 * np.pi / 180, 30 * np.pi / 180],
+                                        ],
+                    "tibia_l_rotation_transform": [
+                                            [0.0, 150 * np.pi / 180],
+                                        ],
+                    "talus_l_ankle_angle_l": [
+                                            [-50 * np.pi / 180, 30 * np.pi / 180],   # Ankle Flexion
+                                        ],
+                    "calcn_l_subtalar_angle_l": [
+                                            [-15 * np.pi / 180, 15 * np.pi / 180],   # Ankle Inversion
+                                        ],
+                    "toes_l_rotation_transform": [
+                                            [-50 * np.pi / 180, 60 * np.pi / 180],   # Toes Flexion
+                                        ],
+                    "torso_rotation_transform": [
+                                            [-90 * np.pi / 180, 45 * np.pi / 180],
+                                            [-35 * np.pi / 180, 35 * np.pi / 180],
+                                            [-45 * np.pi / 180, 45 * np.pi / 180],
+                                        ],
+                    "head_neck_rotation_transform": [
+                                            [-50 * np.pi / 180, 45 * np.pi / 180],
+                                            [-0.6, 0.6],
+				                            [-1.2217, 1.2217]
+                                        ],
+                    "humerus_r_rotation_transform": [
+                                            [-np.pi/2, np.pi],
+                                            [-3.8397, np.pi/2],
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+                    "ulna_r_elbow_flex_r": [
+                                            [0.0, np.pi],
+                                        ],
+                    "radius_r_pro_sup_r": [
+                                            [-np.pi, np.pi],
+                                        ],
+                    "lunate_r_rotation_transform": [
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+                    "hand_r_rotation_transform": [
+                                            [-0.43633231, 0.61086524],
+                                        ],
+                    "fingers_r_rotation_transform": [
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+                    "humerus_l_rotation_transform": [
+                                            [-np.pi/2, np.pi],
+                                            [-3.8397, np.pi/2],
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+                    "ulna_l_elbow_flex_l": [
+                                            [0.0, np.pi],
+                                        ],
+                    "radius_l_pro_sup_l": [
+                                            [-np.pi, np.pi],
+                                        ],
+                    "lunate_l_rotation_transform": [
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+                    "hand_l_rotation_transform": [
+                                            [-0.43633231, 0.61086524],
+                                        ],
+                    "fingers_l_rotation_transform": [
+                                            [-np.pi/2, np.pi/2],
+                                        ],
+            }
+
+        @property
+        def markers_to_add(self):
+            return {
+                "femur_r": ["RTHI1", "RTHI2", "RTHI3"],
+                "femur_l": ["LTHI1", "LTHI2", "LTHI3"],
+                "tibia_r": ["RLEG1", "RLEG2", "RLEG3"],
+                "tibia_l": ["LLEG1", "LLEG2", "LLEG3"],
+                "humerus_r": ["RAMR1", "RARM2", "RARM3"],
+                "radius_r": ["RFARM1", "RFARM2", "RFARM3"],
+                "humerus_l": ["LARM1", "LARM2", "LARM3"],
+                "radius_l": ["LFARM1", "LFARM2", "LFARM3"],
+            }
+
+        def perform_modifications(self, model, static_trial):
+            """
+            1. Remove the markers that are not needed (markers_to_ignore)
+            2. Change the ranges of motion for the segments (ranges_to_adjust)
+            3. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
+            4. Add the marker clusters (markers_to_add)
+            """
+
+            # Modify segments
+            for segment in model.segments:
+                markers = deepcopy(segment.markers)
+                for marker in markers:
+                    if marker in self.markers_to_ignore:
+                        segment.remove_marker(marker)
+                if segment.name in self.ranges_to_adjust.keys():
+                    min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
+                    max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
+                    segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
+
+
+            # Modify muscles
+            via_points = deepcopy(model.via_points)
+            for via_point in via_points:
+                if via_point.muscle_name in self.muscles_to_ignore:
+                    model.remove_via_point(via_point.name)
+
+            muscle_groups = deepcopy(model.muscle_groups)
+            for muscle_group in muscle_groups:
+                if muscle_group.origin_parent_name in self.muscles_to_ignore:
+                    model.remove_muscle_group(muscle_group.name)
+                elif muscle_group.insertion_parent_name in self.muscles_to_ignore:
+                    model.remove_muscle_group(muscle_group.name)
+
+            for muscle in self.muscles_to_ignore:
+                model.remove_muscle(muscle)
+
+
+            # Add the marker clusters
+            jcs_in_global = model.forward_kinematics()
+            c3d_data = C3dData(static_trial, first_frame=100, last_frame=200)
+            for segment_name in self.markers_to_add.keys():
+                for marker in self.markers_to_add[segment_name]:
+                    position_in_global = c3d_data.mean_marker_position(marker)
+                    rt = RotoTransMatrix()
+                    rt.rt_matrix = jcs_in_global[segment_name]
+                    position_in_local = rt.inverse @ position_in_global
+                    model.segments[segment_name].add_marker(
+                        MarkerReal(
+                            name=marker,
+                            parent_name=segment_name,
+                            position=position_in_local,
+                            is_anatomical=False,
+                            is_technical=True,
+                        )
+                    )
+
+            return model
+
 
 class ModelCreator:
     def __init__(
@@ -152,17 +331,7 @@ class ModelCreator:
 
         # Extended attributes
         self.trc_file_path = None
-        self.new_xml_path = None
-        # TODO: Charbie -> can we point to the Opensim folder where all opensim's vtp files are stored
-        self.vtp_geometry_path = "../../Geometry"
-        self.osim_model_full_path = (
-            self.models_result_folder
-            + "/"
-            + osim_model_type.osim_model_name
-            + "_"
-            + self.subject.subject_name
-            + ".osim"
-        )
+        self.vtp_geometry_path = "../../Geometry_cleaned"
         self.biorbd_model_full_path = (
             self.models_result_folder
             + "/"
@@ -171,311 +340,61 @@ class ModelCreator:
             + self.subject.subject_name
             + ".bioMod"
         )
-        self.biorbd_model_full_path = (
-            self.models_result_folder
-            + "/"
-            + osim_model_type.osim_model_name
-            + "_"
-            + self.subject.subject_name
-            + ".bioMod"
-        )
+        self.model = None  # This is the object that will be modified to be personalized to the subject
         self.new_model_created = False
 
         # Create the models
         if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
             print(f"The model {self.biorbd_model_full_path} is being created...")
-            self.convert_c3d_to_trc()
-            self.personalize_xml_file_hacky()
-            self.scale_opensim_model()
+            self.read_osim_model()
+            self.scale_model()
+            # self.relocate_joint_centers_functionally()
             self.create_biorbd_model()
         else:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
         self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
 
-        if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
-            self.extended_model_for_EKF()
-
         if animate_model_flag:
             self.animate_model()
 
-    def convert_c3d_to_trc(self):
-        """
-        This function reads the c3d static file and converts it into a trc file that will be used to scale the model in OpenSim.
-        The trc file is saved at the same place as the original c3d file.
-        """
-        self.trc_file_path = self.static_trial.replace(".c3d", ".trc")
 
-        # Read the c3d file
-        import ezc3d
+    def read_osim_model(self):
+        self.model = BiomechanicalModelReal.from_osim(
+            filepath=self.osim_model_type.original_osim_model_full_path,
+            muscle_type=MuscleType.HILL_DE_GROOTE,
+            muscle_state_type=MuscleStateType.DEGROOTE,
+            mesh_dir=self.vtp_geometry_path,
+        )
+        # Rotation of the model
+        self.model.segments["ground"].segment_coordinate_system.scs = np.array([
+            [1.000000, 0.000000, 0.000000, 0.000000],
+            [0.000000, 0.000000, -1.000000, 0.000000],
+            [0.000000, 1.000000, 0.000000, 0.000000],
+            [0.000000, 0.000000, 0.000000, 1.000000],
+            # Reset the ground to the upward Z axis + standing in the same orientation as the subject
+        ])
 
-        c3d = ezc3d.c3d(self.static_trial)
-        labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
+    def scale_model(self):
+        scale_tool = ScaleTool(original_model=self.model).from_xml(filepath=self.osim_model_type.xml_setup_file)
+        self.model = scale_tool.scale(
+            filepath=self.static_trial,
+            first_frame=100,
+            last_frame=200,
+            mass=self.subject.subject_mass,
+            q_regularization_weight=0.01,
+            make_static_pose_the_models_zero=True,
+            visualize_optimal_static_pose=False,
+            method = "lm",
+        )
 
-        # TODO: FloEthv -> When this study is completed, please remove this hacky fix
-        if "STER" in labels:
-            labels[labels.index("STER")] = "STR"
-
-        frame_rate = c3d["header"]["points"]["frame_rate"]
-        marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
-
-        with open(self.trc_file_path, "w") as f:
-            trc_file_name = os.path.basename(self.trc_file_path)
-            f.write(f"PathFileType\t4\t(X/Y/Z)\t{trc_file_name}\n")
-            f.write(
-                "DataRate\tCameraRate\tNumFrames\tNumMarkers\tUnits\tOrigDataRate\tOrigDataStartFrame\tOrigNumFrames\n"
-            )
-            f.write(
-                "{:.2f}\t{:.2f}\t{}\t{}\tm\t{:.2f}\t{}\t{}\n".format(
-                    frame_rate,
-                    frame_rate,
-                    c3d["header"]["points"]["last_frame"],
-                    len(labels),
-                    frame_rate,
-                    c3d["header"]["points"]["first_frame"],
-                    c3d["header"]["points"]["last_frame"],
-                )
-            )
-            f.write("Frame#\tTime\t" + "\t".join(labels) + "\n")
-            f.write("\t\t" + "\t".join([f"X{i + 1}\tY{i + 1}\tZ{i + 1}" for i in range(len(labels))]) + "\n")
-            for frame in range(marker_data.shape[2]):
-                time = frame / frame_rate
-                frame_data = [f"{frame + 1}\t{time:.5f}"]
-                for marker_idx in range(len(labels)):
-                    pos = marker_data[:, marker_idx, frame]
-                    frame_data.extend([f"{pos[0]:.5f}", f"{pos[1]:.5f}", f"{pos[2]:.5f}"])
-                f.write("\t".join(frame_data) + "\n")
-
-    # def personalize_xml_file(self):
-    #     """
-    #     This function should not be used right now, but it is still the real way to personalize the xml file.
-    #     We are waiting for OpenSim to fix their path bug.
-    #     """
-    #     self.new_xml_path = self.osim_model_type.xml_setup_file.replace(".xml", f"_{self.subject_name}.xml")
-    #     # Modify the original xml with the participants information
-    #     tree = ET.parse(self.osim_model_type.xml_setup_file)
-    #     root = tree.getroot()
-    #     for elem in root.iter():
-    #         if elem.tag == "model_file":
-    #             elem.text = os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-    #         elif elem.tag == "output_model_file":
-    #             # Due to OpenSim, this path must be relative to xml
-    #             rel_path = os.path.relpath(self.osim_model_full_path, os.path.dirname(self.new_xml_path))
-    #             elem.text = rel_path
-    #         elif elem.tag == "mass":
-    #             elem.text = f"{self.subject.subject_mass}"
-    #         elif elem.tag == "marker_file":
-    #             # Due to OpenSim, this path must be relative to original_osim_model_full_path
-    #             trc_file_relative_path = os.path.relpath(
-    #                 self.trc_file_path, os.path.abspath(self.osim_model_type.original_osim_model_full_path)
-    #             )[3:]
-    #             elem.text = trc_file_relative_path
-    #     tree.write(self.new_xml_path)
-
-    def personalize_xml_file_hacky(self):
-        """
-        This function is the one used in the process for now, but should be removed whenever we have the chance.
-        """
-        shutil.copyfile("../models/OpenSim_models/wholebody.xml", "wholebody.xml")
-        shutil.copyfile("../models/OpenSim_models/wholebody.osim", "wholebody.osim")
-        shutil.copyfile(self.trc_file_path, os.path.basename(self.trc_file_path))
-
-        # Modify the original xml with the participants information
-        tree = ET.parse("wholebody.xml")
-        root = tree.getroot()
-        for elem in root.iter():
-            if elem.tag == "model_file":
-                elem.text = "wholebody.osim"
-            elif elem.tag == "output_model_file":
-                rel_path = f"wholebody_{self.subject.subject_name}.osim"
-                elem.text = rel_path
-            elif elem.tag == "mass":
-                elem.text = f"{self.subject.subject_mass}"
-            elif elem.tag == "marker_file":
-                elem.text = os.path.basename(self.trc_file_path)
-        tree.write(f"wholebody_{self.subject.subject_name}.xml")
-
-    def scale_opensim_model(self):
-        try:
-            import opensim as osim
-        except:
-            raise RuntimeError("To scale the model, you must install OpenSim.")
-
-        self.new_xml_path = self.osim_model_full_path.replace(".osim", f".xml")
-        # tool = osim.ScaleTool(self.new_xml_path)
-        tool = osim.ScaleTool(f"wholebody_{self.subject.subject_name}.xml")
-        tool.run()
-
-        # Copy the output to the right place
-        shutil.copyfile(f"wholebody_{self.subject.subject_name}.osim", self.osim_model_full_path)
-        shutil.copyfile(f"wholebody_{self.subject.subject_name}.xml", self.new_xml_path)
-
-        # Delete the temporary files
-        os.remove(f"wholebody_{self.subject.subject_name}.osim")
-        os.remove(f"wholebody_{self.subject.subject_name}.xml")
-        os.remove(os.path.basename(self.trc_file_path))
-        os.remove("wholebody.xml")
-        os.remove("wholebody.osim")
+    def relocate_joint_centers_functionally(self):
+        raise NotImplementedError("TODO")
+        # self.model = ...
 
     def create_biorbd_model(self):
-        try:
-            import osim_to_biomod as otb
-        except:
-            raise RuntimeError("To converet the osim model into a biomod, you must install osim_to_biomod.")
-
-        # Convert the osim model to a biorbd model
-        converter = otb.Converter(
-            self.biorbd_model_full_path,  # .bioMod file to export to
-            self.osim_model_full_path,  # .osim file to convert from
-            ignore_muscle_applied_tag=False,
-            ignore_fixed_dof_tag=False,
-            ignore_clamped_dof_tag=False,
-            mesh_dir=self.vtp_geometry_path,
-            muscle_type=otb.MuscleType.HILL,
-            state_type=otb.MuscleStateType.DEGROOTE,
-            print_warnings=True,
-            print_general_informations=False,
-            vtp_polygons_to_triangles=True,
-            muscles_to_ignore=self.osim_model_type.muscles_to_ignore,
-            markers_to_ignore=self.osim_model_type.markers_to_ignore,
-        )
-        converter.convert_file()
-        self.sketchy_replace_biomod_lines()
+        self.model = self.osim_model_type.perform_modifications(self.model, self.static_trial)
+        self.model.to_biomod(self.biorbd_model_full_path, with_mesh=True)
         self.new_model_created = True
-
-    def sketchy_replace_biomod_lines(self):
-        """
-        This method is a temporary fix to replace the lines in the bioMod file.
-        It should be done with the read feature of biorbd.model_creator.
-        """
-
-        with open(self.biorbd_model_full_path, "r+") as file:
-            file_lines = file.readlines()
-
-        with open(self.biorbd_model_full_path, "w") as file:
-            for i_line, line in enumerate(file_lines):
-                if i_line + 1 == 27:  # Turn the model so it is not alignes with the gimbal lock
-                    file.write(
-                        line.replace("\t\tRT\t0 0 0\txyz\t0 0 0\n", "\t\tRT\t1.57079633 1.57079633 0\txyz\t0 0 0\n")
-                    )
-                elif i_line + 1 == 42:  # Translation X
-                    file.write(line.replace("-10 10", "-3 3"))
-                elif i_line + 1 == 43:  # Translation Y
-                    file.write(line.replace("-6 6", "-3 3"))
-                elif i_line + 1 == 44:  # Translation Z
-                    file.write(line.replace("-5 5", "-3 3"))
-                elif i_line + 1 == 59:  # Pelvis Rotation X
-                    file.write(line.replace("-3.1415999999999999 3.1415999999999999", f"{-np.pi/4} {np.pi/4}"))
-                elif i_line + 1 == 60:  # Pelvis Rotation Y
-                    file.write(line.replace("-3.1415999999999999 3.1415999999999999", f"{-np.pi/4} {np.pi/4}"))
-                elif i_line + 1 == 177:  # Hip Rotation X
-                    file.write(
-                        line.replace("-2.6179999999999999 2.0943950999999998", f"{-40*np.pi/180} {120*np.pi/180}")
-                    )
-                elif i_line + 1 == 178:  # Hip Rotation Y
-                    file.write(
-                        line.replace("-2.0943950999999998 2.0943950999999998", f"{-60*np.pi/180} {30*np.pi/180}")
-                    )
-                elif i_line + 1 == 179:  # Hip Rotation Z
-                    file.write(
-                        line.replace(
-                            "-2.0943950999999998 2.0943950999999998", f"{-30 * np.pi / 180} {30 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 262:  # Knee Rotation X
-                    file.write(line.replace("-3.1415999999999999 0.34910000000000002", f"{-150 * np.pi / 180} {0.0}"))
-                elif i_line + 1 == 358:  # Ankle Flexion
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-50 * np.pi / 180} {30 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 451:  # Ankle Inversion
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-15 * np.pi / 180} {15 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 560:  # Toes Flexion
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 633:  # Hip Rotation X
-                    file.write(
-                        line.replace(
-                            "-2.6179999999999999 2.0943950999999998", f"{-40 * np.pi / 180} {120 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 634:  # Hip Rotation Y
-                    file.write(
-                        line.replace(
-                            "-2.0943950999999998 2.0943950999999998", f"{-60 * np.pi / 180} {30 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 635:  # Hip Rotation Z
-                    file.write(
-                        line.replace(
-                            "-2.0943950999999998 2.0943950999999998", f"{-30 * np.pi / 180} {30 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 718:  # Knee Rotation X
-                    file.write(line.replace("-3.1415999999999999 0.34910000000000002", f"{-150 * np.pi / 180} {0.0}"))
-                elif i_line + 1 == 814:  # Ankle Flexion
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-50 * np.pi / 180} {30 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 907:  # Ankle Inversion
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-15 * np.pi / 180} {15 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 1016:  # Toes Flexion
-                    file.write(
-                        line.replace(
-                            "-1.0471975499999999 1.0471975499999999", f"{-50 * np.pi / 180} {60 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 1089:  # Torso Rotation X
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-90 * np.pi / 180} {45 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 1090:  # Torso Rotation Y
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-35 * np.pi / 180} {35 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 1091:  # Torso Rotation Z
-                    file.write(
-                        line.replace(
-                            "-1.5707963300000001 1.5707963300000001", f"{-45 * np.pi / 180} {45 * np.pi / 180}"
-                        )
-                    )
-                elif i_line + 1 == 1198:  # Head and neck Rotation X
-                    file.write(line.replace("-1.74533 1.0471975499999999", f"{-50 * np.pi / 180} {45 * np.pi / 180}"))
-                elif i_line + 1 in [
-                    1306,
-                    1307,
-                    1308,
-                    1309,
-                    1478,
-                    1479,
-                    2137,
-                    2138,
-                    2139,
-                    2140,
-                    2309,
-                    2310,
-                ]:  # Uncomment ranges
-                    file.write(line.replace("// ", ""))
-                else:
-                    file.write(line)
 
     def animate_model(self):
         """
@@ -507,8 +426,6 @@ class ModelCreator:
     def outputs(self):
         return {
             "biorbd_model_full_path": self.biorbd_model_full_path,
-            "open_sim_model_full_path": self.osim_model_full_path,
             "biorbd_model": self.biorbd_model,
             "new_model_created": self.new_model_created,
-            "biorbd_model_virtual_markers_full_path": self.biorbd_model_full_path,
         }

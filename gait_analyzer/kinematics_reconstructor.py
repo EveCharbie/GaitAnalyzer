@@ -218,6 +218,7 @@ class KinematicsReconstructor:
             self.is_loaded_kinematics = True
         else:
             # Perform the kinematics reconstruction
+            self.check_for_marker_inversion()
             self.perform_kinematics_reconstruction()
             self.filter_kinematics()
             self.save_kinematics_reconstruction()
@@ -262,6 +263,10 @@ class KinematicsReconstructor:
         else:
             return False
 
+    def check_for_marker_inversion(self):
+        raise NotImplementedError("Please implement !!!!!!!!!!!!!!!1")
+        return
+
     def perform_kinematics_reconstruction(self):
         """
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
@@ -303,10 +308,10 @@ class KinematicsReconstructor:
                 is_successful_reconstruction = True
                 break
 
-        if not is_successful_reconstruction:
-            raise RuntimeError(
-                "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
-            )
+        # if not is_successful_reconstruction:
+        #     raise RuntimeError(
+        #         "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
+        #     )
 
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
