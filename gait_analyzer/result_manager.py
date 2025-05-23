@@ -55,7 +55,7 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
 
-    def create_model(self, osim_model_type, skip_if_existing: bool, animate_model_flag: bool = False):
+    def create_model(self, osim_model_type, functional_trials_path: str, skip_if_existing: bool, animate_model_flag: bool = False):
         """
         Create and add the biorbd model to the ResultManager
         """
@@ -68,6 +68,7 @@ class ResultManager:
         self.model_creator = ModelCreator(
             subject=self.subject,
             static_trial=self.static_trial,
+            functional_trials_path=functional_trials_path,
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,

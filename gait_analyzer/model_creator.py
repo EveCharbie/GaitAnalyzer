@@ -13,13 +13,15 @@ from biobuddy import (
     C3dData,
     RotoTransMatrix,
     MarkerReal,
+    JointCenterTool,
+    Score,
+    Sara,
 )
 from gait_analyzer.subject import Subject
 
 
 class OsimModels:
-    # TODO: Charbie -> Do we have the right to add the OpenSim models to a public repository?
-    # TODO: Charbie -> Otherwise, can Floethv give the link to the OpenSim model?
+
     @property
     def osim_model_name(self):
         raise RuntimeError(
@@ -305,6 +307,7 @@ class ModelCreator:
         self,
         subject: Subject,
         static_trial: str,
+        functional_trials_path: str,
         models_result_folder: str,
         osim_model_type,
         skip_if_existing: bool,
@@ -316,6 +319,10 @@ class ModelCreator:
             raise ValueError("subject must be a Subject.")
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string.")
+        if not isinstance(functional_trials_path, str):
+            raise ValueError("functional_trials_path must be a string.")
+        if not os.path.exists(functional_trials_path):
+            raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):
@@ -327,6 +334,7 @@ class ModelCreator:
         self.subject = subject
         self.osim_model_type = osim_model_type
         self.static_trial = static_trial
+        self.functional_trials_path = functional_trials_path
         self.models_result_folder = models_result_folder
 
         # Extended attributes
@@ -348,7 +356,8 @@ class ModelCreator:
             print(f"The model {self.biorbd_model_full_path} is being created...")
             self.read_osim_model()
             self.scale_model()
-            # self.relocate_joint_centers_functionally()
+            self.osim_model_type.perform_modifications(self.model, self.static_trial)
+            self.relocate_joint_centers_functionally()
             self.create_biorbd_model()
         else:
             print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
@@ -365,14 +374,6 @@ class ModelCreator:
             muscle_state_type=MuscleStateType.DEGROOTE,
             mesh_dir=self.vtp_geometry_path,
         )
-        # Rotation of the model
-        self.model.segments["ground"].segment_coordinate_system.scs = np.array([
-            [1.000000, 0.000000, 0.000000, 0.000000],
-            [0.000000, 0.000000, -1.000000, 0.000000],
-            [0.000000, 1.000000, 0.000000, 0.000000],
-            [0.000000, 0.000000, 0.000000, 1.000000],
-            # Reset the ground to the upward Z axis + standing in the same orientation as the subject
-        ])
 
     def scale_model(self):
         scale_tool = ScaleTool(original_model=self.model).from_xml(filepath=self.osim_model_type.xml_setup_file)
@@ -388,11 +389,142 @@ class ModelCreator:
         )
 
     def relocate_joint_centers_functionally(self):
-        raise NotImplementedError("TODO")
-        # self.model = ...
+
+        # Move the model's joint centers
+        joint_center_tool = JointCenterTool(self.model, animate_reconstruction=True)
+
+        # Hip Right
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "right_hip.c3d",
+                parent_name="pelvis",
+                child_name="femur_r",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        joint_center_tool.add(
+            Sara(
+                filepath=self.functional_trials_path + "right_knee.c3d",
+                parent_name="femur_r",
+                child_name="tibia_r",
+                parent_marker_names=["RGT"] + self.osim_model_type.markers_to_add["femur_r"],
+                child_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
+                joint_center_markers=["RLFE", "RMFE"],
+                distal_markers=["RLM", "RSPH"],
+                is_longitudinal_axis_from_jcs_to_distal_markers=False,
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Ankle right
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "right_ankle.c3d",
+                parent_name="tibia_r",
+                child_name="calcn_r",
+                parent_marker_names=["RATT", "RSPH", "RLM"] + self.osim_model_type.markers_to_add["tibia_r"],
+                child_marker_names=["RCAL", "RMFH1", "RMFH5"],  # toes_r: "RTT2"
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Hip Left
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "left_hip.c3d",
+                parent_name="pelvis",
+                child_name="femur_l",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["LGT", "LMFE", "LLFE"] + self.osim_model_type.markers_to_add["femur_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Knee Left
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "left_knee.c3d",
+                parent_name="femur_l",
+                child_name="tibia_l",
+                parent_marker_names=["LGT"] + self.osim_model_type.markers_to_add["femur_l"],
+                child_marker_names=["LATT", "LSPH", "LLM"] + self.osim_model_type.markers_to_add["tibia_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Ankle Left
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "left_ankle.c3d",
+                parent_name="tibia_l",
+                child_name="calcn_l",
+                parent_marker_names=["LATT", "LSPH", "LLM"] + self.osim_model_type.markers_to_add["tibia_l"],
+                child_marker_names=["LCAL", "LMFH1", "LMFH5"],  # toes_r: "LTT2"
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Shoulder Right
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "shoulders.c3d",
+                parent_name="torso",
+                child_name="humerus_r",
+                parent_marker_names=["STR", "C7", "T10", "SUP"],
+                child_marker_names=["RLHE", "RMHE"] + self.osim_model_type.markers_to_add["humerus_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Elbow Right
+        joint_center_tool.add(Score(filepath=self.functional_trials_path + "elbows.c3d",
+                                    parent_name="humerus_r",
+                                    child_name="radius_r",
+                                    parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
+                                    child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
+                                    initialize_whole_trial_reconstruction=False,
+                                    animate_rt=False,
+                                    ))
+        # Shoulder Left
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "shoulders.c3d",
+                parent_name="torso",
+                child_name="humerus_l",
+                parent_marker_names=["STR", "C7", "T10", "SUP"],
+                child_marker_names=["LLHE", "LMHE"] + self.osim_model_type.markers_to_add["humerus_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+        # Elbow Left
+        joint_center_tool.add(Score(filepath=self.functional_trials_path + "elbows.c3d",
+                                    parent_name="humerus_l",
+                                    child_name="radius_l",
+                                    parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
+                                    child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
+                                    initialize_whole_trial_reconstruction=False,
+                                    animate_rt=False,
+                                    ))
+        # Neck
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "neck.c3d",
+                parent_name="torso",
+                child_name="head_and_neck",
+                parent_marker_names=["STR", "RA", "LA", "C7", "T10", "SUP"],
+                child_marker_names=["SEL", "OCC", "RTEMP", "LTEMP", "HV"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
+
+        self.model = joint_center_tool.replace_joint_centers(self.osim_model_type.marker_weights)
 
     def create_biorbd_model(self):
-        self.model = self.osim_model_type.perform_modifications(self.model, self.static_trial)
         self.model.to_biomod(self.biorbd_model_full_path, with_mesh=True)
         self.new_model_created = True
 

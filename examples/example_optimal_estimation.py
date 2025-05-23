@@ -30,7 +30,11 @@ def analysis_to_perform(
         result_folder=result_folder,
     )
 
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=True, animate_model_flag=False)
+    results.create_model(
+        osim_model_type=OsimModels.WholeBody(),
+        functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
+        skip_if_existing=True,
+        animate_model_flag=False)
 
     markers_to_ignore = []  # ["U1", "U2", "U3", "U4"]  # Flo's data
     results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore)
