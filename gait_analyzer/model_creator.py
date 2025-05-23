@@ -285,7 +285,7 @@ class OsimModels:
                 for marker in self.markers_to_add[segment_name]:
                     position_in_global = c3d_data.mean_marker_position(marker)
                     rt = RotoTransMatrix()
-                    rt.rt_matrix = jcs_in_global[segment_name]
+                    rt.from_rt_matrix(jcs_in_global[segment_name])
                     position_in_local = rt.inverse @ position_in_global
                     model.segments[segment_name].add_marker(
                         MarkerReal(
