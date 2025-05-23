@@ -34,7 +34,8 @@ def analysis_to_perform(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         skip_if_existing=True,
-        animate_model_flag=False)
+        animate_model_flag=False,
+    )
 
     markers_to_ignore = []  # ["U1", "U2", "U3", "U4"]  # Flo's data
     results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore)
@@ -43,7 +44,7 @@ def analysis_to_perform(
     # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)  # Flo's data
 
     results.reconstruct_kinematics(
-        reconstruction_type=[ReconstructionType.ONLY_LM],  #, ReconstructionType.LM, ReconstructionType.TRF],
+        reconstruction_type=[ReconstructionType.ONLY_LM],  # , ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=False,
         skip_if_existing=True,

@@ -134,100 +134,97 @@ class OsimModels:
 
         @property
         def ranges_to_adjust(self):
-            return {"pelvis_translation": [
-                                            [-3, 3],
-                                            [-3, 3],
-                                            [-3, 3],
-                                        ],
-                    "pelvis_rotation_transform": [
-                                            [-np.pi/4, np.pi/4],
-                                            [-np.pi/4, np.pi/4],
-                                            [-np.pi, np.pi],
-                                        ],
-                    "femur_r_rotation_transform": [
-                                            [-40*np.pi/180, 120*np.pi/180],
-                                            [-60*np.pi/180, 30*np.pi/180],
-                                            [-30 * np.pi / 180, 30 * np.pi / 180],
-                                        ],
-                    "tibia_r_rotation_transform": [
-                                            [-150 * np.pi / 180, 0.0],
-                                        ],
-                    "talus_r_ankle_angle_r": [
-                                            [-50 * np.pi / 180, 30 * np.pi / 180],   # Ankle Flexion
-                                        ],
-                    "calcn_r_subtalar_angle_r": [
-                                            [-15 * np.pi / 180, 15 * np.pi / 180],   # Ankle Inversion
-                                        ],
-                    "toes_r_rotation_transform": [
-                                            [-50 * np.pi / 180, 60 * np.pi / 180],   # Toes Flexion
-                                        ],
-                    "femur_l_rotation_transform": [
-                                            [-40*np.pi/180, 120*np.pi/180],
-                                            [-60*np.pi/180, 30*np.pi/180],
-                                            [-30 * np.pi / 180, 30 * np.pi / 180],
-                                        ],
-                    "tibia_l_rotation_transform": [
-                                            [0.0, 150 * np.pi / 180],
-                                        ],
-                    "talus_l_ankle_angle_l": [
-                                            [-50 * np.pi / 180, 30 * np.pi / 180],   # Ankle Flexion
-                                        ],
-                    "calcn_l_subtalar_angle_l": [
-                                            [-15 * np.pi / 180, 15 * np.pi / 180],   # Ankle Inversion
-                                        ],
-                    "toes_l_rotation_transform": [
-                                            [-50 * np.pi / 180, 60 * np.pi / 180],   # Toes Flexion
-                                        ],
-                    "torso_rotation_transform": [
-                                            [-90 * np.pi / 180, 45 * np.pi / 180],
-                                            [-35 * np.pi / 180, 35 * np.pi / 180],
-                                            [-45 * np.pi / 180, 45 * np.pi / 180],
-                                        ],
-                    "head_neck_rotation_transform": [
-                                            [-50 * np.pi / 180, 45 * np.pi / 180],
-                                            [-0.6, 0.6],
-				                            [-1.2217, 1.2217]
-                                        ],
-                    "humerus_r_rotation_transform": [
-                                            [-np.pi/2, np.pi],
-                                            [-3.8397, np.pi/2],
-                                            [-np.pi/2, np.pi/2],
-                                        ],
-                    "ulna_r_elbow_flex_r": [
-                                            [0.0, np.pi],
-                                        ],
-                    "radius_r_pro_sup_r": [
-                                            [-np.pi, np.pi],
-                                        ],
-                    "lunate_r_rotation_transform": [
-                                            [-np.pi/2, np.pi/2],
-                                        ],
-                    "hand_r_rotation_transform": [
-                                            [-0.43633231, 0.61086524],
-                                        ],
-                    "fingers_r_rotation_transform": [
-                                            [-np.pi/2, np.pi/2],
-                                        ],
-                    "humerus_l_rotation_transform": [
-                                            [-np.pi/2, np.pi],
-                                            [-3.8397, np.pi/2],
-                                            [-np.pi/2, np.pi/2],
-                                        ],
-                    "ulna_l_elbow_flex_l": [
-                                            [0.0, np.pi],
-                                        ],
-                    "radius_l_pro_sup_l": [
-                                            [-np.pi, np.pi],
-                                        ],
-                    "lunate_l_rotation_transform": [
-                                            [-np.pi/2, np.pi/2],
-                                        ],
-                    "hand_l_rotation_transform": [
-                                            [-0.43633231, 0.61086524],
-                                        ],
-                    "fingers_l_rotation_transform": [
-                                            [-np.pi/2, np.pi/2],
-                                        ],
+            return {
+                "pelvis_translation": [
+                    [-3, 3],
+                    [-3, 3],
+                    [-3, 3],
+                ],
+                "pelvis_rotation_transform": [
+                    [-np.pi / 4, np.pi / 4],
+                    [-np.pi / 4, np.pi / 4],
+                    [-np.pi, np.pi],
+                ],
+                "femur_r_rotation_transform": [
+                    [-40 * np.pi / 180, 120 * np.pi / 180],
+                    [-60 * np.pi / 180, 30 * np.pi / 180],
+                    [-30 * np.pi / 180, 30 * np.pi / 180],
+                ],
+                "tibia_r_rotation_transform": [
+                    [-150 * np.pi / 180, 0.0],
+                ],
+                "talus_r_ankle_angle_r": [
+                    [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
+                ],
+                "calcn_r_subtalar_angle_r": [
+                    [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
+                ],
+                "toes_r_rotation_transform": [
+                    [-50 * np.pi / 180, 60 * np.pi / 180],  # Toes Flexion
+                ],
+                "femur_l_rotation_transform": [
+                    [-40 * np.pi / 180, 120 * np.pi / 180],
+                    [-60 * np.pi / 180, 30 * np.pi / 180],
+                    [-30 * np.pi / 180, 30 * np.pi / 180],
+                ],
+                "tibia_l_rotation_transform": [
+                    [0.0, 150 * np.pi / 180],
+                ],
+                "talus_l_ankle_angle_l": [
+                    [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
+                ],
+                "calcn_l_subtalar_angle_l": [
+                    [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
+                ],
+                "toes_l_rotation_transform": [
+                    [-50 * np.pi / 180, 60 * np.pi / 180],  # Toes Flexion
+                ],
+                "torso_rotation_transform": [
+                    [-90 * np.pi / 180, 45 * np.pi / 180],
+                    [-35 * np.pi / 180, 35 * np.pi / 180],
+                    [-45 * np.pi / 180, 45 * np.pi / 180],
+                ],
+                "head_neck_rotation_transform": [[-50 * np.pi / 180, 45 * np.pi / 180], [-0.6, 0.6], [-1.2217, 1.2217]],
+                "humerus_r_rotation_transform": [
+                    [-np.pi / 2, np.pi],
+                    [-3.8397, np.pi / 2],
+                    [-np.pi / 2, np.pi / 2],
+                ],
+                "ulna_r_elbow_flex_r": [
+                    [0.0, np.pi],
+                ],
+                "radius_r_pro_sup_r": [
+                    [-np.pi, np.pi],
+                ],
+                "lunate_r_rotation_transform": [
+                    [-np.pi / 2, np.pi / 2],
+                ],
+                "hand_r_rotation_transform": [
+                    [-0.43633231, 0.61086524],
+                ],
+                "fingers_r_rotation_transform": [
+                    [-np.pi / 2, np.pi / 2],
+                ],
+                "humerus_l_rotation_transform": [
+                    [-np.pi / 2, np.pi],
+                    [-3.8397, np.pi / 2],
+                    [-np.pi / 2, np.pi / 2],
+                ],
+                "ulna_l_elbow_flex_l": [
+                    [0.0, np.pi],
+                ],
+                "radius_l_pro_sup_l": [
+                    [-np.pi, np.pi],
+                ],
+                "lunate_l_rotation_transform": [
+                    [-np.pi / 2, np.pi / 2],
+                ],
+                "hand_l_rotation_transform": [
+                    [-0.43633231, 0.61086524],
+                ],
+                "fingers_l_rotation_transform": [
+                    [-np.pi / 2, np.pi / 2],
+                ],
             }
 
         @property
@@ -262,7 +259,6 @@ class OsimModels:
                     max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
                     segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
 
-
             # Modify muscles
             via_points = deepcopy(model.via_points)
             for via_point in via_points:
@@ -278,7 +274,6 @@ class OsimModels:
 
             for muscle in self.muscles_to_ignore:
                 model.remove_muscle(muscle)
-
 
             # Add the marker clusters
             jcs_in_global = model.forward_kinematics()
@@ -366,7 +361,6 @@ class ModelCreator:
         if animate_model_flag:
             self.animate_model()
 
-
     def read_osim_model(self):
         self.model = BiomechanicalModelReal.from_osim(
             filepath=self.osim_model_type.original_osim_model_full_path,
@@ -385,7 +379,7 @@ class ModelCreator:
             q_regularization_weight=0.01,
             make_static_pose_the_models_zero=True,
             visualize_optimal_static_pose=False,
-            method = "lm",
+            method="lm",
         )
 
     def relocate_joint_centers_functionally(self):
@@ -480,14 +474,17 @@ class ModelCreator:
             )
         )
         # Elbow Right
-        joint_center_tool.add(Score(filepath=self.functional_trials_path + "elbows.c3d",
-                                    parent_name="humerus_r",
-                                    child_name="radius_r",
-                                    parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
-                                    child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
-                                    initialize_whole_trial_reconstruction=False,
-                                    animate_rt=False,
-                                    ))
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "elbows.c3d",
+                parent_name="humerus_r",
+                child_name="radius_r",
+                parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
+                child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
         # Shoulder Left
         joint_center_tool.add(
             Score(
@@ -501,14 +498,17 @@ class ModelCreator:
             )
         )
         # Elbow Left
-        joint_center_tool.add(Score(filepath=self.functional_trials_path + "elbows.c3d",
-                                    parent_name="humerus_l",
-                                    child_name="radius_l",
-                                    parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
-                                    child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
-                                    initialize_whole_trial_reconstruction=False,
-                                    animate_rt=False,
-                                    ))
+        joint_center_tool.add(
+            Score(
+                filepath=self.functional_trials_path + "elbows.c3d",
+                parent_name="humerus_l",
+                child_name="radius_l",
+                parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
+                child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=False,
+            )
+        )
         # Neck
         joint_center_tool.add(
             Score(

@@ -63,7 +63,10 @@ if __name__ == "__main__":
         skip_if_existing=False,
         markers_to_ignore=[],
     )
-    os.rename(f"{result_folder}/{subject_name}/inv_kin_gait_self_speed.pkl", f"{result_folder}/{subject_name}/inv_kin_gait_self_speed_with_clusters.pkl")
+    os.rename(
+        f"{result_folder}/{subject_name}/inv_kin_gait_self_speed.pkl",
+        f"{result_folder}/{subject_name}/inv_kin_gait_self_speed_with_clusters.pkl",
+    )
 
     # # --- Example of how to run the analysis --- #
     # AnalysisPerformer(

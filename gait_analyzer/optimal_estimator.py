@@ -82,7 +82,6 @@ class OptimalEstimator:
         if not isinstance(inverse_dynamic_performer, InverseDynamicsPerformer):
             raise ValueError("inverse_dynamic_performer must be a InverseDynamicsPerformer")
 
-
         # Initial attributes
         self.cycle_to_analyze = cycle_to_analyze
         self.subject = subject
@@ -323,20 +322,20 @@ class OptimalEstimator:
                 7,  # femur_r rot Y
                 8,  # femur_r rot Z
                 9,  # tibia_r rot X
-                10, # talus_r rot X
-                11, # calc_r rot X (not toes_r rot X)
-                13, # femur_r rot X
-                14, # femur_r rot Y
-                15, # femur_r rot Z
-                16, # tibia_r rot X
-                17, # talus_r rot X
-                18, # calc_r rot X (not toes_r rot X)
-                20, # torse rot X
-                21, # torse rot Y
-                22, # torse rot Z
-                23, # head_and_neck rot X
-                24, # head_and_neck rot Y
-                25, # head_and_neck rot Z
+                10,  # talus_r rot X
+                11,  # calc_r rot X (not toes_r rot X)
+                13,  # femur_r rot X
+                14,  # femur_r rot Y
+                15,  # femur_r rot Z
+                16,  # tibia_r rot X
+                17,  # talus_r rot X
+                18,  # calc_r rot X (not toes_r rot X)
+                20,  # torse rot X
+                21,  # torse rot Y
+                22,  # torse rot Z
+                23,  # head_and_neck rot X
+                24,  # head_and_neck rot Y
+                25,  # head_and_neck rot Z
                 26,
                 27,
                 28,
@@ -483,9 +482,7 @@ class OptimalEstimator:
             f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
             f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
-            external_forces = nlp.get_external_forces(
-                states, controls, algebraic_states, numerical_timeseries
-            )
+            external_forces = nlp.get_external_forces(states, controls, algebraic_states, numerical_timeseries)
             external_forces[:3] += f_ext_residual_position
             external_forces[6:9] += f_ext_residual_value
 
@@ -635,13 +632,21 @@ class OptimalEstimator:
         u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add("tau", min_bound=[-500] * nb_q, max_bound=[500] * nb_q, interpolation=InterpolationType.CONSTANT)
-        u_bounds.add("contact_forces", min_bound=[-10] * 3, max_bound=[10] * 3, interpolation=InterpolationType.CONSTANT)
-        u_bounds.add("contact_positions", min_bound=[-2] * 3, max_bound=[2] * 3, interpolation=InterpolationType.CONSTANT)
+        u_bounds.add(
+            "contact_forces", min_bound=[-10] * 3, max_bound=[10] * 3, interpolation=InterpolationType.CONSTANT
+        )
+        u_bounds.add(
+            "contact_positions", min_bound=[-2] * 3, max_bound=[2] * 3, interpolation=InterpolationType.CONSTANT
+        )
 
         u_init = InitialGuessList()
         u_init.add("tau", initial_guess=self.tau_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
         u_init.add("contact_forces", initial_guess=[0] * 3, interpolation=InterpolationType.CONSTANT)
-        u_init.add("contact_positions", initial_guess=self.f_ext_exp_ocp["left_leg"][0:3, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add(
+            "contact_positions",
+            initial_guess=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
+            interpolation=InterpolationType.EACH_FRAME,
+        )
 
         # TODO: Charbie -> Add phase transition when I have the full cycle
         # phase_transitions = PhaseTransitionList()
@@ -662,7 +667,6 @@ class OptimalEstimator:
             use_sx=False,
             n_threads=10,
         )
-
 
     def prepare_ocp_implicit(self):
         """
