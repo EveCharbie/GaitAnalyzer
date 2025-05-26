@@ -314,10 +314,10 @@ class ModelCreator:
             raise ValueError("subject must be a Subject.")
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string.")
-        if not isinstance(functional_trials_path, str):
-            raise ValueError("functional_trials_path must be a string.")
-        if not os.path.exists(functional_trials_path):
-            raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
+        # if not isinstance(functional_trials_path, str):
+        #     raise ValueError("functional_trials_path must be a string.")
+        # if not os.path.exists(functional_trials_path):
+        #     raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):

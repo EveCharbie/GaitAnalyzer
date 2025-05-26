@@ -2,6 +2,7 @@ import os
 import pickle
 from enum import Enum
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import biorbd
 from pyomeca import Markers
@@ -264,7 +265,46 @@ class KinematicsReconstructor:
             return False
 
     def check_for_marker_inversion(self):
-        raise NotImplementedError("Please implement !!!!!!!!!!!!!!!1")
+        markers = self.experimental_data.markers_sorted
+        nb_markers = markers.shape[1]
+
+        # Create mask for valid (non-NaN) data - shape: (3, nb_markers, nb_frames)
+        valid_mask = ~np.isnan(markers)
+        marker_valid = np.all(valid_mask, axis=0)  # shape: (nb_markers, nb_frames)
+
+        for i_marker in range(nb_markers):
+            marker_name = self.biorbd_model.markerNames()[i_marker].to_string()
+
+            # Get indices of valid frames for this marker
+            valid_frames = np.where(marker_valid[i_marker, :])[0]
+
+            if len(valid_frames) < 2:
+                raise RuntimeError(f"Marker {marker_name} was only found in two frames.")
+
+            # Extract valid positions for this marker
+            valid_positions = markers[:, i_marker, valid_frames]  # shape: (3, n_valid)
+
+            # Compute distances between consecutive valid positions
+            position_diffs = np.diff(valid_positions, axis=1)  # shape: (3, n_valid-1)
+            distances = np.linalg.norm(position_diffs, axis=0)  # shape: (n_valid-1,)
+
+            # Check for jumps > 0.5
+            jump_indices = np.where(distances > 0.5)[0]
+
+            if len(jump_indices) > 0:
+                # Report the first jump found
+                jump_idx = jump_indices[0]
+                frame_before = valid_frames[jump_idx]
+                frame_after = valid_frames[jump_idx + 1]
+                jump_distance = distances[jump_idx]
+
+                raise RuntimeError(
+                    f"Marker {marker_name} seems to be inverted between frames "
+                    f"{frame_before} and {frame_after} as the distance is "
+                    f"{jump_distance:.3f} (larger than 0.5)."
+                )
+
+            print(f"Marker {marker_name} OK: max distance = {np.max(distances):.3f} m")
         return
 
     def perform_kinematics_reconstruction(self):
@@ -308,10 +348,10 @@ class KinematicsReconstructor:
                 is_successful_reconstruction = True
                 break
 
-        # if not is_successful_reconstruction:
-        #     raise RuntimeError(
-        #         "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
-        #     )
+        if not is_successful_reconstruction:
+            raise RuntimeError(
+                "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
+            )
 
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]

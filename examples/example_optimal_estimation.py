@@ -47,7 +47,7 @@ def analysis_to_perform(
         reconstruction_type=[ReconstructionType.ONLY_LM],  # , ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=False,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
 
     results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=True)
@@ -71,8 +71,8 @@ if __name__ == "__main__":
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     subjects_to_analyze.append(
-        # Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-        Subject(subject_name="ECH", subject_mass=64.59, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+        Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+        # Subject(subject_name="ECH", subject_mass=64.59, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
     # subjects_to_analyze.append(
     #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
