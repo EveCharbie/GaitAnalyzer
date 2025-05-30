@@ -60,7 +60,8 @@ class ResultManager:
             osim_model_type,
             functional_trials_path: str,
             skip_if_existing: bool,
-            animate_model_flag: bool = False
+            animate_model_flag: bool = False,
+            vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
         """
         Create and add the biorbd model to the ResultManager
@@ -79,10 +80,15 @@ class ResultManager:
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,
             animate_model_flag=animate_model_flag,
+            vtp_geometry_path=vtp_geometry_path,
         )
 
     def add_experimental_data(
-        self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False
+            self,
+            c3d_file_name: str,
+            markers_to_ignore: list[str] = [],
+            analogs_to_ignore: list[str] = [],
+            animate_c3d_flag: bool = False
     ):
 
         # Checks
@@ -95,6 +101,7 @@ class ResultManager:
         self.experimental_data = ExperimentalData(
             c3d_file_name=c3d_file_name,
             markers_to_ignore=markers_to_ignore,
+            analogs_to_ignore=analogs_to_ignore,
             result_folder=self.result_folder,
             model_creator=self.model_creator,
             animate_c3d_flag=animate_c3d_flag,

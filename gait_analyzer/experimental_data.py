@@ -18,6 +18,7 @@ class ExperimentalData:
         result_folder: str,
         model_creator: ModelCreator,
         markers_to_ignore: list[str],
+        analogs_to_ignore: list[str],
         animate_c3d_flag: bool,
     ):
         """
@@ -35,6 +36,8 @@ class ExperimentalData:
             The subject's personalized biorbd model.
         markers_to_ignore: list[str]
             Supplementary markers to ignore in the analysis.
+        analogs_to_ignore: list[str]
+            Supplementary analogs to ignore in the analysis (e.g., EMG signals).
         animate_c3d_flag: bool
             If True, the c3d file will be animated.
         """
@@ -48,11 +51,10 @@ class ExperimentalData:
         self.force_threshold = 15  # N
 
         # Initial attributes
-        parent_path = os.path.dirname(os.path.abspath(__file__))
-        self.c3d_file_name = c3d_file_name
-        self.c3d_full_file_path = parent_path + "/data/" + c3d_file_name
+        self.c3d_full_file_path = c3d_file_name
         self.model_creator = model_creator
         self.markers_to_ignore = markers_to_ignore
+        self.analogs_to_ignore = analogs_to_ignore
         self.result_folder = result_folder
 
         # Extended attributes
@@ -64,6 +66,8 @@ class ExperimentalData:
         self.nb_marker_frames = None
         self.markers_sorted = None
         self.analogs_sampling_frequency = None
+        self.analogs_sorted = None
+        self.analog_names = None
         self.platform_corners = None
         self.analogs_dt = None
         self.nb_analog_frames = None
@@ -73,7 +77,7 @@ class ExperimentalData:
         self.analogs_time_vector = None
 
         # Extract data from the c3d file
-        print(f"Reading experimental data from file {self.c3d_file_name} ...")
+        print(f"Reading experimental data from file {self.c3d_full_file_path} ...")
         self.perform_initial_treatment()
         self.extract_gait_parameters()
         if animate_c3d_flag:
@@ -90,7 +94,6 @@ class ExperimentalData:
                 for m in self.model_creator.biorbd_model.markerNames()
                 if m.to_string() not in self.markers_to_ignore
             ]
-            # model_muscle_names = [m.to_string() for m in self.model_creator.biorbd_model.muscleNames()]
 
         def sort_markers():
             self.c3d = ezc3d.c3d(self.c3d_full_file_path, extract_forceplat_data=True)
@@ -136,14 +139,11 @@ class ExperimentalData:
             self.nb_analog_frames = analogs.shape[2]
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
-
-            print(analog_names)
-            emg_sorted = np.zeros((len(model_muscle_names), self.nb_analog_frames))
-            for i_muscle, name in enumerate(model_muscle_names):
-                muscle_idx = analog_names.index(name)
-                emg_sorted[i_muscle, :] = analogs[muscle_idx, :]
-            self.emg_sorted = emg_sorted
-            return
+            self.analog_names = [name for name in self.c3d["parameters"]["ANALOG"]["LABELS"]["value"] if name not in self.analogs_to_ignore]
+            analogs_indices = [
+                i for i, name in enumerate(self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]) if name not in self.analogs_to_ignore
+            ]
+            self.analogs_sorted = analogs[0, analogs_indices, :]
 
         def extract_force_platform_data():
             """
