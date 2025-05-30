@@ -1,3 +1,4 @@
+import os
 import ezc3d
 import numpy as np
 
@@ -47,8 +48,9 @@ class ExperimentalData:
         self.force_threshold = 15  # N
 
         # Initial attributes
+        parent_path = os.path.dirname(os.path.abspath(__file__))
         self.c3d_file_name = c3d_file_name
-        self.c3d_full_file_path = "../data/" + c3d_file_name
+        self.c3d_full_file_path = parent_path + "/data/" + c3d_file_name
         self.model_creator = model_creator
         self.markers_to_ignore = markers_to_ignore
         self.result_folder = result_folder
@@ -135,12 +137,12 @@ class ExperimentalData:
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
 
-            # print(analog_names)
-            # emg_sorted = np.zeros((len(model_muscle_names), self.nb_analog_frames))
-            # for i_muscle, name in enumerate(model_muscle_names):
-            #     muscle_idx = analog_names.index(name)
-            #     emg_sorted[i_muscle, :] = analogs[muscle_idx, :]
-            # self.emg_sorted = emg_sorted
+            print(analog_names)
+            emg_sorted = np.zeros((len(model_muscle_names), self.nb_analog_frames))
+            for i_muscle, name in enumerate(model_muscle_names):
+                muscle_idx = analog_names.index(name)
+                emg_sorted[i_muscle, :] = analogs[muscle_idx, :]
+            self.emg_sorted = emg_sorted
             return
 
         def extract_force_platform_data():

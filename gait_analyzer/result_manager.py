@@ -56,7 +56,11 @@ class ResultManager:
         self.optimal_estimator = None
 
     def create_model(
-        self, osim_model_type, functional_trials_path: str, skip_if_existing: bool, animate_model_flag: bool = False
+            self,
+            osim_model_type,
+            functional_trials_path: str,
+            skip_if_existing: bool,
+            animate_model_flag: bool = False
     ):
         """
         Create and add the biorbd model to the ResultManager
