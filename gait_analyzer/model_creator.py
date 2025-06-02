@@ -20,7 +20,7 @@ from biobuddy import (
     Score,
     Sara,
     Translations,
-    Rotations
+    Rotations,
 )
 from gait_analyzer.subject import Subject
 
@@ -386,7 +386,14 @@ class ModelCreator:
         bool
             If the model already exists
         """
-        result_file_full_path = self.models_result_folder + "/" + self.osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".pkl"
+        result_file_full_path = (
+            self.models_result_folder
+            + "/"
+            + self.osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".pkl"
+        )
         if os.path.exists(result_file_full_path):
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
@@ -449,7 +456,6 @@ class ModelCreator:
                 abs_path = os.path.abspath(self.functional_trials_path)
                 raise RuntimeError(f"The functional trial for {trial_name} was not found in the directory {abs_path}.")
 
-
         # Hip Right
         joint_center_tool.add(
             Score(
@@ -458,8 +464,8 @@ class ModelCreator:
                 child_name="femur_r",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
                 child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-                first_frame = 500,
-                last_frame = -500,
+                first_frame=500,
+                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -654,7 +660,9 @@ class ModelCreator:
 
                 for name in analog_names:
                     if mvc.endswith(name + ".c3d"):
-                        emg = Analogs.from_c3d(os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name])
+                        emg = Analogs.from_c3d(
+                            os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
+                        )
                         emg_processed = (
                             # emg.interpolate_na(dim="time", method="linear")
                             emg.meca.interpolate_missing_data()
@@ -669,13 +677,15 @@ class ModelCreator:
 
         if plot_emg_flag:
             import matplotlib.pyplot as plt
+
             fig, axs = plt.subplots(len(self.mvc_values.keys()), 1, figsize=(10, 19))
             for i_ax, emg_name in enumerate(self.mvc_values.keys()):
-                axs[i_ax].plot(emg_values[emg_name], '-r')
+                axs[i_ax].plot(emg_values[emg_name], "-r")
                 axs[i_ax].plot(
                     np.array([0, len(emg_values[emg_name])]),
                     np.array([self.mvc_values[emg_name], self.mvc_values[emg_name]]),
-                    "k--")
+                    "k--",
+                )
                 axs[i_ax].set_ylabel(emg_name)
             plt.savefig("mvc_emg.png")
             # plt.show()
@@ -684,7 +694,14 @@ class ModelCreator:
         """
         Save the model building conditions.
         """
-        result_file_full_path = self.models_result_folder + "/" + self.osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".pkl"
+        result_file_full_path = (
+            self.models_result_folder
+            + "/"
+            + self.osim_model_type.osim_model_name
+            + "_"
+            + self.subject.subject_name
+            + ".pkl"
+        )
         with open(result_file_full_path, "wb") as file:
             outputs = self.outputs()
             outputs["biorbd_model"] = None  # Remove the biorbd model from the outputs because it is not picklable

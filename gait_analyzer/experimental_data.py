@@ -137,7 +137,11 @@ class ExperimentalData:
             self.nb_analog_frames = analogs.shape[2]
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
-            self.analog_names = [name for name in self.c3d["parameters"]["ANALOG"]["LABELS"]["value"] if name not in self.analogs_to_ignore]
+            self.analog_names = [
+                name
+                for name in self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]
+                if name not in self.analogs_to_ignore
+            ]
 
             self.emg_units = 1
             if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
@@ -146,7 +150,9 @@ class ExperimentalData:
             # Make sure all MVC are declared
             for analog_name in self.analog_names:
                 if analog_name not in self.model_creator.mvc_values.keys():
-                    raise RuntimeError(f"There was not MVC trial for muscle {analog_name}, available muscles are {self.model_creator.mvc_values.keys()}. Please check that the MVC trials are correctly named and placed in the folder {self.model_creator.mvc_trials_path}.")
+                    raise RuntimeError(
+                        f"There was not MVC trial for muscle {analog_name}, available muscles are {self.model_creator.mvc_values.keys()}. Please check that the MVC trials are correctly named and placed in the folder {self.model_creator.mvc_trials_path}."
+                    )
 
             # Process the EMG signals
             emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
@@ -160,8 +166,12 @@ class ExperimentalData:
             ) * self.emg_units
             normalized_emg = np.zeros((len(self.analog_names), self.nb_analog_frames))
             for i_muscle, muscle_name in enumerate(self.analog_names):
-                normalized_emg[i_muscle, :] = np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
-                normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = 0  # There are still small negative values after meca.abs()
+                normalized_emg[i_muscle, :] = (
+                    np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
+                )
+                normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = (
+                    0  # There are still small negative values after meca.abs()
+                )
             self.normalized_emg = normalized_emg
 
             # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here

@@ -56,13 +56,13 @@ class ResultManager:
         self.optimal_estimator = None
 
     def create_model(
-            self,
-            osim_model_type,
-            functional_trials_path: str,
-            mvc_trials_path: str,
-            skip_if_existing: bool,
-            animate_model_flag: bool = False,
-            vtp_geometry_path: str = "../../Geometry_cleaned",
+        self,
+        osim_model_type,
+        functional_trials_path: str,
+        mvc_trials_path: str,
+        skip_if_existing: bool,
+        animate_model_flag: bool = False,
+        vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
         """
         Create and add the biorbd model to the ResultManager
@@ -86,11 +86,11 @@ class ResultManager:
         )
 
     def add_experimental_data(
-            self,
-            c3d_file_name: str,
-            markers_to_ignore: list[str] = [],
-            analogs_to_ignore: list[str] = [],
-            animate_c3d_flag: bool = False
+        self,
+        c3d_file_name: str,
+        markers_to_ignore: list[str] = [],
+        analogs_to_ignore: list[str] = [],
+        animate_c3d_flag: bool = False,
     ):
 
         # Checks

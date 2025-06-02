@@ -169,7 +169,10 @@ class AnalysisPerformer:
             print("Copying the Geometry .vtp files to the folder examples/results/Geometry/")
             os.makedirs(parent_path + "/examples/results/Geometry/")
             for file in os.listdir(parent_path + "/models/OpenSim_models/Geometry/"):
-                shutil.copyfile(parent_path + f"/models/OpenSim_models/Geometry/{file}", parent_path + f"/examples/results/Geometry/{file}")
+                shutil.copyfile(
+                    parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                    parent_path + f"/examples/results/Geometry/{file}",
+                )
         else:
             # If the folder exists, check if the files are the same size (if not replace the file)
             for file in os.listdir(parent_path + "/models/OpenSim_models/Geometry/"):
@@ -179,10 +182,14 @@ class AnalysisPerformer:
                     ):
                         print(f"Copying {file}.vtp to the folder examples/results/Geometry/")
                         shutil.copyfile(
-                            parent_path + f"/models/OpenSim_models/Geometry/{file}", parent_path + f"/examples/results/Geometry/{file}"
+                            parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                            parent_path + f"/examples/results/Geometry/{file}",
                         )
                 else:
-                    shutil.copyfile(parent_path + f"/models/OpenSim_models/Geometry/{file}", parent_path + f"/examples/results/Geometry/{file}")
+                    shutil.copyfile(
+                        parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                        parent_path + f"/examples/results/Geometry/{file}",
+                    )
 
     def run_analysis(self):
         """
