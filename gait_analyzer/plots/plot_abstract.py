@@ -54,8 +54,8 @@ class PlotAbstract:
                 raise ValueError(
                     "unique_event_to_split must be a dict with keys event_index_type (weather to express the index in marker indices of analog indices), start a callable giving the first frame of the cycle, and stop a callable giving the last frame of the cycle."
                 )
-        if not (callable(unique_event_to_split["start"]) and callable(unique_event_to_split["stop"])):
-            raise ValueError("unique_event_to_split must be a dict of callables")
+            if not (callable(unique_event_to_split["start"]) and callable(unique_event_to_split["stop"])):
+                raise ValueError("unique_event_to_split must be a dict of callables")
 
         # Initial attributes
         self.result_folder = result_folder
@@ -96,6 +96,7 @@ class PlotAbstract:
     def get_splitted_cycles(self, current_file: str, partial_output_file_name: str):
         this_cycles_data = None
         condition_name = None
+        subject_name = None
         if current_file.endswith("results.pkl"):
             with open(current_file, "rb") as f:
                 data = pickle.load(f)
@@ -106,7 +107,10 @@ class PlotAbstract:
                 raise NotImplementedError(
                     "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers."
                 )
-            if self.groups_to_compare is not None and subject_name not in self.groups_to_compare:
+            all_subjects = []
+            for group in self.groups_to_compare:
+                all_subjects += self.groups_to_compare[group]
+            if self.groups_to_compare is not None and subject_name not in all_subjects:
                 raise ValueError(
                     f"Subject {subject_name} not found in groups_to_compare. "
                     f"Please check the groups_to_compare dictionary."
@@ -160,23 +164,29 @@ class PlotAbstract:
 
         # TODO: ThomasAout/FloEthv -> please decide if you want to compare mean of all participants
         # For now all cycles are added, so the number of cycles is not accounted for.
-        cycles_data = {cond: [] for cond in self.conditions_to_compare}
+        if self.groups_to_compare is not None:
+            cycles_data = {f"{group}_{self.conditions_to_compare[0]}": [] for group in self.groups_to_compare}
+        else:
+            cycles_data = {cond: [] for cond in self.conditions_to_compare}
         # Load the treated data to plot
         for result_file in os.listdir(self.result_folder):
             if os.path.isdir(os.path.join(self.result_folder, result_file)):
+                if result_file in ["Geometry", "Geometry_cleaned", "hide_and_seek"]:
+                    continue
                 for file_in_sub_folder in os.listdir(os.path.join(self.result_folder, result_file)):
                     file_in_sub_folder = os.path.join(self.result_folder, result_file, file_in_sub_folder)
                     partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
-                    this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
-                        current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
-                    )
-                    if this_cycles_data is not None:
-                        if self.groups_to_compare is not None:
-                            for group in self.groups_to_compare:
-                                if subject_name in self.groups_to_compare[group]:
-                                    cycles_data[f"{group}_{condition_name}"] += this_cycles_data
-                        else:
-                            cycles_data[condition_name] += this_cycles_data
+                    if file_in_sub_folder.endswith("results.pkl"):
+                        this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
+                            current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
+                        )
+                        if this_cycles_data is not None:
+                            if self.groups_to_compare is not None:
+                                for group in self.groups_to_compare:
+                                    if subject_name in self.groups_to_compare[group]:
+                                        cycles_data[f"{group}_{condition_name}"] += this_cycles_data
+                            else:
+                                cycles_data[condition_name] += this_cycles_data
 
             else:
                 if result_file.endswith("results.pkl"):
@@ -190,7 +200,12 @@ class PlotAbstract:
 
     def draw_plot(self):
         # TODO: Charbie -> combine plots in one figure (Q and Power for example side by side)
-        n_rows = len(self.plot_idx) // self.n_cols
+        if self.plot_idx is not None and self.n_cols is not None:
+            n_rows = len(self.plot_idx) // self.n_cols
+        else:
+            first_key = list(self.cycles_data.keys())[0]
+            n_rows = self.cycles_data[first_key].shape[0]
+            self.n_cols = 1
         fig, axs = plt.subplots(n_rows, self.n_cols, figsize=(self.fig_width, 10))
         n_data_to_plot = len(self.cycles_data)
         colors = [colormaps["magma"](i / n_data_to_plot) for i in range(n_data_to_plot)]
@@ -227,7 +242,10 @@ class PlotAbstract:
                 else:
                     ax.plot(normalized_time, mean_data[i_ax, :], label=key, color=colors[i_condition])
                 this_unit_str = unit_str if isinstance(unit_str, str) else unit_str[i_ax]
-                ax.set_ylabel(f"{self.plot_labels[i_ax]} " + this_unit_str)
+                if self.plot_labels is not None:
+                    ax.set_ylabel(f"{self.plot_labels[i_ax]} " + this_unit_str)
+                else:
+                    ax.set_ylabel(f"Data {i_ax} " + this_unit_str)
             axs[-1].set_xlabel("Normalized time [%]")
 
         axs[0].legend(lines_list, labels_list, bbox_to_anchor=(0.5, 1.6), loc="upper center")
