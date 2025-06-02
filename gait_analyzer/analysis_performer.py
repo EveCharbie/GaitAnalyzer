@@ -6,6 +6,8 @@ from datetime import date
 import subprocess
 import json
 import shutil
+import ezc3d
+import numpy as np
 
 from gait_analyzer.subject import Subject
 
@@ -212,6 +214,15 @@ class AnalysisPerformer:
                 raise FileNotFoundError(
                     f"Please put the static trial file here {os.path.abspath(subject_data_folder)} and name it [...]_static.c3d"
                 )
+
+            # Define mass with static trial
+            if subject.subject_mass is None:
+                static_c3d = ezc3d.c3d(static_trial_full_file_path, extract_forceplat_data=True)
+                summed_force = 0
+                for i_platform in range(len(static_c3d["data"]["platform"])):
+                    summed_force += static_c3d["data"]["platform"][i_platform]["force"]
+                # Réunion Island : ~9.782
+                subject.subject_mass = np.nanmedian(np.linalg.norm(summed_force, axis=0)) / 9.8
 
             # Define subject specific paths
             result_folder = f"{self.result_folder}/{subject_name}"
