@@ -227,23 +227,21 @@ class InverseDynamicsPerformer:
             self.experimental_data.markers_time_vector,
             list(self.kinematics_reconstructor.frame_range),
         )
-        corners_1 = np.tile(self.experimental_data.platform_corners[0], (len(force_plate_idx), 1))
-        corners_2 = np.tile(self.experimental_data.platform_corners[1], (len(force_plate_idx), 1))
-        viz.add_force_plate(num=1, corners=corners_1)
-        viz.add_force_plate(num=2, corners=corners_2)
+        viz.add_force_plate(num=0, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(
-            num=1,
+            num=0,
             force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
             force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, force_plate_idx].T,
         )
         viz.add_force_data(
-            num=2,
+            num=1,
             force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, force_plate_idx].T,
             force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, force_plate_idx].T,
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers, show_tracked_marker_labels=False)
 
         # Add the reintegration of the dynamics
         viz.add_animated_model(model, self.q_reintegrated)
