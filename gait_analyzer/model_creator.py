@@ -291,6 +291,7 @@ class ModelCreator:
         subject: Subject,
         static_trial: str,
         functional_trials_path: str,
+        mvc_trials_path: str,
         models_result_folder: str,
         osim_model_type,
         skip_if_existing: bool,
@@ -307,6 +308,8 @@ class ModelCreator:
             raise ValueError("functional_trials_path must be a string.")
         if not os.path.exists(functional_trials_path):
             raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
+        if not os.path.exists(mvc_trials_path):
+            raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):
@@ -321,6 +324,7 @@ class ModelCreator:
         self.osim_model_type = osim_model_type
         self.static_trial = static_trial
         self.functional_trials_path = functional_trials_path
+        self.mvc_trials_path = mvc_trials_path
         self.models_result_folder = models_result_folder
 
         # Extended attributes
@@ -337,21 +341,45 @@ class ModelCreator:
         self.model = None  # This is the object that will be modified to be personalized to the subject
         self.marker_weights = None  # This will be set later by the scale tool
         self.new_model_created = False
+        self.mvc_values = None  # This will be set later by the get_mvc_values method
 
         # Create the models
-        if not (skip_if_existing and os.path.isfile(self.biorbd_model_full_path)):
+        if skip_if_existing and self.check_if_existing():
+            print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
+            self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
+        else:
             print(f"The model {self.biorbd_model_full_path} is being created...")
             self.read_osim_model()
             self.scale_model()
             self.osim_model_type.perform_modifications(self.model, self.static_trial)
-            self.relocate_joint_centers_functionally()
+            self.relocate_joint_centers_functionally(animate_model_flag)
             self.create_biorbd_model()
-        else:
-            print(f"The model {self.biorbd_model_full_path} already exists, so it is being used.")
-        self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
+            self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
+            self.get_mvc_values(plot_emg_flag=False)
+            self.save_model()
 
         if animate_model_flag:
             self.animate_model()
+
+    def check_if_existing(self):
+        """
+        Check if the model already exists.
+        If it exists, load the model and the mvc_values.
+        .
+        Returns
+        -------
+        bool
+            If the model already exists
+        """
+        result_file_full_path = self.models_result_folder + "/" + self.osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".pkl"
+        if os.path.exists(result_file_full_path):
+            with open(result_file_full_path, "rb") as file:
+                data = pickle.load(file)
+                self.new_model_created = False
+                self.mvc_values = data["mvc_values"]
+            return True
+        else:
+            return False
 
     def read_osim_model(self):
         self.model = BiomechanicalModelReal().from_osim(
@@ -375,9 +403,9 @@ class ModelCreator:
         )
         self.marker_weights = scale_tool.marker_weights
 
-    def relocate_joint_centers_functionally(self):
+    def relocate_joint_centers_functionally(self, animate_model_flag: bool = True):
 
-        animate_reconstruction = True
+        animate_reconstruction = animate_model_flag
 
         # Move the model's joint centers
         joint_center_tool = JointCenterTool(self.model, animate_reconstruction=animate_reconstruction)
@@ -438,7 +466,7 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot
+        # # TODO: add one more marker on the foot ?
         # # Ankle right
         # joint_center_tool.add(
         #     Score(
@@ -482,7 +510,7 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot
+        # # TODO: add one more marker on the foot ?
         # # Ankle Left
         # joint_center_tool.add(
         #     Score(
@@ -595,12 +623,66 @@ class ModelCreator:
         viz.add_animated_model(model, np.zeros((model.nb_q, 10)))
         viz.rerun_by_frame("Kinematics reconstruction")
 
+    def get_mvc_values(self, plot_emg_flag: bool = False):
+        """
+        Extract the maximal EMG signal as the max of the filtered EMG signal for each muscle during the MVC trial.
+        """
+        mvc_values = {}
+        emg_values = {}
+        for mvc in os.listdir(self.mvc_trials_path):
+            if mvc.endswith(".c3d"):
+                mvc_trial = ezc3d.c3d(os.path.join(self.mvc_trials_path, mvc))
+                analog_names = [name for name in mvc_trial["parameters"]["ANALOG"]["LABELS"]["value"]]
+                emg_units = 1
+                if mvc_trial["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
+                    emg_units = 1_000_000  # Convert to microV
+
+                for name in analog_names:
+                    if mvc.endswith(name + ".c3d"):
+                        emg = Analogs.from_c3d(os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name])
+                        emg_processed = (
+                            # emg.interpolate_na(dim="time", method="linear")
+                            emg.meca.interpolate_missing_data()
+                            .meca.band_pass(order=2, cutoff=[10, 425])
+                            .meca.center()
+                            .meca.abs()
+                            .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
+                        ) * emg_units
+                        emg_values[name] = np.array(emg_processed)
+                        mvc_values[name] = float(np.max(emg_processed))
+        self.mvc_values = mvc_values
+
+        if plot_emg_flag:
+            import matplotlib.pyplot as plt
+            fig, axs = plt.subplots(len(self.mvc_values.keys()), 1, figsize=(10, 19))
+            for i_ax, emg_name in enumerate(self.mvc_values.keys()):
+                axs[i_ax].plot(emg_values[emg_name], '-r')
+                axs[i_ax].plot(
+                    np.array([0, len(emg_values[emg_name])]),
+                    np.array([self.mvc_values[emg_name], self.mvc_values[emg_name]]),
+                    "k--")
+                axs[i_ax].set_ylabel(emg_name)
+            plt.savefig("mvc_emg.png")
+            # plt.show()
+
+    def save_model(self):
+        """
+        Save the model building conditions.
+        """
+        result_file_full_path = self.models_result_folder + "/" + self.osim_model_type.osim_model_name + "_" + self.subject.subject_name + ".pkl"
+        with open(result_file_full_path, "wb") as file:
+            outputs = self.outputs()
+            outputs["biorbd_model"] = None  # Remove the biorbd model from the outputs because it is not picklable
+            pickle.dump(outputs, file)
+
     def inputs(self):
         return {
             "subject_name": self.subject.subject_name,
             "subject_mass": self.subject.subject_mass,
             "osim_model_type": self.osim_model_type,
             "static_trial": self.static_trial,
+            "functional_trials_path": self.functional_trials_path,
+            "mvc_trials_path": self.mvc_trials_path,
         }
 
     def outputs(self):
@@ -608,4 +690,7 @@ class ModelCreator:
             "biorbd_model_full_path": self.biorbd_model_full_path,
             "biorbd_model": self.biorbd_model,
             "new_model_created": self.new_model_created,
+            "functional_trials_path": self.functional_trials_path,
+            "mvc_trials_path": self.mvc_trials_path,
+            "mvc_values": self.mvc_values,
         }

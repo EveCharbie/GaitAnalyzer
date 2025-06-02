@@ -1,6 +1,7 @@
 import os
 import ezc3d
 import numpy as np
+from pyomeca import Analogs
 
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.operator import Operator
@@ -66,7 +67,7 @@ class ExperimentalData:
         self.nb_marker_frames = None
         self.markers_sorted = None
         self.analogs_sampling_frequency = None
-        self.analogs_sorted = None
+        self.normalized_emg = None
         self.analog_names = None
         self.platform_corners = None
         self.analogs_dt = None
@@ -105,10 +106,6 @@ class ExperimentalData:
                 m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore
             ]
 
-            # TODO: FloEthv -> When this study is completed, please remove this hacky fix
-            if "STER" in exp_marker_names:
-                exp_marker_names[exp_marker_names.index("STER")] = "STR"
-
             self.marker_units = 1
             if self.c3d["parameters"]["POINT"]["UNITS"]["value"][0] == "mm":
                 self.marker_units = 0.001
@@ -131,7 +128,8 @@ class ExperimentalData:
 
         def sort_analogs():
             """
-            TODO: -> treatment of the EMG signal to remove stimulation artifacts here
+            Sort the analogs data from the c3d file.
+            Extract the EMG signals, filter, and normalize (using MVC).
             """
 
             # Get an array of the experimental muscle activity
@@ -140,10 +138,33 @@ class ExperimentalData:
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
             self.analog_names = [name for name in self.c3d["parameters"]["ANALOG"]["LABELS"]["value"] if name not in self.analogs_to_ignore]
-            analogs_indices = [
-                i for i, name in enumerate(self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]) if name not in self.analogs_to_ignore
-            ]
-            self.analogs_sorted = analogs[0, analogs_indices, :]
+
+            self.emg_units = 1
+            if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
+                self.emg_units = 1_000_000  # Convert to microV
+
+            # Make sure all MVC are declared
+            for analog_name in self.analog_names:
+                if analog_name not in self.model_creator.mvc_values.keys():
+                    raise RuntimeError(f"There was not MVC trial for muscle {analog_name}, available muscles are {self.model_creator.mvc_values.keys()}. Please check that the MVC trials are correctly named and placed in the folder {self.model_creator.mvc_trials_path}.")
+
+            # Process the EMG signals
+            emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
+            emg_processed = (
+                # emg.interpolate_na(dim="time", method="linear")
+                emg.meca.interpolate_missing_data()
+                .meca.band_pass(order=2, cutoff=[10, 425])
+                .meca.center()
+                .meca.abs()
+                .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
+            ) * self.emg_units
+            normalized_emg = np.zeros((len(self.analog_names), self.nb_analog_frames))
+            for i_muscle, muscle_name in enumerate(self.analog_names):
+                normalized_emg[i_muscle, :] = np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
+                normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = 0  # There are still small negative values after meca.abs()
+            self.normalized_emg = normalized_emg
+
+            # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here
 
         def extract_force_platform_data():
             """
@@ -278,7 +299,7 @@ class ExperimentalData:
             from pyorerun import BiorbdModel, PhaseRerun
         except:
             raise RuntimeError("To animate the .c3d, you first need to install Pyorerun.")
-        raise NotImplementedError("Aniomation of c3d files is not implemented yet.")
+        raise NotImplementedError("Animation of c3d files is not implemented yet.")
         pass
 
     def extract_gait_parameters(self):
@@ -307,4 +328,5 @@ class ExperimentalData:
             "f_ext_sorted_filtered": self.f_ext_sorted_filtered,
             "markers_time_vector": self.markers_time_vector,
             "analogs_time_vector": self.analogs_time_vector,
+            "normalized_emg": self.normalized_emg,
         }

@@ -47,6 +47,9 @@ class PlotLegData(PlotAbstract):
         if self.plot_type == PlotType.GRF:
             plot_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8]
             plot_labels = ["CoPx", "CoPy", "CoPz", "Mx", "My", "Mz", "Fx", "Fy", "Fz"]
+        elif self.plot_type == PlotType.EMG:
+            plot_idx = None
+            plot_labels = None
         else:
             if self.leg_to_plot == LegToPlot.RIGHT:
                 plot_idx = [20, 3, 6, 9, 10]

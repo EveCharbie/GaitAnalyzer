@@ -257,7 +257,7 @@ class AnalysisPerformer:
                     continue
 
                 # Actually perform the analysis
-                print("Analyzing ", subject_name, " : ", data_file)
+                print("\n\n\nAnalyzing ", subject_name, " : ***** ", data_file, " *****")
                 results = self.analysis_to_perform(
                     subject,
                     self.cycles_to_analyze,
