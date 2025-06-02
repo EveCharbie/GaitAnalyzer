@@ -207,6 +207,7 @@ class KinematicsReconstructor:
         # Extended attributes
         self.frame_range = None
         self.markers = None
+        self.marker_residuals = None
         self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_full_path)
         self.t = None
         self.q = None
@@ -321,6 +322,8 @@ class KinematicsReconstructor:
             reconstruction_type = [self.reconstruction_type]
         else:
             reconstruction_type = self.reconstruction_type
+
+        residuals = None
         for recons_method in reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
@@ -356,6 +359,7 @@ class KinematicsReconstructor:
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
         self.markers = markers[:, :, self.frame_range]
+        self.marker_residuals = residuals[:, self.frame_range]
 
     def filter_kinematics(self):
         """
@@ -446,6 +450,8 @@ class KinematicsReconstructor:
         model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
         model.options.show_gravity = True
+        model.options.show_marker_labels = False
+        model.options.show_center_of_mass_labels = False
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
@@ -494,6 +500,7 @@ class KinematicsReconstructor:
             "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,
             "markers": self.markers,
+            "marker_residuals": self.marker_residuals,
             "t": self.t,
             "q": self.q,
             "q_filtered": self.q_filtered,
