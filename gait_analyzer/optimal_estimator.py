@@ -456,10 +456,10 @@ class OptimalEstimator:
             )
 
             # Add the kinematics
-            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers)
+            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers, show_tracked_marker_labels=False)
 
             # Play
-            viz.rerun("OCP initial guess from experimental data")
+            viz.rerun_by_frame("OCP initial guess from experimental data")
 
     def prepare_ocp_fext(self):
         """
@@ -1154,10 +1154,10 @@ class OptimalEstimator:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_opt.T, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_opt.T, tracked_markers=markers, show_tracked_marker_labels=False)
 
         # Play
-        viz.rerun("OCP optimal solution")
+        viz.rerun_by_frame("OCP optimal solution")
 
     def extract_muscle_forces(self):
         # TODO: Charbie -> Extract muscle forces from the solution

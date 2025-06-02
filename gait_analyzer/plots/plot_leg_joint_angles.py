@@ -9,19 +9,24 @@ class PlotLegData(PlotAbstract):
         leg_to_plot: LegToPlot,
         plot_type: PlotType,
         conditions_to_compare: list[str],
-        unique_event_to_split: dict = None,
+        groups_to_compare: dict[str, list[str]] | None = None,
+        unique_event_to_split: dict | None = None,
     ):
         # Checks
         if not isinstance(plot_type, PlotType):
             raise ValueError("plot_type must be PlotType type")
+        if len(conditions_to_compare) > 1 and groups_to_compare is not None:
+            raise NotImplementedError(f"For now, it is only possible to "
+                                      f"1) compare groups on one condition at a time or"
+                                      f"2) compare conditions on one group at a time.")
 
         # Initial attributes
         self.plot_type = plot_type
-        self.event_index_type = EventIndexType.ANALOGS if self.plot_type == PlotType.GRF else EventIndexType.MARKERS
+        self.event_index_type = EventIndexType.ANALOGS if self.plot_type in [PlotType.GRF, PlotType.EMG] else EventIndexType.MARKERS
 
         # Initialize the parent class (PlotAbstract)
         super(PlotLegData, self).__init__(
-            result_folder, leg_to_plot, conditions_to_compare, self.get_data_to_split, unique_event_to_split
+            result_folder, leg_to_plot, conditions_to_compare, groups_to_compare, self.get_data_to_split, unique_event_to_split
         )
 
         # Prepare the plot

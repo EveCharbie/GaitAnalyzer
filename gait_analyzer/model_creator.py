@@ -1,7 +1,10 @@
 import os
+import pickle
 from copy import deepcopy
 import numpy as np
 import biorbd
+import ezc3d
+from pyomeca import Analogs
 
 from biobuddy import (
     BiomechanicalModelReal,
@@ -16,6 +19,8 @@ from biobuddy import (
     JointCenterTool,
     Score,
     Sara,
+    Translations,
+    Rotations
 )
 from gait_analyzer.subject import Subject
 
@@ -147,7 +152,7 @@ class OsimModels:
                     [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
                 ],
                 "toes_r_rotation_transform": [
-                    [-50 * np.pi / 180, 60 * np.pi / 180],  # Toes Flexion
+                    [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
                 ],
                 "femur_l_rotation_transform": [
                     [-40 * np.pi / 180, 120 * np.pi / 180],
@@ -164,7 +169,7 @@ class OsimModels:
                     [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
                 ],
                 "toes_l_rotation_transform": [
-                    [-50 * np.pi / 180, 60 * np.pi / 180],  # Toes Flexion
+                    [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
                 ],
                 "torso_rotation_transform": [
                     [-90 * np.pi / 180, 45 * np.pi / 180],
@@ -215,6 +220,10 @@ class OsimModels:
             }
 
         @property
+        def segments_to_fix(self):
+            return []
+
+        @property
         def markers_to_add(self):
             return {
                 "femur_r": ["R_fem_up", "R_fem_downF", "R_fem_downB"],
@@ -230,9 +239,10 @@ class OsimModels:
         def perform_modifications(self, model, static_trial):
             """
             1. Remove the markers that are not needed (markers_to_ignore)
-            2. Change the ranges of motion for the segments (ranges_to_adjust)
-            3. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
-            4. Add the marker clusters (markers_to_add)
+            2. Remove the degrees of freedom that are not needed (segments_to_fix)
+            3. Change the ranges of motion for the segments (ranges_to_adjust)
+            4. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
+            5. Add the marker clusters (markers_to_add)
             """
 
             # Modify segments
@@ -245,6 +255,11 @@ class OsimModels:
                     min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
                     max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
                     segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
+                if segment in self.segments_to_fix:
+                    segment.translations = Translations.NONE
+                    segment.rotations = Rotations.NONE
+                    segment.q_ranges = None
+                    segment.qdot_ranges = None
 
             # Modify muscles
             muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]

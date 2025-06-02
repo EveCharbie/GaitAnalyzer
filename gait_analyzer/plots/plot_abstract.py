@@ -25,6 +25,7 @@ class PlotAbstract:
         result_folder: str,
         leg_to_plot: LegToPlot,
         conditions_to_compare: list[str],
+        groups_to_compare: dict[str, list[str]] | None,
         get_data_to_split: callable,
         unique_event_to_split: dict = None,
     ):
@@ -39,6 +40,11 @@ class PlotAbstract:
             raise ValueError("conditions_to_compare must be a list")
         if not all(isinstance(cond, str) for cond in conditions_to_compare):
             raise ValueError("conditions_to_compare must be a list of strings")
+        if groups_to_compare is not None and not isinstance(groups_to_compare, dict):
+            raise ValueError("groups_to_compare must be a list")
+        for group_name in groups_to_compare:
+            if not all(isinstance(subject, str) for subject in groups_to_compare[group_name]):
+                raise ValueError("groups_to_compare must be a dict of lists of strings")
         if not callable(get_data_to_split):
             raise ValueError("get_data_to_split must be a callable")
         if unique_event_to_split is not None:
@@ -54,6 +60,7 @@ class PlotAbstract:
         # Initial attributes
         self.result_folder = result_folder
         self.conditions_to_compare = conditions_to_compare
+        self.groups_to_compare = groups_to_compare
         self.leg_to_plot = leg_to_plot
         self.get_data_to_split = get_data_to_split
         self.unique_event_to_split = unique_event_to_split
@@ -99,7 +106,11 @@ class PlotAbstract:
                 raise NotImplementedError(
                     "Plotting the dominant leg is not implemented yet. If you encounter this error, please notify the developers."
                 )
-
+            if self.groups_to_compare is not None and subject_name not in self.groups_to_compare:
+                raise ValueError(
+                    f"Subject {subject_name} not found in groups_to_compare. "
+                    f"Please check the groups_to_compare dictionary."
+                )
             if condition_name in self.conditions_to_compare:
                 if isinstance(data["events"], list):
                     cycle_start = self.unique_event_to_split["start"](data)
@@ -140,7 +151,7 @@ class PlotAbstract:
                     this_cycles_data = split_cycles(
                         data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
                     )
-        return this_cycles_data, condition_name
+        return this_cycles_data, condition_name, subject_name
 
     def prepare_cycles(self):
         """
@@ -148,6 +159,7 @@ class PlotAbstract:
         """
 
         # TODO: ThomasAout/FloEthv -> please decide if you want to compare mean of all participants
+        # For now all cycles are added, so the number of cycles is not accounted for.
         cycles_data = {cond: [] for cond in self.conditions_to_compare}
         # Load the treated data to plot
         for result_file in os.listdir(self.result_folder):
@@ -155,14 +167,20 @@ class PlotAbstract:
                 for file_in_sub_folder in os.listdir(os.path.join(self.result_folder, result_file)):
                     file_in_sub_folder = os.path.join(self.result_folder, result_file, file_in_sub_folder)
                     partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
-                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                    this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
                         current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
                     )
                     if this_cycles_data is not None:
-                        cycles_data[condition_name] += this_cycles_data
+                        if self.groups_to_compare is not None:
+                            for group in self.groups_to_compare:
+                                if subject_name in self.groups_to_compare[group]:
+                                    cycles_data[f"{group}_{condition_name}"] += this_cycles_data
+                        else:
+                            cycles_data[condition_name] += this_cycles_data
+
             else:
                 if result_file.endswith("results.pkl"):
-                    this_cycles_data, condition_name = self.get_splitted_cycles(
+                    this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
                         current_file=result_file, partial_output_file_name=result_file
                     )
                     if this_cycles_data is not None:
