@@ -106,7 +106,7 @@ def get_unit_names(plot_type: PlotType) -> str | list[str]:
             "[N/Body weight]",
         ]
     elif plot_type == PlotType.EMG:
-        unit_str = r"[$\mhu$V]"
+        unit_str = r"[$\mu$V]"
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_str
@@ -250,6 +250,7 @@ def mean_cycles(
 
     data_dim = len(index_to_keep)
     interpolated_data_array = np.zeros((len(data), data_dim, nb_frames_interp))
+    interpolated_data_array[:] = np.nan  # Initialize with NaNs to handle missing data
     fig_data_dim = data[0].shape[0]
     for i_cycle, cycle in enumerate(data):
         if fig_data_dim != cycle.shape[0]:
@@ -258,12 +259,15 @@ def mean_cycles(
         # TODO: @ThomasAout -> How do you usually deal with the cycle length being variable ?
         x_to_interpolate_on = np.linspace(0, 1, num=nb_frames_interp)
         for i_dim, dim in enumerate(index_to_keep):
-            y_data_old = cycle[dim, :]
-            x_data = np.linspace(0, 1, num=frames_dim)
-            y_data = y_data_old[~np.isnan(y_data_old)]
-            x_data = x_data[~np.isnan(y_data_old)]
-            interpolation_object = CubicSpline(x_data, y_data)
-            interpolated_data_array[i_cycle, i_dim, :] = interpolation_object(x_to_interpolate_on)
+            if np.sum(np.isnan(cycle[dim, :])) < frames_dim / 2:
+                y_data_old = cycle[dim, :]
+                x_data = np.linspace(0, 1, num=frames_dim)
+                y_data = y_data_old[~np.isnan(y_data_old)]
+                x_data = x_data[~np.isnan(y_data_old)]
+                interpolation_object = CubicSpline(x_data, y_data)
+                interpolated_data_array[i_cycle, i_dim, :] = interpolation_object(x_to_interpolate_on)
+            else:
+                print(f"Skipped cycle {i_cycle} due to too many NaNs.")
 
     mean_data = np.nanmean(interpolated_data_array, axis=0)
     std_data = np.nanstd(interpolated_data_array, axis=0)

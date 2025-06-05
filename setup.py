@@ -7,7 +7,7 @@ setup(
     name="GaitAnalyzer",
     version=1.0,
     author="laboratoireIRISSE",
-    author_email="eve.charbonneau.1@umontreal.ca",
+    author_email="eve.charbonneau@univ-reunion.fr",
     description="A toolbox for biomechanical analysis of gait",
     long_description=long_description,
     url="https://github.com/laboratoireIRISSE/GaitAnalyzer",

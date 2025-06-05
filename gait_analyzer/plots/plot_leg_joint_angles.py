@@ -24,7 +24,7 @@ class PlotLegData(PlotAbstract):
 
         # Initial attributes
         self.plot_type = plot_type
-        self.event_index_type = (
+        event_index_type = (
             EventIndexType.ANALOGS if self.plot_type in [PlotType.GRF, PlotType.EMG] else EventIndexType.MARKERS
         )
 
@@ -36,6 +36,7 @@ class PlotLegData(PlotAbstract):
             groups_to_compare,
             self.get_data_to_split,
             unique_event_to_split,
+            event_index_type,
         )
 
         # Prepare the plot

@@ -28,6 +28,7 @@ class PlotAbstract:
         groups_to_compare: dict[str, list[str]] | None,
         get_data_to_split: callable,
         unique_event_to_split: dict = None,
+        event_index_type: EventIndexType = None,
     ):
         # Checks
         if not isinstance(result_folder, str):
@@ -56,6 +57,8 @@ class PlotAbstract:
                 )
             if not (callable(unique_event_to_split["start"]) and callable(unique_event_to_split["stop"])):
                 raise ValueError("unique_event_to_split must be a dict of callables")
+        if event_index_type is not None and not isinstance(event_index_type, EventIndexType):
+            raise ValueError("event_index_type must be an EventIndexType")
 
         # Initial attributes
         self.result_folder = result_folder
@@ -64,6 +67,7 @@ class PlotAbstract:
         self.leg_to_plot = leg_to_plot
         self.get_data_to_split = get_data_to_split
         self.unique_event_to_split = unique_event_to_split
+        self.event_index_type = event_index_type
 
         # Extended attributes
         self.cycles_data = None
@@ -72,7 +76,6 @@ class PlotAbstract:
         self.n_cols = None
         self.fig_width = None
         self.fig = None
-        self.event_index_type = None
 
         # Prepare the plot
         self.prepare_cycles()
@@ -80,7 +83,7 @@ class PlotAbstract:
     def get_event_index(self, event, cycles_to_analyze, analog_time_vector, markers_time_vector):
         if self.event_index_type == EventIndexType.ANALOGS:
             event_index = event
-        else:
+        elif self.event_index_type == EventIndexType.MARKERS:
             event_idx_markers = Operator.from_analog_frame_to_marker_frame(
                 analog_time_vector,
                 markers_time_vector,
@@ -91,6 +94,8 @@ class PlotAbstract:
             events_idx_q = np.array(event_idx_markers)[start_cycle:end_cycle]
             events_idx_q -= events_idx_q[0]
             event_index = list(events_idx_q)
+        else:
+            raise RuntimeError("The event_index_type must be either EventIndexType.ANALOGS or EventIndexType.MARKERS.")
         return event_index
 
     def get_splitted_cycles(self, current_file: str, partial_output_file_name: str):
@@ -204,7 +209,8 @@ class PlotAbstract:
             n_rows = len(self.plot_idx) // self.n_cols
         else:
             first_key = list(self.cycles_data.keys())[0]
-            n_rows = self.cycles_data[first_key].shape[0]
+            n_rows = self.cycles_data[first_key][0].shape[0]
+            self.plot_idx = list(range(n_rows))
             self.n_cols = 1
         fig, axs = plt.subplots(n_rows, self.n_cols, figsize=(self.fig_width, 10))
         n_data_to_plot = len(self.cycles_data)
