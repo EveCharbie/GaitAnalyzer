@@ -55,7 +55,15 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
 
-    def create_model(self, osim_model_type, skip_if_existing: bool, animate_model_flag: bool = False):
+    def create_model(
+        self,
+        osim_model_type,
+        functional_trials_path: str,
+        mvc_trials_path: str,
+        skip_if_existing: bool,
+        animate_model_flag: bool = False,
+        vtp_geometry_path: str = "../../Geometry_cleaned",
+    ):
         """
         Create and add the biorbd model to the ResultManager
         """
@@ -68,14 +76,21 @@ class ResultManager:
         self.model_creator = ModelCreator(
             subject=self.subject,
             static_trial=self.static_trial,
+            functional_trials_path=functional_trials_path,
+            mvc_trials_path=mvc_trials_path,
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,
             animate_model_flag=animate_model_flag,
+            vtp_geometry_path=vtp_geometry_path,
         )
 
     def add_experimental_data(
-        self, c3d_file_name: str, markers_to_ignore: list[str] = [], animate_c3d_flag: bool = False
+        self,
+        c3d_file_name: str,
+        markers_to_ignore: list[str] = [],
+        analogs_to_ignore: list[str] = [],
+        animate_c3d_flag: bool = False,
     ):
 
         # Checks
@@ -88,6 +103,7 @@ class ResultManager:
         self.experimental_data = ExperimentalData(
             c3d_file_name=c3d_file_name,
             markers_to_ignore=markers_to_ignore,
+            analogs_to_ignore=analogs_to_ignore,
             result_folder=self.result_folder,
             model_creator=self.model_creator,
             animate_c3d_flag=animate_c3d_flag,
@@ -183,7 +199,11 @@ class ResultManager:
         )
 
     def estimate_optimally(
-        self, cycle_to_analyze: int, plot_solution_flag: bool = False, animate_solution_flag: bool = False
+        self,
+        cycle_to_analyze: int,
+        plot_solution_flag: bool = False,
+        animate_solution_flag: bool = False,
+        implicit_contacts: bool = False,
     ):
 
         # Checks
@@ -206,11 +226,12 @@ class ResultManager:
         self.optimal_estimator = OptimalEstimator(
             cycle_to_analyze=cycle_to_analyze,
             subject=self.subject,
-            biorbd_model_path=self.model_creator.biorbd_model_virtual_markers_full_path,
+            biorbd_model_path=self.model_creator.biorbd_model_full_path,
             experimental_data=self.experimental_data,
             events=self.events,
             kinematics_reconstructor=self.kinematics_reconstructor,
             inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
+            implicit_contacts=implicit_contacts,
         )

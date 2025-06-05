@@ -6,6 +6,8 @@ from datetime import date
 import subprocess
 import json
 import shutil
+import ezc3d
+import numpy as np
 
 from gait_analyzer.subject import Subject
 
@@ -16,9 +18,10 @@ class AnalysisPerformer:
         analysis_to_perform: callable,
         subjects_to_analyze: list[Subject],
         cycles_to_analyze: range | None = None,
-        result_folder: str = "../results/",
+        result_folder: str = os.path.dirname(os.path.abspath(__file__)) + "/results/",
         trails_to_analyze: list[str] = None,
         skip_if_existing: bool = False,
+        **kwargs,
     ):
         """
         Initialize the AnalysisPerformer.
@@ -37,6 +40,8 @@ class AnalysisPerformer:
             The list of trails to analyze. If None, all the trails will be analyzed.
         skip_if_existing: bool
             If True, the analysis will not be performed if the results already exist.
+        **kwargs: Any
+            Any additional arguments to pass to the analysis_to_perform function
         """
 
         # Checks:
@@ -66,6 +71,7 @@ class AnalysisPerformer:
         self.result_folder = result_folder
         self.trails_to_analyze = trails_to_analyze
         self.skip_if_existing = skip_if_existing
+        self.kwargs = kwargs
 
         # Extended attributes
         self.figures_result_folder = None
@@ -158,34 +164,44 @@ class AnalysisPerformer:
         This is not a bad solution since the vtp files are needed if a user wants to open the osim model in OpenSim.
         """
         # If the folder does not exist, create it and fill it with all the geometry files
-        if not os.path.exists("../examples/results/Geometry/"):
+        parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if not os.path.exists(parent_path + "/examples/results/Geometry/"):
             print("Copying the Geometry .vtp files to the folder examples/results/Geometry/")
-            os.makedirs("../examples/results/Geometry/")
-            for file in os.listdir("../models/OpenSim_models/Geometry/"):
-                shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
+            os.makedirs(parent_path + "/examples/results/Geometry/")
+            for file in os.listdir(parent_path + "/models/OpenSim_models/Geometry/"):
+                shutil.copyfile(
+                    parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                    parent_path + f"/examples/results/Geometry/{file}",
+                )
         else:
             # If the folder exists, check if the files are the same size (if not replace the file)
-            for file in os.listdir("../models/OpenSim_models/Geometry/"):
-                if os.path.exists(f"../examples/results/Geometry/{file}"):
-                    if os.path.getsize(f"../models/OpenSim_models/Geometry/{file}") != os.path.getsize(
-                        f"../examples/results/Geometry/{file}"
+            for file in os.listdir(parent_path + "/models/OpenSim_models/Geometry/"):
+                if os.path.exists(parent_path + f"/examples/results/Geometry/{file}"):
+                    if os.path.getsize(parent_path + f"/models/OpenSim_models/Geometry/{file}") != os.path.getsize(
+                        parent_path + f"/examples/results/Geometry/{file}"
                     ):
                         print(f"Copying {file}.vtp to the folder examples/results/Geometry/")
                         shutil.copyfile(
-                            f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}"
+                            parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                            parent_path + f"/examples/results/Geometry/{file}",
                         )
                 else:
-                    shutil.copyfile(f"../models/OpenSim_models/Geometry/{file}", f"../examples/results/Geometry/{file}")
+                    shutil.copyfile(
+                        parent_path + f"/models/OpenSim_models/Geometry/{file}",
+                        parent_path + f"/examples/results/Geometry/{file}",
+                    )
 
     def run_analysis(self):
         """
         Loops over the data files and perform the analysis specified by the user (on the subjects specified by the user).
         """
+        parent_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
         # Loop over all subjects
         for subject in self.subjects_to_analyze:
 
             subject_name = subject.subject_name
-            subject_data_folder = f"../data/{subject_name}"
+            subject_data_folder = parent_path + f"/data/{subject_name}"
 
             # Checks
             if not os.path.exists(subject_data_folder):
@@ -199,12 +215,21 @@ class AnalysisPerformer:
             static_trial_full_file_path = None
             for data_file in os.listdir(subject_data_folder):
                 if data_file.endswith("static.c3d"):
-                    static_trial_full_file_path = f"../data/{subject_name}/{data_file}"
+                    static_trial_full_file_path = parent_path + f"/data/{subject_name}/{data_file}"
                     break
             if not static_trial_full_file_path:
                 raise FileNotFoundError(
                     f"Please put the static trial file here {os.path.abspath(subject_data_folder)} and name it [...]_static.c3d"
                 )
+
+            # Define mass with static trial
+            if subject.subject_mass is None:
+                static_c3d = ezc3d.c3d(static_trial_full_file_path, extract_forceplat_data=True)
+                summed_force = 0
+                for i_platform in range(len(static_c3d["data"]["platform"])):
+                    summed_force += static_c3d["data"]["platform"][i_platform]["force"]
+                # Réunion Island : ~9.782
+                subject.subject_mass = np.nanmedian(np.linalg.norm(summed_force, axis=0)) / 9.8
 
             # Define subject specific paths
             result_folder = f"{self.result_folder}/{subject_name}"
@@ -230,7 +255,7 @@ class AnalysisPerformer:
                 ):
                     continue
 
-                c3d_file_name = f"../data/{subject_name}/{data_file}"
+                c3d_file_name = parent_path + f"/data/{subject_name}/{data_file}"
                 result_file_name = f"{result_folder}/{data_file.replace('.c3d', '_results')}"
 
                 # Skip if already exists
@@ -239,12 +264,13 @@ class AnalysisPerformer:
                     continue
 
                 # Actually perform the analysis
-                print("Analyzing ", subject_name, " : ", data_file)
+                print("\n\n\nAnalyzing ", subject_name, " : ***** ", data_file, " *****")
                 results = self.analysis_to_perform(
                     subject,
                     self.cycles_to_analyze,
                     static_trial_full_file_path,
                     c3d_file_name,
                     result_folder,
+                    **self.kwargs,
                 )
                 self.save_subject_results(results, result_file_name)

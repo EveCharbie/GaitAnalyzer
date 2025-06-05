@@ -2,6 +2,7 @@ import os
 import pickle
 from enum import Enum
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import biorbd
 from pyomeca import Markers
@@ -206,7 +207,8 @@ class KinematicsReconstructor:
         # Extended attributes
         self.frame_range = None
         self.markers = None
-        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_virtual_markers_full_path)
+        self.marker_residuals = None
+        self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_full_path)
         self.t = None
         self.q = None
         self.q_filtered = None
@@ -218,6 +220,7 @@ class KinematicsReconstructor:
             self.is_loaded_kinematics = True
         else:
             # Perform the kinematics reconstruction
+            self.check_for_marker_inversion()
             self.perform_kinematics_reconstruction()
             self.filter_kinematics()
             self.save_kinematics_reconstruction()
@@ -262,13 +265,56 @@ class KinematicsReconstructor:
         else:
             return False
 
+    def check_for_marker_inversion(self):
+        markers = self.experimental_data.markers_sorted
+        nb_markers = markers.shape[1]
+
+        # Create mask for valid (non-NaN) data - shape: (3, nb_markers, nb_frames)
+        valid_mask = ~np.isnan(markers)
+        marker_valid = np.all(valid_mask, axis=0)  # shape: (nb_markers, nb_frames)
+
+        for i_marker in range(nb_markers):
+            marker_name = self.biorbd_model.markerNames()[i_marker].to_string()
+
+            # Get indices of valid frames for this marker
+            valid_frames = np.where(marker_valid[i_marker, :])[0]
+
+            if len(valid_frames) < 2:
+                raise RuntimeError(f"Marker {marker_name} was only found in two frames.")
+
+            # Extract valid positions for this marker
+            valid_positions = markers[:, i_marker, valid_frames]  # shape: (3, n_valid)
+
+            # Compute distances between consecutive valid positions
+            position_diffs = np.diff(valid_positions, axis=1)  # shape: (3, n_valid-1)
+            distances = np.linalg.norm(position_diffs, axis=0)  # shape: (n_valid-1,)
+
+            # Check for jumps > 0.5
+            jump_indices = np.where(distances > 0.5)[0]
+
+            if len(jump_indices) > 0:
+                # Report the first jump found
+                jump_idx = jump_indices[0]
+                frame_before = valid_frames[jump_idx]
+                frame_after = valid_frames[jump_idx + 1]
+                jump_distance = distances[jump_idx]
+
+                raise RuntimeError(
+                    f"Marker {marker_name} seems to be inverted between frames "
+                    f"{frame_before} and {frame_after} as the distance is "
+                    f"{jump_distance:.3f} (larger than 0.5)."
+                )
+
+            print(f"Marker {marker_name} OK: max distance = {np.max(distances):.3f} m")
+        return
+
     def perform_kinematics_reconstruction(self):
         """
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
         self.frame_range = self.events.get_frame_range(self.cycles_to_analyze)
-        markers = self.experimental_data.markers_sorted_with_virtual
+        markers = self.experimental_data.markers_sorted
 
         q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
@@ -276,6 +322,8 @@ class KinematicsReconstructor:
             reconstruction_type = [self.reconstruction_type]
         else:
             reconstruction_type = self.reconstruction_type
+
+        residuals = None
         for recons_method in reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
@@ -311,6 +359,7 @@ class KinematicsReconstructor:
         self.q = q_recons[:, self.frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
         self.markers = markers[:, :, self.frame_range]
+        self.marker_residuals = residuals[:, self.frame_range]
 
     def filter_kinematics(self):
         """
@@ -398,9 +447,14 @@ class KinematicsReconstructor:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
         # Model
-        model = BiorbdModel(self.biorbd_model)
+        model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
         model.options.show_gravity = True
+        model.options.show_marker_labels = False
+        model.options.show_center_of_mass_labels = False
+
+        # Visualization
+        viz = PhaseRerun(self.t)
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
@@ -408,19 +462,36 @@ class KinematicsReconstructor:
         marker_data_with_ones[:3, :, :] = self.markers
         markers = Markers(data=marker_data_with_ones, channels=marker_names)
 
-        # Visualization
-        viz = PhaseRerun(self.t)
+        # Force plates
+        force_plate_idx = Operator.from_marker_frame_to_analog_frame(
+            self.experimental_data.analogs_time_vector,
+            self.experimental_data.markers_time_vector,
+            list(self.frame_range),
+        )
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        viz.add_force_data(
+            num=1,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, force_plate_idx].T,
+        )
+        viz.add_force_data(
+            num=2,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, force_plate_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, force_plate_idx].T,
+        )
+
         if self.q.shape[0] == model.nb_q:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
             q_animation = self.q_filtered.T
-        viz.add_animated_model(model, q_animation, tracked_markers=markers)
+        viz.add_animated_model(model, q_animation, tracked_markers=markers, show_tracked_marker_labels=False)
         viz.rerun_by_frame("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
             result_folder = self.experimental_data.result_folder
-        trial_name = self.experimental_data.c3d_file_name.split("/")[-1][:-4]
+        trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
         result_file_full_path = f"{result_folder}/inv_kin_{trial_name}.pkl"
         return result_file_full_path
 
@@ -444,11 +515,12 @@ class KinematicsReconstructor:
         else:
             reconstruction_type = self.reconstruction_type.value
         return {
-            "biorbd_model": self.model_creator.biorbd_model_virtual_markers_full_path,
+            "biorbd_model": self.model_creator.biorbd_model_full_path,
             "reconstruction_type": reconstruction_type,
             "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,
             "markers": self.markers,
+            "marker_residuals": self.marker_residuals,
             "t": self.t,
             "q": self.q,
             "q_filtered": self.q_filtered,

@@ -212,6 +212,9 @@ class InverseDynamicsPerformer:
         model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
         model.options.show_gravity = True
+        model.options.show_marker_labels = False
+        model.options.show_center_of_mass_labels = False
+
         viz = PhaseRerun(self.kinematics_reconstructor.t)
 
         # Add experimental markers
@@ -224,23 +227,21 @@ class InverseDynamicsPerformer:
             self.experimental_data.markers_time_vector,
             list(self.kinematics_reconstructor.frame_range),
         )
-        corners_1 = np.tile(self.experimental_data.platform_corners[0], (len(force_plate_idx), 1))
-        corners_2 = np.tile(self.experimental_data.platform_corners[1], (len(force_plate_idx), 1))
-        viz.add_force_plate(num=1, corners=corners_1)
-        viz.add_force_plate(num=2, corners=corners_2)
+        viz.add_force_plate(num=0, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(
-            num=1,
+            num=0,
             force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
             force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, force_plate_idx].T,
         )
         viz.add_force_data(
-            num=2,
+            num=1,
             force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, force_plate_idx].T,
             force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, force_plate_idx].T,
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers, show_tracked_marker_labels=False)
 
         # Add the reintegration of the dynamics
         viz.add_animated_model(model, self.q_reintegrated)
@@ -251,7 +252,7 @@ class InverseDynamicsPerformer:
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
             result_folder = self.experimental_data.result_folder
-        trial_name = self.experimental_data.c3d_file_name.split("/")[-1][:-4]
+        trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
         result_file_full_path = f"{result_folder}/inv_dyn_{trial_name}.pkl"
         return result_file_full_path
 
