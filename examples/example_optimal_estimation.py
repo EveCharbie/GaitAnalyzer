@@ -37,11 +37,11 @@ def analysis_to_perform(
         animate_model_flag=False,
     )
 
-    markers_to_ignore = []  # ["U1", "U2", "U3", "U4"]  # Flo's data
+    markers_to_ignore = []
     results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore)
 
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
-    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)  # Flo's data
+    # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
 
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM],  # , ReconstructionType.LM, ReconstructionType.TRF],
@@ -72,7 +72,6 @@ if __name__ == "__main__":
     subjects_to_analyze = []
     subjects_to_analyze.append(
         Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-        # Subject(subject_name="ECH", subject_mass=64.59, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
     # subjects_to_analyze.append(
     #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
@@ -86,7 +85,7 @@ if __name__ == "__main__":
         cycles_to_analyze=range(5, -5),
         # cycles_to_analyze=None,
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
+        trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 
