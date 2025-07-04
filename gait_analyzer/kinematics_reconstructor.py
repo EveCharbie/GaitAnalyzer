@@ -2,10 +2,8 @@ import os
 import pickle
 from enum import Enum
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import biorbd
-from pyomeca import Markers
 
 from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
@@ -442,7 +440,7 @@ class KinematicsReconstructor:
         Animate the kinematics
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import BiorbdModel, PhaseRerun, Pyomarkers, Pyoemg
         except:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
@@ -460,7 +458,9 @@ class KinematicsReconstructor:
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
         marker_data_with_ones[:3, :, :] = self.markers
-        markers = Markers(data=marker_data_with_ones, channels=marker_names)
+        markers = Pyomarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
+        muscle_names = [m.to_string() for m in self.biorbd_model.muscleNames()]
+        emg = Pyoemg(data=self.experimental_data.normalized_emg, muscle_names=muscle_names, mvc=self.model_creator.mvc_values)
 
         # Force plates
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(
@@ -485,7 +485,7 @@ class KinematicsReconstructor:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
             q_animation = self.q_filtered.T
-        viz.add_animated_model(model, q_animation, tracked_markers=markers, show_tracked_marker_labels=False)
+        viz.add_animated_model(model, q_animation, tracked_markers=markers, emg=emg)
         viz.rerun_by_frame("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):

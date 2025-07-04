@@ -49,7 +49,8 @@ class ExperimentalData:
             raise ValueError("result_folder must be a string")
 
         # Threshold for removing force values
-        self.force_threshold = 15  # N
+        # TODO: Validate because this value is high !
+        self.force_threshold = 50  # N
 
         # Initial attributes
         self.c3d_full_file_path = c3d_file_name
@@ -157,7 +158,6 @@ class ExperimentalData:
             # Process the EMG signals
             emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
             emg_processed = (
-                # emg.interpolate_na(dim="time", method="linear")
                 emg.meca.interpolate_missing_data()
                 .meca.band_pass(order=2, cutoff=[10, 425])
                 .meca.center()
@@ -279,7 +279,7 @@ class ExperimentalData:
                     axs[1].set_ylim(-1, 1)
                     axs[2].set_ylim(-0.01, 0.01)
 
-                    axs[3].plot(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :])
+                    axs[3].plot(np.linalg.norm(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :], axis=0))
                     axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), "--k")
                     axs[3].set_ylabel("Error (m)")
 

@@ -230,6 +230,8 @@ class OsimModels:
                 "femur_l": ["L_fem_up", "L_fem_downF", "L_fem_downB"],
                 "tibia_r": ["R_tib_up", "R_tib_downF", "R_tib_downB"],
                 "tibia_l": ["L_tib_up", "L_tib_downF", "L_tib_downB"],
+                "calcn_r": ["R_foot_up"],
+                "calcn_l": ["L_foot_up"],
                 "humerus_r": ["R_arm_up", "R_arm_downF", "R_arm_downB"],
                 "radius_r": ["R_fore_up", "R_fore_downF", "R_fore_downB"],
                 "humerus_l": ["L_arm_up", "L_arm_downF", "L_arm_downB"],
@@ -367,7 +369,7 @@ class ModelCreator:
             self.read_osim_model()
             self.scale_model()
             self.osim_model_type.perform_modifications(self.model, self.static_trial)
-            self.relocate_joint_centers_functionally(animate_model_flag)
+            # self.relocate_joint_centers_functionally(animate_model_flag)
             self.create_biorbd_model()
             self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
             self.get_mvc_values(plot_emg_flag=False)
@@ -439,9 +441,6 @@ class ModelCreator:
             "left_hip": None,
             "left_knee": None,
             "left_ankle": None,
-            "shoulders": None,
-            "elbows": None,
-            "neck": None,
         }
         # Find the functional trials
         for trial_name in trials_list.keys():
@@ -488,18 +487,18 @@ class ModelCreator:
             )
         )
         # # TODO: add one more marker on the foot ?
-        # # Ankle right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["right_ankle"],
-        #         parent_name="tibia_r",
-        #         child_name="calcn_r",
-        #         parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
-        #         child_marker_names=["RCAL", "RMFH1", "RMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Ankle right
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["right_ankle"],
+                parent_name="tibia_r",
+                child_name="calcn_r",
+                parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
+                child_marker_names=["RCAL", "RMFH1", "RMFH5"] + self.osim_model_type.markers_to_add["calcn_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Hip Left
         joint_center_tool.add(
             Score(
@@ -531,91 +530,19 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot ?
-        # # Ankle Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["left_ankle"],
-        #         parent_name="tibia_l",
-        #         child_name="calcn_l",
-        #         parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
-        #         child_marker_names=["LCAL", "LMFH1", "LMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-
-        # To be removed for walking
-        # # Shoulder Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_r",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["RLHE", "RMHE"] + self.osim_model_type.markers_to_add["humerus_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_r",
-        #         child_name="radius_r",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
-        #         child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Shoulder Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_l",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["LLHE", "LMHE"] + self.osim_model_type.markers_to_add["humerus_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_l",
-        #         child_name="radius_l",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
-        #         child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Neck
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["neck"],
-        #         parent_name="torso",
-        #         child_name="head_and_neck",
-        #         parent_marker_names=["STR", "RA", "LA", "C7", "T10", "SUP"],
-        #         child_marker_names=["SEL", "OCC", "RTEMP", "LTEMP", "HV"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # TODO: add one more marker on the foot ?
+        # Ankle Left
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["left_ankle"],
+                parent_name="tibia_l",
+                child_name="calcn_l",
+                parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
+                child_marker_names=["LCAL", "LMFH1", "LMFH5"] + self.osim_model_type.markers_to_add["calcn_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
 
         self.model = joint_center_tool.replace_joint_centers(self.marker_weights)
 
@@ -636,7 +563,7 @@ class ModelCreator:
         model = BiorbdModel(self.biorbd_model_full_path)
         model.options.transparent_mesh = False
         model.options.show_gravity = True
-        model.options.show_marker_labels = False
+        # model.options.show_marker_labels = False
         model.options.show_center_of_mass_labels = False
 
         # Visualization
