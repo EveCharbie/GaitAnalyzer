@@ -9,20 +9,24 @@ class MarkerLabelingHandler:
         self.markers = self.c3d["data"]["points"]
         self.marker_names = self.c3d["parameters"]["POINT"]["LABELS"]["value"]
 
-    def show_marker_labeling_plot(self):
+    def show_marker_labeling_plot(self, marker_to_show: list[str] = None):
+
+        if marker_to_show is None:
+            marker_to_show = self.marker_names
 
         fig = go.Figure()
         x_vector = np.arange(self.markers.shape[2])
         for i_marker, marker_name in enumerate(self.marker_names):
-            fig.add_trace(
-                go.Scatter(
-                    x=x_vector,
-                    y=np.linalg.norm(self.markers[:3, i_marker, :], axis=0),
-                    mode="lines",
-                    name=marker_name,
-                    line=dict(width=2),
+            if marker_name in marker_to_show:
+                fig.add_trace(
+                    go.Scatter(
+                        x=x_vector,
+                        y=np.linalg.norm(self.markers[:3, i_marker, :], axis=0),
+                        mode="lines",
+                        name=marker_name,
+                        line=dict(width=2),
+                    )
                 )
-            )
         fig.update_layout(xaxis_title="Frames", yaxis_title="Markers", template="plotly_white")
 
         fig.write_html("markers.html")
@@ -39,7 +43,7 @@ class MarkerLabelingHandler:
             raise ValueError("marker_names should contain exactly two marker names to invert.")
         if not isinstance(frame_start, int) or not isinstance(frame_end, int):
             raise TypeError("frame_start and frame_end should be integers.")
-        if frame_start < 0 or frame_end >= self.markers.shape[2] or frame_end <= frame_start:
+        if frame_start < 0 or frame_end >= self.markers.shape[2] or frame_end < frame_start:
             raise ValueError(f"Invalid frame range specified [{frame_start}, {frame_end}].")
 
         marker_indices = [self.marker_names.index(name) for name in marker_names]
@@ -60,6 +64,26 @@ class MarkerLabelingHandler:
             self.marker_names[marker_indices[0]] = self.marker_names[marker_indices[1]]
             self.marker_names[marker_indices[1]] = old_marker_name
             self.c3d["parameters"]["POINT"]["LABELS"]["value"] = self.marker_names
+        return
+
+    def remove_label(self, marker_name: str, frame_start: int, frame_end: int):
+        """
+        Remove the label of one marker between frame_start and frame_end.
+        """
+
+        if not isinstance(marker_name, str):
+            raise TypeError("marker_name should be the name of the marker to remove labeling from.")
+        if not isinstance(frame_start, int) or not isinstance(frame_end, int):
+            raise TypeError("frame_start and frame_end should be integers.")
+        if frame_start < 0 or frame_end >= self.markers.shape[2] or frame_end < frame_start:
+            raise ValueError(f"Invalid frame range specified [{frame_start}, {frame_end}].")
+
+        marker_index = self.marker_names.index(marker_name)
+
+        # Make the modifications
+        self.markers[:3, marker_index, frame_start : frame_end + 1] = np.nan
+        self.c3d["data"]["points"] = self.markers
+
         return
 
     def save_c3d(self, output_c3d_path: str):
