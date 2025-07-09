@@ -57,6 +57,88 @@ class OsimModels:
             "This method is implemented in the child class. You should call OsimModels.[mode type name].markers_to_ignore."
         )
 
+    @property
+    def ranges_to_adjust(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].ranges_to_adjust."
+        )
+
+    @property
+    def segments_to_fix(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].segments_to_fix."
+        )
+
+    @property
+    def markers_to_add(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].markers_to_add."
+        )
+
+    def perform_modifications(self, model, static_trial):
+        """
+        1. Remove the markers that are not needed (markers_to_ignore)
+        2. Remove the degrees of freedom that are not needed (segments_to_fix)
+        3. Change the ranges of motion for the segments (ranges_to_adjust)
+        4. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
+        5. Add the marker clusters (markers_to_add)
+        """
+
+        # Modify segments
+        for segment in model.segments:
+            markers = deepcopy(segment.markers)
+            for marker in markers:
+                if marker in self.markers_to_ignore:
+                    segment.remove_marker(marker)
+            if segment.name in self.ranges_to_adjust.keys():
+                min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
+                max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
+                segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
+            if segment in self.segments_to_fix:
+                segment.translations = Translations.NONE
+                segment.rotations = Rotations.NONE
+                segment.q_ranges = None
+                segment.qdot_ranges = None
+
+        # Modify muscles
+        muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]
+        via_points = deepcopy(model.via_points)
+        for via_point in via_points:
+            if via_point.muscle_name in muscles_to_ignore:
+                model.remove_via_point(via_point.name)
+
+        muscle_groups = deepcopy(model.muscle_groups)
+        for muscle_group in muscle_groups:
+            if muscle_group.origin_parent_name in muscles_to_ignore:
+                model.remove_muscle_group(muscle_group.name)
+            elif muscle_group.insertion_parent_name in muscles_to_ignore:
+                model.remove_muscle_group(muscle_group.name)
+
+        for muscle in muscles_to_ignore:
+            model.remove_muscle(muscle)
+
+        # Add the marker clusters
+        jcs_in_global = model.forward_kinematics()
+        c3d_data = C3dData(static_trial, first_frame=100, last_frame=200)
+        for segment_name in self.markers_to_add.keys():
+            for marker in self.markers_to_add[segment_name]:
+                position_in_global = c3d_data.mean_marker_position(marker)
+                rt = RotoTransMatrix()
+                rt.from_rt_matrix(jcs_in_global[segment_name])
+                position_in_local = rt.inverse @ position_in_global
+                model.segments[segment_name].add_marker(
+                    MarkerReal(
+                        name=marker,
+                        parent_name=segment_name,
+                        position=position_in_local,
+                        is_anatomical=False,
+                        is_technical=True,
+                    )
+                )
+
+        return model
+
+
     # Child classes acting as an enum
     class WholeBody:
         """This is a hole body model that consists of 23 bodies, 42 degrees of freedom and 30 muscles.
@@ -118,6 +200,8 @@ class OsimModels:
                 "LAT2_l",
                 "PECM2",
                 "PECM2_l",
+                "glut_med1_r",
+                "glut_med1_l",
             ]
 
         @property
@@ -238,68 +322,27 @@ class OsimModels:
                 "radius_l": ["L_fore_up", "L_fore_downF", "L_fore_downB"],
             }
 
+        @property
+        def muscle_name_mapping(self):
+            """
+            This method returns a dictionary that maps the muscle names from the original model to the experimental EMG names.
+            This is useful as multiple muscles might be associated with the same EMG signal.
+            """
+            return {
+                 'semiten_r': "SEMITENDINOUS",
+                 'bifemlh_r': "BICEPS_FEM",
+                 'sar_r': "RECTUS_FEM",
+                 'tfl_r': "RECTUS_FEM",
+                 'vas_med_r': "BICEPS_FEM",
+                 'vas_lat_r': "BICEPS_FEM",
+                 'soleus_r': "SOL",
+                 'tib_post_r': "SOL",
+                 'tib_ant_r': "TIB",
+                 'per_long_r': "SOL",
+            }
+
         def perform_modifications(self, model, static_trial):
-            """
-            1. Remove the markers that are not needed (markers_to_ignore)
-            2. Remove the degrees of freedom that are not needed (segments_to_fix)
-            3. Change the ranges of motion for the segments (ranges_to_adjust)
-            4. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
-            5. Add the marker clusters (markers_to_add)
-            """
-
-            # Modify segments
-            for segment in model.segments:
-                markers = deepcopy(segment.markers)
-                for marker in markers:
-                    if marker in self.markers_to_ignore:
-                        segment.remove_marker(marker)
-                if segment.name in self.ranges_to_adjust.keys():
-                    min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
-                    max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
-                    segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
-                if segment in self.segments_to_fix:
-                    segment.translations = Translations.NONE
-                    segment.rotations = Rotations.NONE
-                    segment.q_ranges = None
-                    segment.qdot_ranges = None
-
-            # Modify muscles
-            muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]
-            via_points = deepcopy(model.via_points)
-            for via_point in via_points:
-                if via_point.muscle_name in muscles_to_ignore:
-                    model.remove_via_point(via_point.name)
-
-            muscle_groups = deepcopy(model.muscle_groups)
-            for muscle_group in muscle_groups:
-                if muscle_group.origin_parent_name in muscles_to_ignore:
-                    model.remove_muscle_group(muscle_group.name)
-                elif muscle_group.insertion_parent_name in muscles_to_ignore:
-                    model.remove_muscle_group(muscle_group.name)
-
-            for muscle in muscles_to_ignore:
-                model.remove_muscle(muscle)
-
-            # Add the marker clusters
-            jcs_in_global = model.forward_kinematics()
-            c3d_data = C3dData(static_trial, first_frame=100, last_frame=200)
-            for segment_name in self.markers_to_add.keys():
-                for marker in self.markers_to_add[segment_name]:
-                    position_in_global = c3d_data.mean_marker_position(marker)
-                    rt = RotoTransMatrix()
-                    rt.from_rt_matrix(jcs_in_global[segment_name])
-                    position_in_local = rt.inverse @ position_in_global
-                    model.segments[segment_name].add_marker(
-                        MarkerReal(
-                            name=marker,
-                            parent_name=segment_name,
-                            position=position_in_local,
-                            is_anatomical=False,
-                            is_technical=True,
-                        )
-                    )
-
-            return model
+            OsimModels.perform_modifications(self, model, static_trial)
 
 
 class ModelCreator:
@@ -422,7 +465,7 @@ class ModelCreator:
             mass=self.subject.subject_mass,
             q_regularization_weight=0.01,
             make_static_pose_the_models_zero=True,
-            visualize_optimal_static_pose=False,
+            visualize_optimal_static_pose=True,
             method="lm",
         )
         self.marker_weights = scale_tool.marker_weights
@@ -486,7 +529,6 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot ?
         # Ankle right
         joint_center_tool.add(
             Score(
@@ -530,7 +572,6 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # TODO: add one more marker on the foot ?
         # Ankle Left
         joint_center_tool.add(
             Score(
@@ -555,21 +596,12 @@ class ModelCreator:
         Animate the model
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import LiveModelAnimation
         except:
             raise RuntimeError("To animate the model, you must install Pyorerun.")
 
-        # Model
-        model = BiorbdModel(self.biorbd_model_full_path)
-        model.options.transparent_mesh = False
-        model.options.show_gravity = True
-        # model.options.show_marker_labels = False
-        model.options.show_center_of_mass_labels = False
-
-        # Visualization
-        viz = PhaseRerun(np.linspace(0, 1, 10))
-        viz.add_animated_model(model, np.zeros((model.nb_q, 10)))
-        viz.rerun_by_frame("Kinematics reconstruction")
+        animation = LiveModelAnimation(self.biorbd_model_full_path, with_q_charts=True)
+        animation.rerun()
 
     def get_mvc_values(self, plot_emg_flag: bool = False):
         """
@@ -594,7 +626,6 @@ class ModelCreator:
                             os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
                         )
                         emg_processed = (
-                            # emg.interpolate_na(dim="time", method="linear")
                             emg.meca.interpolate_missing_data()
                             .meca.band_pass(order=2, cutoff=[10, 425])
                             .meca.center()
@@ -602,7 +633,7 @@ class ModelCreator:
                             .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
                         ) * emg_units
                         emg_values[name] = np.array(emg_processed)
-                        mvc_values[name] = float(np.max(emg_processed))
+                        mvc_values[name] = float(np.nanmax(emg_processed))
         self.mvc_values = mvc_values
 
         if plot_emg_flag:
