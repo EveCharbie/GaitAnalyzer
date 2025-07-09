@@ -9,28 +9,24 @@ class MarkerLabelingHandler:
         self.markers = self.c3d["data"]["points"]
         self.marker_names = self.c3d["parameters"]["POINT"]["LABELS"]["value"]
 
-
     def show_marker_labeling_plot(self):
 
         fig = go.Figure()
         x_vector = np.arange(self.markers.shape[2])
         for i_marker, marker_name in enumerate(self.marker_names):
-            fig.add_trace(go.Scatter(
-                x=x_vector,
-                y=np.linalg.norm(self.markers[:3, i_marker, :], axis=0),
-                mode='lines',
-                name=marker_name,
-                line=dict(width=2)
-            ))
-        fig.update_layout(
-            xaxis_title='Frames',
-            yaxis_title='Markers',
-            template='plotly_white'
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=x_vector,
+                    y=np.linalg.norm(self.markers[:3, i_marker, :], axis=0),
+                    mode="lines",
+                    name=marker_name,
+                    line=dict(width=2),
+                )
+            )
+        fig.update_layout(xaxis_title="Frames", yaxis_title="Markers", template="plotly_white")
 
         fig.write_html("markers.html")
         fig.show(renderer="browser")
-
 
     def invert_marker_labeling(self, marker_names: list, frame_start: int, frame_end: int):
         """
@@ -49,11 +45,13 @@ class MarkerLabelingHandler:
         marker_indices = [self.marker_names.index(name) for name in marker_names]
 
         # Keep a copy of the old marker data
-        old_first_marker_data = self.markers[:, marker_indices[0], frame_start:frame_end + 1].copy()
+        old_first_marker_data = self.markers[:, marker_indices[0], frame_start : frame_end + 1].copy()
 
         # Make the modifications
-        self.markers[:, marker_indices[0], frame_start:frame_end + 1] = self.markers[:, marker_indices[1], frame_start:frame_end + 1].copy()
-        self.markers[:, marker_indices[1], frame_start:frame_end + 1] = old_first_marker_data
+        self.markers[:, marker_indices[0], frame_start : frame_end + 1] = self.markers[
+            :, marker_indices[1], frame_start : frame_end + 1
+        ].copy()
+        self.markers[:, marker_indices[1], frame_start : frame_end + 1] = old_first_marker_data
         self.c3d["data"]["points"] = self.markers
 
         # If the first frame is included, change the marker names also
@@ -63,7 +61,6 @@ class MarkerLabelingHandler:
             self.marker_names[marker_indices[1]] = old_marker_name
             self.c3d["parameters"]["POINT"]["LABELS"]["value"] = self.marker_names
         return
-
 
     def save_c3d(self, output_c3d_path: str):
         """

@@ -302,12 +302,13 @@ class KinematicsReconstructor:
                 except:
                     raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
-                c3d(self.experimental_data.c3d_full_file_path,
+                c3d(
+                    self.experimental_data.c3d_full_file_path,
                     show_forces=False,
                     show_events=False,
                     marker_trajectories=True,
-                    show_marker_labels=False
-                    )
+                    show_marker_labels=False,
+                )
 
                 raise RuntimeError(
                     f"Marker {marker_name} seems to be inverted between frames "
@@ -472,7 +473,9 @@ class KinematicsReconstructor:
         marker_data_with_ones[:3, :, :] = self.markers
         markers = PyoMarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
         muscle_names = [m.to_string() for m in self.biorbd_model.muscleNames()]
-        emg = PyoMuscles(data=self.experimental_data.normalized_emg, muscle_names=muscle_names, mvc=self.model_creator.mvc_values)
+        emg = PyoMuscles(
+            data=self.experimental_data.normalized_emg, muscle_names=muscle_names, mvc=self.model_creator.mvc_values
+        )
 
         # Force plates
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(
