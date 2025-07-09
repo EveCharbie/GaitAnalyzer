@@ -2,8 +2,6 @@ import pickle
 import numpy as np
 import casadi as cas
 
-from pyomeca import Markers
-
 try:
     import bioptim
 except ImportError:
@@ -428,7 +426,7 @@ class OptimalEstimator:
 
         if animate_exp_data_flag:
             try:
-                from pyorerun import BiorbdModel, PhaseRerun
+                from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers
             except:
                 raise RuntimeError("To animate the initial guess, you must install Pyorerun.")
 
@@ -439,7 +437,7 @@ class OptimalEstimator:
             viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
             # Add experimental markers
-            markers = Markers(data=self.markers_exp_ocp, channels=list(model.marker_names))
+            markers = PyoMarkers(data=self.markers_exp_ocp, channels=list(model.marker_names), show_labels=False)
 
             # Add force plates to the animation
             viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -456,7 +454,7 @@ class OptimalEstimator:
             )
 
             # Add the kinematics
-            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers, show_tracked_marker_labels=False)
+            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers)
 
             # Play
             viz.rerun_by_frame("OCP initial guess from experimental data")
@@ -1126,7 +1124,7 @@ class OptimalEstimator:
     def animate_solution(self):
 
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers
         except:
             raise RuntimeError("To animate the optimal solution, you must install Pyorerun.")
 
@@ -1137,7 +1135,7 @@ class OptimalEstimator:
         viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
         # Add experimental markers
-        markers = Markers(data=self.markers_exp_ocp, channels=list(model.marker_names))
+        markers = PyoMarkers(data=self.markers_exp_ocp, channels=list(model.marker_names), show_labels=False)
 
         # Add force plates to the animation
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -1154,7 +1152,7 @@ class OptimalEstimator:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_opt.T, tracked_markers=markers, show_tracked_marker_labels=False)
+        viz.add_animated_model(model, self.q_opt.T, tracked_markers=markers)
 
         # Play
         viz.rerun_by_frame("OCP optimal solution")

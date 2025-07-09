@@ -145,8 +145,10 @@ class ExperimentalData:
             ]
 
             self.emg_units = 1
-            if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
-                self.emg_units = 1_000_000  # Convert to microV
+            for i_analog, name in enumerate(self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]):
+                if name not in self.analogs_to_ignore:
+                    if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][i_analog] == "V":
+                        self.emg_units = 1_000_000  # Convert to microV
 
             # Make sure all MVC are declared
             for analog_name in self.analog_names:

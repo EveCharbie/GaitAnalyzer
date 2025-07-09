@@ -254,6 +254,7 @@ class CyclicEvents:
         """
         Detect hell off events when the heel marker moves faster than 0.1 m/s
         """
+        # TODO: check this
         # Left
         left_cal_velocity = (
             np.diff(

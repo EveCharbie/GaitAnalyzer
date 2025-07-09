@@ -58,12 +58,6 @@ class MarkerLabelingHandler:
         self.markers[:, marker_indices[1], frame_start : frame_end + 1] = old_first_marker_data
         self.c3d["data"]["points"] = self.markers
 
-        # If the first frame is included, change the marker names also
-        if frame_start == 0:
-            old_marker_name = self.marker_names[marker_indices[0]]
-            self.marker_names[marker_indices[0]] = self.marker_names[marker_indices[1]]
-            self.marker_names[marker_indices[1]] = old_marker_name
-            self.c3d["parameters"]["POINT"]["LABELS"]["value"] = self.marker_names
         return
 
     def remove_label(self, marker_name: str, frame_start: int, frame_end: int):
