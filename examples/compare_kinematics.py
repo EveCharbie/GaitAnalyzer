@@ -8,6 +8,7 @@ from gait_analyzer import (
     Subject,
     Side,
     ReconstructionType,
+    MarkerLabelingHandler,
 )
 
 
@@ -18,6 +19,12 @@ def analysis_to_perform(
     c3d_file_name: str,
     result_folder: str,
 ):
+
+    # # This step is to show the markers and eventually change their labeling manually
+    # marker_handler = MarkerLabelingHandler("path_to_the_c3d_you_want_to_check.c3d")
+    # marker_handler.show_marker_labeling_plot()
+    # marker_handler.invert_marker_labeling([name_of_the_marker, name_of_another_marker], frame_start=0, frame_end=100)
+    # marker_handler.save_c3d(output_c3d_path)
 
     results = ResultManager(
         subject=subject,

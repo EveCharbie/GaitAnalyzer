@@ -5,6 +5,7 @@ channels:
 dependencies:
   - numpy
   - matplotlib
+  - plotly
   - biorbd>=1.10.0
   - ezc3d>=1.5.17
   - scipy

@@ -33,7 +33,8 @@ def analysis_to_perform(
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
-        skip_if_existing=True,
+        mvc_trials_path=f"../data/{subject.subject_name}/maximal_volume_contractions/",
+        skip_if_existing=False,
         animate_model_flag=False,
     )
 

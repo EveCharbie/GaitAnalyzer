@@ -59,8 +59,8 @@ class ResultManager:
         self,
         osim_model_type,
         functional_trials_path: str,
-        mvc_trials_path: str,
         skip_if_existing: bool,
+        mvc_trials_path: str = None,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):

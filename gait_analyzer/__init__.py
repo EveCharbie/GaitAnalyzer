@@ -6,6 +6,7 @@ from .kinematics_reconstructor import KinematicsReconstructor, ReconstructionTyp
 from .operator import Operator
 from .optimal_estimator import OptimalEstimator
 from .plots.plot_leg_joint_angles import PlotLegData, LegToPlot, PlotType, EventIndexType
+from .utils.marker_labeling_handler import MarkerLabelingHandler
 from .result_manager import ResultManager
 from .subject import Subject, Side
 

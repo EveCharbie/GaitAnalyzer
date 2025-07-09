@@ -297,10 +297,22 @@ class KinematicsReconstructor:
                 frame_after = valid_frames[jump_idx + 1]
                 jump_distance = distances[jump_idx]
 
+                try:
+                    from pyorerun import c3d
+                except:
+                    raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
+
+                c3d(self.experimental_data.c3d_full_file_path,
+                    show_forces=False,
+                    show_events=False,
+                    marker_trajectories=True,
+                    show_marker_labels=False
+                    )
+
                 raise RuntimeError(
                     f"Marker {marker_name} seems to be inverted between frames "
                     f"{frame_before} and {frame_after} as the distance is "
-                    f"{jump_distance:.3f} (larger than 0.5)."
+                    f"{jump_distance:.3f} (larger than 0.5) see the animation to make sure."
                 )
 
             print(f"Marker {marker_name} OK: max distance = {np.max(distances):.3f} m")
@@ -440,7 +452,7 @@ class KinematicsReconstructor:
         Animate the kinematics
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun, Pyomarkers, Pyoemg
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers, PyoMuscles
         except:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
@@ -458,9 +470,9 @@ class KinematicsReconstructor:
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
         marker_data_with_ones[:3, :, :] = self.markers
-        markers = Pyomarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
+        markers = PyoMarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
         muscle_names = [m.to_string() for m in self.biorbd_model.muscleNames()]
-        emg = Pyoemg(data=self.experimental_data.normalized_emg, muscle_names=muscle_names, mvc=self.model_creator.mvc_values)
+        emg = PyoMuscles(data=self.experimental_data.normalized_emg, muscle_names=muscle_names, mvc=self.model_creator.mvc_values)
 
         # Force plates
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(

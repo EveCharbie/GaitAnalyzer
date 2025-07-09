@@ -369,7 +369,7 @@ class ModelCreator:
             self.read_osim_model()
             self.scale_model()
             self.osim_model_type.perform_modifications(self.model, self.static_trial)
-            # self.relocate_joint_centers_functionally(animate_model_flag)
+            self.relocate_joint_centers_functionally(animate_model_flag)
             self.create_biorbd_model()
             self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
             self.get_mvc_values(plot_emg_flag=False)
@@ -575,6 +575,9 @@ class ModelCreator:
         """
         Extract the maximal EMG signal as the max of the filtered EMG signal for each muscle during the MVC trial.
         """
+        if self.mvc_trials_path is None:
+            raise NotImplementedError("This should eb allowed but I did not take the time to implement it.")
+
         mvc_values = {}
         emg_values = {}
         for mvc in os.listdir(self.mvc_trials_path):
