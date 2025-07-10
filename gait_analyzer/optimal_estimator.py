@@ -126,9 +126,9 @@ class OptimalEstimator:
             if implicit_contacts:
                 self.prepare_ocp_implicit()
             else:
-                self.prepare_ocp_fext()
+                self.prepare_ocp_fext(with_residual_forces=False)
 
-            self.solve(show_online_optim=False)
+            self.solve(show_online_optim=True)
             self.save_optimal_reconstruction()
 
             if plot_solution_flag:
@@ -306,10 +306,19 @@ class OptimalEstimator:
         # self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
         self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
 
-        # Only one right leg swing (while left leg in flat foot)
-        swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
-        right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
-        this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
+        # # Only one right leg swing (while left leg in flat foot)
+        # swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
+        # right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
+        # this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
+        # this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
+        #     analogs_time_vector=self.experimental_data.analogs_time_vector,
+        #     markers_time_vector=self.experimental_data.markers_time_vector,
+        #     analog_idx=this_sequence_analogs,
+        # )
+
+        # One full cycle
+        cycle_timings = self.events.events["right_leg_heel_touch"]
+        this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
         this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
             analogs_time_vector=self.experimental_data.analogs_time_vector,
             markers_time_vector=self.experimental_data.markers_time_vector,
@@ -494,7 +503,7 @@ class OptimalEstimator:
             # Play
             viz.rerun_by_frame("OCP initial guess from experimental data")
 
-    def prepare_ocp_fext(self):
+    def prepare_ocp_fext(self, with_residual_forces: bool = False):
         """
         Let's say swing phase only for now
         """
@@ -538,11 +547,12 @@ class OptimalEstimator:
                 Custom Torque model to handle the no contact case.
                 """
                 super().__init__(biorbd_model_path, external_force_set=external_force_set)
-                self.control_configuration += [
-                    lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
-                        ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=1
-                    )
-                ]
+                if with_residual_forces:
+                    self.control_configuration += [
+                        lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
+                            ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=2
+                        )
+                    ]
 
             def dynamics(
                 self,
@@ -558,14 +568,20 @@ class OptimalEstimator:
                 q = DynamicsFunctions.get(nlp.states["q"], states)
                 qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
                 tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
-                f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
-                f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
+                if with_residual_forces:
+                    f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
+                    f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
                 external_forces = nlp.get_external_forces(
                     "external_forces", states, controls, algebraic_states, numerical_timeseries
                 )
-                external_forces[:3] += f_ext_residual_position
-                external_forces[6:9] += f_ext_residual_value
+                if with_residual_forces:
+                    # Left
+                    external_forces[:3] += f_ext_residual_position[:3]
+                    external_forces[6:9] += f_ext_residual_value[:3]
+                    # Right
+                    external_forces[9:12] += f_ext_residual_position[3:6]
+                    external_forces[15:18] += f_ext_residual_value[3:6]
 
                 ddq = nlp.model.forward_dynamics()(q, qdot, tau, external_forces, nlp.parameters.cx)
 
@@ -581,13 +597,22 @@ class OptimalEstimator:
             values=self.f_ext_exp_ocp["left_leg"][3:9, :-1],
             point_of_application=self.f_ext_exp_ocp["left_leg"][:3, :-1],
         )
+        external_force_set.add(
+            force_name="calcn_r",
+            segment="calcn_r",
+            values=self.f_ext_exp_ocp["right_leg"][3:9, :-1],
+            point_of_application=self.f_ext_exp_ocp["right_leg"][:3, :-1],
+        )
         numerical_time_series = {"external_forces": external_force_set.to_numerical_time_series()}
         biorbd_model_path = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
         bio_model = CustomTorqueModelNoContacts(biorbd_model_path, external_force_set=external_force_set)
 
         nb_q = bio_model.nb_q
         r_foot_marker_index = np.array(
-            [bio_model.marker_index(f"RCAL"), bio_model.marker_index(f"RMFH1"), bio_model.marker_index(f"RMFH5")]
+            [bio_model.marker_index(f"RCAL"), bio_model.marker_index(f"RMFH1"), bio_model.marker_index(f"RMFH5"), bio_model.marker_index(f"R_foot_up")]
+        )
+        l_foot_marker_index = np.array(
+            [bio_model.marker_index(f"LCAL"), bio_model.marker_index(f"LMFH1"), bio_model.marker_index(f"LMFH5"), bio_model.marker_index(f"L_foot_up")]
         )
 
         # Declaration of the objectives
@@ -610,8 +635,8 @@ class OptimalEstimator:
             objective=ObjectiveFcn.Lagrange.TRACK_MARKERS,
             weight=1000.0,
             node=Node.ALL,
-            marker_index=["RCAL", "RMFH1", "RMFH5"],
-            target=self.markers_exp_ocp[:, r_foot_marker_index, :],
+            marker_index=["RCAL", "RMFH1", "RMFH5", "R_foot_up", "LCAL", "LMFH1", "LMFH5", "L_foot_up"],
+            target=self.markers_exp_ocp[:, np.hstack((r_foot_marker_index, l_foot_marker_index)), :],
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=1.0, node=Node.ALL, target=self.q_exp_ocp
@@ -623,19 +648,20 @@ class OptimalEstimator:
             weight=0.01,
             target=self.qdot_exp_ocp,
         )
-        objective_functions.add(  # Minimize residual contact forces
-            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
-            key="contact_forces",
-            node=Node.ALL_SHOOTING,
-            weight=1000,
-        )
-        objective_functions.add(  # Track CoP position
-            objective=ObjectiveFcn.Lagrange.TRACK_CONTROL,
-            key="contact_positions",
-            node=Node.ALL_SHOOTING,
-            weight=0.01,
-            target=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
-        )
+        if with_residual_forces:
+            objective_functions.add(  # Minimize residual contact forces
+                objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+                key="contact_forces",
+                node=Node.ALL_SHOOTING,
+                weight=1000,
+            )
+            objective_functions.add(  # Track CoP position
+                objective=ObjectiveFcn.Lagrange.TRACK_CONTROL,
+                key="contact_positions",
+                node=Node.ALL_SHOOTING,
+                weight=0.01,
+                target=np.vstack((self.f_ext_exp_ocp["left_leg"][0:3, :-1], self.f_ext_exp_ocp["right_leg"][0:3, :-1])),
+            )
 
         constraints = ConstraintList()
 
@@ -648,21 +674,22 @@ class OptimalEstimator:
 
         x_bounds = BoundsList()
         # Bounds from model
-        # x_bounds["q"] = bio_model.bounds_from_ranges("q")
-        # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
-        # Bounds personalized to the subject's current kinematics
-        min_q = self.q_exp_ocp[:, :] - 0.3
-        min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
-        max_q = self.q_exp_ocp[:, :] + 0.3
-        max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
-        x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
-        # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
-        x_bounds.add(
-            "qdot",
-            min_bound=self.qdot_exp_ocp - 10,
-            max_bound=self.qdot_exp_ocp + 10,
-            interpolation=InterpolationType.EACH_FRAME,
-        )
+        x_bounds["q"] = bio_model.bounds_from_ranges("q")
+        x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
+
+        # # Bounds personalized to the subject's current kinematics
+        # min_q = self.q_exp_ocp[:, :] - 0.3
+        # min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
+        # max_q = self.q_exp_ocp[:, :] + 0.3
+        # max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
+        # x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
+        # # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
+        # x_bounds.add(
+        #     "qdot",
+        #     min_bound=self.qdot_exp_ocp - 10,
+        #     max_bound=self.qdot_exp_ocp + 10,
+        #     interpolation=InterpolationType.EACH_FRAME,
+        # )
 
         x_init = InitialGuessList()
         x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
@@ -670,28 +697,30 @@ class OptimalEstimator:
 
         u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
-        u_bounds.add("tau", min_bound=[-500] * nb_q, max_bound=[500] * nb_q, interpolation=InterpolationType.CONSTANT)
-        u_bounds.add(
-            "contact_forces", min_bound=[-10] * 3, max_bound=[10] * 3, interpolation=InterpolationType.CONSTANT
-        )
-        u_bounds.add(
-            "contact_positions", min_bound=[-2] * 3, max_bound=[2] * 3, interpolation=InterpolationType.CONSTANT
-        )
+        u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
+        if with_residual_forces:
+            u_bounds.add(
+                "contact_forces", min_bound=[-10] * 6, max_bound=[10] * 6, interpolation=InterpolationType.CONSTANT
+            )
+            u_bounds.add(
+                "contact_positions", min_bound=[-2] * 6, max_bound=[2] * 6, interpolation=InterpolationType.CONSTANT
+            )
 
         u_init = InitialGuessList()
         u_init.add("tau", initial_guess=self.tau_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
-        u_init.add("contact_forces", initial_guess=[0] * 3, interpolation=InterpolationType.CONSTANT)
-        u_init.add(
-            "contact_positions",
-            initial_guess=self.f_ext_exp_ocp["left_leg"][0:3, :-1],
-            interpolation=InterpolationType.EACH_FRAME,
-        )
+        if with_residual_forces:
+            u_init.add("contact_forces", initial_guess=[0] * 6, interpolation=InterpolationType.CONSTANT)
+            u_init.add(
+                "contact_positions",
+                initial_guess=np.vstack((self.f_ext_exp_ocp["left_leg"][0:3, :-1], self.f_ext_exp_ocp["right_leg"][0:3, :-1])),
+                interpolation=InterpolationType.EACH_FRAME,
+            )
 
         # TODO: Charbie -> Add phase transition when I have the full cycle
         # phase_transitions = PhaseTransitionList()
         # phase_transitions.add(PhaseTransitionFcn.CYCLIC, phase_pre_idx=0)
 
-        self.ocp = OptimalControlProgram(
+        ocp = OptimalControlProgram(
             bio_model=bio_model,
             n_shooting=self.n_shooting,
             phase_time=self.phase_time,
@@ -706,6 +735,9 @@ class OptimalEstimator:
             use_sx=False,
             n_threads=10,
         )
+        ocp.add_plot_penalty()
+        ocp.add_plot_ipopt_outputs()
+        self.ocp = ocp
 
     # def prepare_ocp_implicit(self):
     #     """
@@ -1155,6 +1187,7 @@ class OptimalEstimator:
 
         solver = Solver.IPOPT(show_online_optim=show_online_optim)
         solver.set_linear_solver("ma57")
+        solver.set_maximum_iterations(10_000)
         solver.set_tol(1e-3)  # TODO: Charbie -> Change for a more appropriate value (just to see for now)
         self.solution = self.ocp.solve(solver=solver)
         self.time_opt = self.solution.decision_time(to_merge=SolutionMerge.NODES, time_alignment=TimeAlignment.STATES)

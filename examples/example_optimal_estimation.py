@@ -72,11 +72,11 @@ def analysis_to_perform(
 
     # --- Example of analysis that can be performed in any order --- #
     results.estimate_optimally(
-        cycle_to_analyze=6,
+        cycle_to_analyze=5,
         plot_solution_flag=True,
         animate_solution_flag=True,
         implicit_contacts=False,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
 
     return results
