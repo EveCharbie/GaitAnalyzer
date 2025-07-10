@@ -204,6 +204,7 @@ class ResultManager:
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
         implicit_contacts: bool = False,
+        skip_if_existing: bool = False,
     ):
 
         # Checks
@@ -234,4 +235,5 @@ class ResultManager:
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
             implicit_contacts=implicit_contacts,
+            skip_if_existing=skip_if_existing,
         )

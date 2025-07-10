@@ -67,10 +67,14 @@ def analysis_to_perform(
         skip_if_existing=True,
     )
 
-    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=True)
+    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=False)
+    results.estimate_optimally(cycle_to_analyze=6,
+                               plot_solution_flag=True,
+                               animate_solution_flag=True,
+                               implicit_contacts=False,
+                               skip_if_existing=True)
 
     return results
 
@@ -106,52 +110,52 @@ if __name__ == "__main__":
         # trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
-
-    # --- Example of how to plot the joint angles --- #
+    #
+    # # --- Example of how to plot the joint angles --- #
+    # # plot = PlotLegData(
+    # #     result_folder="results",
+    # #     leg_to_plot=LegToPlot.RIGHT,
+    # #     plot_type=PlotType.Q,
+    # #     unique_event_to_split={
+    # #         "event_index_type": EventIndexType.MARKERS,
+    # #         "start": lambda data: int(data["events"][0]["heel_touch"][0]),
+    # #         "stop": lambda data: int(data["events"][2]["heel_touch"][0]),
+    # #     },
+    # #     conditions_to_compare=["_Cond0006"],
+    # # )
+    # # plot.draw_plot()
+    # # plot.save("results/AOT_01_Q_plot_temporary.png")
+    # # plot.show()
+    #
+    # # --- Example of how to plot the joint angular velocities--- #
     # plot = PlotLegData(
     #     result_folder="results",
     #     leg_to_plot=LegToPlot.RIGHT,
-    #     plot_type=PlotType.Q,
-    #     unique_event_to_split={
-    #         "event_index_type": EventIndexType.MARKERS,
-    #         "start": lambda data: int(data["events"][0]["heel_touch"][0]),
-    #         "stop": lambda data: int(data["events"][2]["heel_touch"][0]),
-    #     },
-    #     conditions_to_compare=["_Cond0006"],
+    #     plot_type=PlotType.QDOT,
+    #     conditions_to_compare=["_ManipStim_L400_F50_I20"],
     # )
     # plot.draw_plot()
-    # plot.save("results/AOT_01_Q_plot_temporary.png")
+    # plot.save("results/AOT_01_QDOT_plot_temporary.png")
     # plot.show()
-
-    # --- Example of how to plot the joint angular velocities--- #
-    plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.QDOT,
-        conditions_to_compare=["_ManipStim_L400_F50_I20"],
-    )
-    plot.draw_plot()
-    plot.save("results/AOT_01_QDOT_plot_temporary.png")
-    plot.show()
-
-    # --- Example of how to plot the joint torques --- #
-    plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.TAU,
-        conditions_to_compare=["_ManipStim_L200_F30_I20"],
-    )
-    plot.draw_plot()
-    plot.save("results/AOT_01_Tau_plot_temporary.png")
-    plot.show()
-
-    # --- Example of how to plot the ground reaction forces --- #
-    plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.GRF,
-        conditions_to_compare=["_ManipStim_L200_F30_I20"],
-    )
-    plot.draw_plot()
-    plot.save("results/AOT_01_GRF_plot_temporary.png")
-    plot.show()
+    #
+    # # --- Example of how to plot the joint torques --- #
+    # plot = PlotLegData(
+    #     result_folder="results",
+    #     leg_to_plot=LegToPlot.RIGHT,
+    #     plot_type=PlotType.TAU,
+    #     conditions_to_compare=["_ManipStim_L200_F30_I20"],
+    # )
+    # plot.draw_plot()
+    # plot.save("results/AOT_01_Tau_plot_temporary.png")
+    # plot.show()
+    #
+    # # --- Example of how to plot the ground reaction forces --- #
+    # plot = PlotLegData(
+    #     result_folder="results",
+    #     leg_to_plot=LegToPlot.RIGHT,
+    #     plot_type=PlotType.GRF,
+    #     conditions_to_compare=["_ManipStim_L200_F30_I20"],
+    # )
+    # plot.draw_plot()
+    # plot.save("results/AOT_01_GRF_plot_temporary.png")
+    # plot.show()
