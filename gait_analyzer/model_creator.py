@@ -138,7 +138,6 @@ class OsimModels:
 
         return model
 
-
     # Child classes acting as an enum
     class WholeBody:
         """This is a hole body model that consists of 23 bodies, 42 degrees of freedom and 30 muscles.
@@ -329,16 +328,16 @@ class OsimModels:
             This is useful as multiple muscles might be associated with the same EMG signal.
             """
             return {
-                 'semiten_r': "SEMITENDINOUS",
-                 'bifemlh_r': "BICEPS_FEM",
-                 'sar_r': "RECTUS_FEM",
-                 'tfl_r': "RECTUS_FEM",
-                 'vas_med_r': "RECTUS_FEM",
-                 'vas_lat_r': "RECTUS_FEM",
-                 'soleus_r': "SOL",
-                 'tib_post_r': "SOL",
-                 'tib_ant_r': "TIB",
-                 'per_long_r': "SOL",
+                "semiten_r": "SEMITENDINOUS",
+                "bifemlh_r": "BICEPS_FEM",
+                "sar_r": "RECTUS_FEM",
+                "tfl_r": "RECTUS_FEM",
+                "vas_med_r": "RECTUS_FEM",
+                "vas_lat_r": "RECTUS_FEM",
+                "soleus_r": "SOL",
+                "tib_post_r": "SOL",
+                "tib_ant_r": "TIB",
+                "per_long_r": "SOL",
             }
 
         def perform_modifications(self, model, static_trial):

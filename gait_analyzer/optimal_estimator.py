@@ -392,10 +392,16 @@ class OptimalEstimator:
                 nan_idx = np.where(np.isnan(self.markers_exp_ocp[0, i_marker, :]))[0]
                 for i_nan in nan_idx:
                     if i_nan == 0 or i_nan == self.markers_exp_ocp.shape[2] - 1:
-                        raise RuntimeError("Maybe chose another cycle as there are NaNs at the beginning or the end of this cycle.")
-                    if np.isnan(self.markers_exp_ocp[0, i_marker, i_nan-1]) or np.isnan(self.markers_exp_ocp[0, i_marker, i_nan+1]):
+                        raise RuntimeError(
+                            "Maybe chose another cycle as there are NaNs at the beginning or the end of this cycle."
+                        )
+                    if np.isnan(self.markers_exp_ocp[0, i_marker, i_nan - 1]) or np.isnan(
+                        self.markers_exp_ocp[0, i_marker, i_nan + 1]
+                    ):
                         raise NotImplementedError("TODO: Implement a better NaN filling method.")
-                    self.markers_exp_ocp[:, i_marker, i_nan] = (self.markers_exp_ocp[:, i_marker, i_nan-1] + self.markers_exp_ocp[:, i_marker, i_nan+1]) / 2
+                    self.markers_exp_ocp[:, i_marker, i_nan] = (
+                        self.markers_exp_ocp[:, i_marker, i_nan - 1] + self.markers_exp_ocp[:, i_marker, i_nan + 1]
+                    ) / 2
 
         self.phase_time = (
             self.experimental_data.markers_time_vector[idx_to_keep[-1]]
@@ -532,18 +538,22 @@ class OptimalEstimator:
                 Custom Torque model to handle the no contact case.
                 """
                 super().__init__(biorbd_model_path, external_force_set=external_force_set)
-                self.control_configuration += [lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=1)]
+                self.control_configuration += [
+                    lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
+                        ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=1
+                    )
+                ]
 
             def dynamics(
-                    self,
-                    time,
-                    states,
-                    controls,
-                    parameters,
-                    algebraic_states,
-                    numerical_timeseries,
-                    nlp,
-                ):
+                self,
+                time,
+                states,
+                controls,
+                parameters,
+                algebraic_states,
+                numerical_timeseries,
+                nlp,
+            ):
 
                 q = DynamicsFunctions.get(nlp.states["q"], states)
                 qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
@@ -551,14 +561,15 @@ class OptimalEstimator:
                 f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
                 f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
-                external_forces = nlp.get_external_forces("external_forces", states, controls, algebraic_states, numerical_timeseries)
+                external_forces = nlp.get_external_forces(
+                    "external_forces", states, controls, algebraic_states, numerical_timeseries
+                )
                 external_forces[:3] += f_ext_residual_position
                 external_forces[6:9] += f_ext_residual_value
 
                 ddq = nlp.model.forward_dynamics()(q, qdot, tau, external_forces, nlp.parameters.cx)
 
                 return DynamicsEvaluation(dxdt=cas.vertcat(qdot, ddq), defects=None)
-
 
         print(f"Preparing optimal control problem with platform force applied directly to the CoP...")
 
@@ -632,7 +643,7 @@ class OptimalEstimator:
         dynamics.add(
             numerical_data_timeseries=numerical_time_series,
             phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
-            ode_solver= OdeSolver.RK4(),
+            ode_solver=OdeSolver.RK4(),
         )
 
         x_bounds = BoundsList()

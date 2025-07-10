@@ -288,7 +288,9 @@ class KinematicsReconstructor:
             distances = np.linalg.norm(position_diffs, axis=0)  # shape: (n_valid-1,)
 
             # Check for jumps > 10m/s
-            jump_indices = np.where(distances/np.diff(valid_frames)*self.experimental_data.marker_sampling_frequency > 10)[0]
+            jump_indices = np.where(
+                distances / np.diff(valid_frames) * self.experimental_data.marker_sampling_frequency > 10
+            )[0]
 
             if len(jump_indices) > 0:
                 # Report the first jump found
@@ -457,7 +459,6 @@ class KinematicsReconstructor:
         except:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
-
         # Model
         model = BiorbdModel.from_biorbd_object(self.biorbd_model)
         model.options.transparent_mesh = False
@@ -479,9 +480,7 @@ class KinematicsReconstructor:
             q_animation = self.q_filtered.T
 
         if q_animation.shape[1] > 200:
-            print(
-                "To avoid computer crashes, only the first 200 frames will be displayed in the animation. "
-            )
+            print("To avoid computer crashes, only the first 200 frames will be displayed in the animation. ")
             q_animation = q_animation[:, :200]
             t_animation = t_animation[:200]
             frame_range = frame_range[:200]
@@ -510,7 +509,7 @@ class KinematicsReconstructor:
                 emg_data += [self.experimental_data.normalized_emg[muscle_index, :]]
             else:
                 nb_frames = self.experimental_data.normalized_emg.shape[1]
-                emg_data += [np.zeros((nb_frames, ))]
+                emg_data += [np.zeros((nb_frames,))]
         emg_data = np.array(emg_data)[:, analog_idx]
         emg = PyoMuscles(data=emg_data, muscle_names=muscle_names, colormap="viridis")
 

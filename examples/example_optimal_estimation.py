@@ -38,7 +38,6 @@ def analysis_to_perform(
         animate_model_flag=False,
     )
 
-
     markers_to_ignore = []
     analogs_to_ignore = [
         "Channel_01",
@@ -55,7 +54,9 @@ def analysis_to_perform(
         "Channel_12",
         "Bertec_treadmill_speed",
     ]
-    results.add_experimental_data(c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore)
+    results.add_experimental_data(
+        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore
+    )
 
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
     # results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
@@ -70,11 +71,13 @@ def analysis_to_perform(
     results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    results.estimate_optimally(cycle_to_analyze=6,
-                               plot_solution_flag=True,
-                               animate_solution_flag=True,
-                               implicit_contacts=False,
-                               skip_if_existing=True)
+    results.estimate_optimally(
+        cycle_to_analyze=6,
+        plot_solution_flag=True,
+        animate_solution_flag=True,
+        implicit_contacts=False,
+        skip_if_existing=True,
+    )
 
     return results
 
