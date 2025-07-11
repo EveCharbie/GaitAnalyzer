@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 import casadi as cas
 import biorbd
+import biobuddy
 
 try:
     import bioptim
@@ -111,6 +112,7 @@ class OptimalEstimator:
         self.q_opt = None
         self.qdot_opt = None
         self.tau_opt = None
+        self.opt_status = "CVG"
         self.is_loaded_optimal_solution = False
 
         # Execution
@@ -126,7 +128,7 @@ class OptimalEstimator:
             if implicit_contacts:
                 self.prepare_ocp_implicit()
             else:
-                self.prepare_ocp_fext(with_residual_forces=False)
+                self.prepare_ocp_fext(with_residual_forces=True)
 
             self.solve(show_online_optim=True)
             self.save_optimal_reconstruction()
@@ -141,162 +143,175 @@ class OptimalEstimator:
             self.animate_solution()
         self.extract_muscle_forces()
 
-    def generate_contact_biomods(self):
-        """
-        Create other bioMod files with the addition of the different feet contact conditions.
-        TODO: do this with BioBuddy
-        """
-
-        def add_txt_per_condition(condition: str) -> str:
-            # TODO: Charbie -> Until biorbd is fixed to read biomods, I will hard code the position of the contacts
-            contact_text = "\n/*-------------- CONTACTS---------------\n*/\n"
-            if "heelL" in condition and "toesL" in condition:
-                contact_text += f"contact\tLCAL\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tLMFH1\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
-                contact_text += f"\taxis\tz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tLMFH5\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
-                contact_text += f"\taxis\tzy\n"
-                contact_text += "endcontact\n\n"
-
-            elif "heelL" in condition:
-                contact_text += f"contact\tLCAL\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-            elif "toesL" in condition:
-                contact_text += f"contact\tLMFH1\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
-                contact_text += f"\taxis\txz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tLMFH5\n"
-                contact_text += f"\tparent\tcalcn_l\n"
-                contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-            if "heelR" in condition and "toesR" in condition:
-                contact_text += f"contact\tRCAL\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tRMFH1\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
-                contact_text += f"\taxis\tz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tRMFH5\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
-                contact_text += f"\taxis\tzy\n"
-                contact_text += "endcontact\n\n"
-
-            elif "heelR" in condition:
-                contact_text += f"contact\tRCAL\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-            elif "toesR" in condition:
-                contact_text += f"contact\tRMFH1\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
-                contact_text += f"\taxis\txz\n"
-                contact_text += "endcontact\n\n"
-
-                contact_text += f"contact\tRMFH5\n"
-                contact_text += f"\tparent\tcalcn_r\n"
-                contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
-                contact_text += f"\taxis\txyz\n"
-                contact_text += "endcontact\n\n"
-
-            return contact_text
-
-        original_model_path = self.biorbd_model_path
-        conditions = [
-            "heelR_toesR",
-            "toesR_heelL",
-            "toesR",
-            "toesR_heelL",
-            "heelL_toesL",
-            "toesL",
-            "toesL_heelR",
-            "toesL_heelR_toesR",
-            "no_contacts",
-        ]
-        for condition in conditions:
-            new_model_path = original_model_path.replace(".bioMod", f"_{condition}.bioMod")
-            with open(original_model_path, "r+", encoding="utf-8") as file:
-                lines = file.readlines()
-            with open(new_model_path, "w+", encoding="utf-8") as file:
-                for i_line, line in enumerate(lines):
-                    if i_line + 1 in [
-                        557,  # toes_r_mtp_angle_r
-                        558,
-                        559,
-                        571,  # toes_r_rotation_1 (range)
-                        572,
-                        584,  # toes_r_rotation_2 (range)
-                        585,
-                        1038,  # toes_r_mtp_angle_l
-                        1039,
-                        1040,
-                        1052,  # toes_l_rotation_1 (range)
-                        1053,
-                        1065,  # toes_l_rotation_2 (range)
-                        1066,
-                    ]:
-                        pass  # Remove the toes rotations
-                    elif i_line + 1 in [
-                        1636,  # lunate_r_rotation_transform
-                        1637,
-                        1638,
-                        1704,  # hand_r_translation
-                        1705,
-                        1706,
-                        1964,  # fingers_r_translation
-                        1965,
-                        1966,
-                        2467,  # lunate_l_rotation_transform
-                        2468,
-                        2469,
-                        2535,  # hand_l_translation
-                        2536,
-                        2537,
-                        2795,  # fingers_l_translation
-                        2796,
-                        2797,
-                    ]:
-                        pass
-                    elif i_line + 1 in [
-                        1251,  # head_and_neck_rotation_transform
-                        1252,
-                        1253,
-                        1254,
-                        1255,
-                    ]:
-                        pass  # Remove the hands rotations
-                    else:
-                        file.write(line)
-                file.write(add_txt_per_condition(condition))
+    # def generate_contact_biomods(self):
+    #     """
+    #     Create other bioMod files with the addition of the different feet contact conditions.
+    #     """
+    #
+    #     def add_contacts_per_condition(model_to_modify: biobuddy.BiomechanicalModelReal, condition: str) -> str:
+    #         # First, remove some degrees of freedom and ranges from the model
+    #
+    #         # Second, add contacts
+    #         if "heelL" in condition and "toesL" in condition:
+    #             contact = biobuddy.Contact(name="LCAL",
+    #                                        parent_name="calcn_l",
+    #                                        function=lambda m, bio: (5*m["LCAL"] + m["LFH1"] + m["LFH5"]) / 8,
+    #                                        axis=biobuddy.Translations.XYZ,
+    #                                        )
+    #             model_to_modify.segments["calcn_l"].add_contact(contact.to_contact(model_to_modify))
+    #
+    #             def to_contact(self, data: Data) -> ContactReal:
+    #
+    #             name: str,
+    #             parent_name: str,
+    #             position: Point = None,
+    #             axis: Translations = None,
+    #             contact_text += f"contact\tLCAL\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tLMFH1\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
+    #             contact_text += f"\taxis\tz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tLMFH5\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
+    #             contact_text += f"\taxis\tzy\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         elif "heelL" in condition:
+    #             contact_text += f"contact\tLCAL\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t-0.018184372684362127\t-0.036183919561541877\t0.010718604411614319\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         elif "toesL" in condition:
+    #             contact_text += f"contact\tLMFH1\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t0.19202791077724868\t-0.013754853217574914\t0.039283237127771042\n"
+    #             contact_text += f"\taxis\txz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tLMFH5\n"
+    #             contact_text += f"\tparent\tcalcn_l\n"
+    #             contact_text += f"\tposition\t0.18583815793306013\t-0.0092170000425693677\t-0.072430596752376397\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         if "heelR" in condition and "toesR" in condition:
+    #             contact_text += f"contact\tRCAL\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tRMFH1\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
+    #             contact_text += f"\taxis\tz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tRMFH5\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
+    #             contact_text += f"\taxis\tzy\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         elif "heelR" in condition:
+    #             contact_text += f"contact\tRCAL\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t-0.017776522017632024\t-0.030271301561674208\t-0.015068364463032391\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         elif "toesR" in condition:
+    #             contact_text += f"contact\tRMFH1\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t0.20126587479704638\t-0.0099656486276807066\t-0.039248701869426805\n"
+    #             contact_text += f"\taxis\txz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #             contact_text += f"contact\tRMFH5\n"
+    #             contact_text += f"\tparent\tcalcn_r\n"
+    #             contact_text += f"\tposition\t0.18449626841163846\t-0.018897872323952902\t0.07033570386440513\n"
+    #             contact_text += f"\taxis\txyz\n"
+    #             contact_text += "endcontact\n\n"
+    #
+    #         return contact_text
+    #
+    #     original_model_path = self.biorbd_model_path
+    #     conditions = [
+    #         "heelR_toesR",
+    #         "toesR_heelL",
+    #         "toesR",
+    #         "toesR_heelL",
+    #         "heelL_toesL",
+    #         "toesL",
+    #         "toesL_heelR",
+    #         "toesL_heelR_toesR",
+    #         "no_contacts",
+    #     ]
+    #     for condition in conditions:
+    #         new_model_path = original_model_path.replace(".bioMod", f"_{condition}.bioMod")
+    #         model_to_modify = biobuddy.BiomechanicalModelReal().from_biomod(original_model_path)
+    #         with open(new_model_path, "w+", encoding="utf-8") as file:
+    #             for i_line, line in enumerate(lines):
+    #                 if i_line + 1 in [
+    #                     557,  # toes_r_mtp_angle_r
+    #                     558,
+    #                     559,
+    #                     571,  # toes_r_rotation_1 (range)
+    #                     572,
+    #                     584,  # toes_r_rotation_2 (range)
+    #                     585,
+    #                     1038,  # toes_r_mtp_angle_l
+    #                     1039,
+    #                     1040,
+    #                     1052,  # toes_l_rotation_1 (range)
+    #                     1053,
+    #                     1065,  # toes_l_rotation_2 (range)
+    #                     1066,
+    #                 ]:
+    #                     pass  # Remove the toes rotations
+    #                 elif i_line + 1 in [
+    #                     1636,  # lunate_r_rotation_transform
+    #                     1637,
+    #                     1638,
+    #                     1704,  # hand_r_translation
+    #                     1705,
+    #                     1706,
+    #                     1964,  # fingers_r_translation
+    #                     1965,
+    #                     1966,
+    #                     2467,  # lunate_l_rotation_transform
+    #                     2468,
+    #                     2469,
+    #                     2535,  # hand_l_translation
+    #                     2536,
+    #                     2537,
+    #                     2795,  # fingers_l_translation
+    #                     2796,
+    #                     2797,
+    #                 ]:
+    #                     pass
+    #                 elif i_line + 1 in [
+    #                     1251,  # head_and_neck_rotation_transform
+    #                     1252,
+    #                     1253,
+    #                     1254,
+    #                     1255,
+    #                 ]:
+    #                     pass  # Remove the hands rotations
+    #                 else:
+    #                     file.write(line)
+    #             model_to_modify = add_contacts_per_condition(model_to_modify, condition, self.)
+    #             model_to_modify.to_biomod(new_model_path)
 
     def prepare_reduced_experimental_data(self, plot_exp_data_flag: bool = False, animate_exp_data_flag: bool = False):
         """
@@ -673,23 +688,23 @@ class OptimalEstimator:
         )
 
         x_bounds = BoundsList()
-        # Bounds from model
-        x_bounds["q"] = bio_model.bounds_from_ranges("q")
-        x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
+        # # Bounds from model
+        # x_bounds["q"] = bio_model.bounds_from_ranges("q")
+        # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
 
-        # # Bounds personalized to the subject's current kinematics
-        # min_q = self.q_exp_ocp[:, :] - 0.3
-        # min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
-        # max_q = self.q_exp_ocp[:, :] + 0.3
-        # max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
-        # x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
-        # # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
-        # x_bounds.add(
-        #     "qdot",
-        #     min_bound=self.qdot_exp_ocp - 10,
-        #     max_bound=self.qdot_exp_ocp + 10,
-        #     interpolation=InterpolationType.EACH_FRAME,
-        # )
+        # Bounds personalized to the subject's current kinematics
+        min_q = self.q_exp_ocp[:, :] - 0.3
+        min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
+        max_q = self.q_exp_ocp[:, :] + 0.3
+        max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
+        x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
+        # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
+        x_bounds.add(
+            "qdot",
+            min_bound=self.qdot_exp_ocp - 10,
+            max_bound=self.qdot_exp_ocp + 10,
+            interpolation=InterpolationType.EACH_FRAME,
+        )
 
         x_init = InitialGuessList()
         x_init.add("q", initial_guess=self.q_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
@@ -700,7 +715,7 @@ class OptimalEstimator:
         u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
         if with_residual_forces:
             u_bounds.add(
-                "contact_forces", min_bound=[-10] * 6, max_bound=[10] * 6, interpolation=InterpolationType.CONSTANT
+                "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
             )
             u_bounds.add(
                 "contact_positions", min_bound=[-2] * 6, max_bound=[2] * 6, interpolation=InterpolationType.CONSTANT
@@ -1185,9 +1200,9 @@ class OptimalEstimator:
     def solve(self, show_online_optim: bool = False):
         from bioptim import SolutionMerge, TimeAlignment, Solver
 
-        solver = Solver.IPOPT(show_online_optim=show_online_optim)
+        solver = Solver.IPOPT(show_online_optim=show_online_optim, show_options=dict(show_bounds=True))
         solver.set_linear_solver("ma57")
-        solver.set_maximum_iterations(10_000)
+        solver.set_maximum_iterations(10_000)  # 10_000
         solver.set_tol(1e-3)  # TODO: Charbie -> Change for a more appropriate value (just to see for now)
         self.solution = self.ocp.solve(solver=solver)
         self.time_opt = self.solution.decision_time(to_merge=SolutionMerge.NODES, time_alignment=TimeAlignment.STATES)
@@ -1270,7 +1285,6 @@ class OptimalEstimator:
         if result_folder is None:
             result_folder = self.experimental_data.result_folder
         trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
-        self.opt_status = "CVG"
         result_file_full_path = f"{result_folder}/optim_estim_{trial_name}_{self.opt_status}.pkl"
         return result_file_full_path
 

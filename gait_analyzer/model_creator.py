@@ -77,12 +77,15 @@ class OsimModels:
 
     def perform_modifications(self, model, static_trial):
         """
-        1. Remove the markers that are not needed (markers_to_ignore)
-        2. Remove the degrees of freedom that are not needed (segments_to_fix)
-        3. Change the ranges of motion for the segments (ranges_to_adjust)
-        4. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
-        5. Add the marker clusters (markers_to_add)
+        1. Make the gravity vector point downwards (necessary because OpenSim is Y-up and biorbd is Z-up)
+        2. Remove the markers that are not needed (markers_to_ignore)
+        3. Remove the degrees of freedom that are not needed (segments_to_fix)
+        4. Change the ranges of motion for the segments (ranges_to_adjust)
+        5. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
+        6. Add the marker clusters (markers_to_add)
         """
+        # Modify gravity vector
+        model.gravity_vector = np.array([0, 0, -9.81])
 
         # Modify segments
         for segment in model.segments:
