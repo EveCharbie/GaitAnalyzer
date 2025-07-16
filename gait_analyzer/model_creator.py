@@ -310,7 +310,6 @@ class ModelCreator:
         models_result_folder: str,
         osim_model_type,
         skip_if_existing: bool,
-        skip_scaling: bool,
         animate_model_flag: bool,
         vtp_geometry_path: str,
     ):
@@ -329,8 +328,6 @@ class ModelCreator:
             The type of model to create.
         skip_if_existing: bool
             If the model already exists, skip the creation.
-        skip_scaling: bool
-            If the model is already scaled in OpenSim's GUI, skip the scaling and only create the biomod.
         animate_model_flag: bool
             If True, animate the model after creating it.
         """
@@ -350,8 +347,6 @@ class ModelCreator:
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
-        if not isinstance(skip_scaling, bool):
-            raise ValueError("skip_scaling must be a boolean.")
         if not isinstance(animate_model_flag, bool):
             raise ValueError("animate_model_flag must be a boolean.")
         if not isinstance(vtp_geometry_path, str):

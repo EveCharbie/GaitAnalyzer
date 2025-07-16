@@ -83,7 +83,6 @@ class ResultManager:
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             skip_if_existing=skip_if_existing,
-            skip_scaling=skip_scaling,
             animate_model_flag=animate_model_flag,
             vtp_geometry_path=vtp_geometry_path,
         )

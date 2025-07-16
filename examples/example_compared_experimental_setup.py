@@ -30,7 +30,6 @@ def analysis_to_perform(
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
         skip_if_existing=False,
-        skip_scaling=True,  # We skip the scaling since it was already done in OpenSim's GUI
         animate_model_flag=False)
     results.add_experimental_data(
         c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4","*49","*50"], animate_c3d_flag=False
