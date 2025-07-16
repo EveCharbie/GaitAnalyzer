@@ -19,7 +19,6 @@ class AngularMomentumCalculator:
                  experimental_data: ExperimentalData,
                  kinematics_reconstructor: KinematicsReconstructor,
                  subject: Subject,
-                 segments_length: dict[str, float],
                  skip_if_existing: bool):
         """
         Initialize the AngularMomentumCalculator.
@@ -34,8 +33,8 @@ class AngularMomentumCalculator:
             The kinematics reconstructor object containing the filtered joint angles and velocities.
         subject : Subject
             The subject object containing subject-specific parameters like mass and height.
-        segments_length: dict[str, float]
-            A dictionary containing the length of each segment in meters.
+        # segments_length: dict[str, float]
+        #     A dictionary containing the length of each segment in meters.
         skip_if_existing : bool
             If True, skip the angular momentum computations if it already exists.
         """
@@ -47,8 +46,7 @@ class AngularMomentumCalculator:
         self.qdot = kinematics_reconstructor.qdot
         self.subject_mass = subject.subject_mass
         self.subject_height = subject.subject_height
-        self.gravity = biorbd_model.getGravity()
-        self.segments_length = segments_length
+        self.gravity = biorbd_model.getGravity().to_array()
 
         # Helper parameters
         self.nb_frames = self.q.shape[1]
@@ -57,7 +55,7 @@ class AngularMomentumCalculator:
         self.total_angular_momentum = None
         self.total_angular_momentum_normalized = None
         self.segments_angular_momentum = None
-        self.segments_angular_momentum_normalized = None
+        # self.segments_angular_momentum_normalized = None
         self.is_loaded_angular_momentum = False
 
         if skip_if_existing and self.check_if_existing():
@@ -80,8 +78,12 @@ class AngularMomentumCalculator:
         """
         Normalize the angular momentum with respect to the mass and height of the subject.
         """
-        self.total_angular_momentum_normalized = self.total_angular_momentum / (
-                    self.subject_mass * self.subject_height * np.sqrt(self.gravity * self.subject_height))
+        if self.gravity[0] != 0.0 or self.gravity[1] != 0.0 or self.gravity[2] == 0.0:
+            raise NotImplementedError(f"The gravity of this model is not aligned with the z axis ({self.gravity}), which id not implemented yet.")
+
+        gravity_factor = np.array([1.0, 1.0, np.abs(self.gravity[2])])
+        normalization_factor = self.subject_mass * self.subject_height * np.sqrt(gravity_factor * self.subject_height)
+        self.total_angular_momentum_normalized = self.total_angular_momentum / normalization_factor.reshape(3, 1)
 
     def extract_last_dof_per_segment(self):
         """
@@ -120,26 +122,30 @@ class AngularMomentumCalculator:
         Computes the angular momentum of each segment around its center of mass on the three axis.
         """
         last_dofs, segment_names, last_dof_indices = self.extract_last_dof_per_segment()
-        
-        # Make sure segment_length is of the right type
-        if self.segments_length is None:
-            self.segments_length = {segment_name: np.nan for segment_name in segment_names}
-        elif not isinstance(self.segments_length, dict):
-            raise ValueError("segments_length must be a dictionary with segment names as keys and lengths as values.")
-        elif not all(segment_name in self.segments_length for segment_name in segment_names):
-            raise ValueError("segments_length must contain all segment names from the model.")
-        elif len(self.segments_length) != len(segment_names):
-            raise ValueError("segments_length must contain the same number of segments as the model.")
 
         self.segments_angular_momentum = {segment_name: np.zeros((3, self.nb_frames)) for segment_name in segment_names}
-        self.segments_angular_momentum_normalized = {segment_name: np.zeros((3, self.nb_frames)) for segment_name in segment_names}
-        for i_frame in range(self.nb_frames):
-            segment_angular_momentum = self.model.CalcSegmentsAngularMomentum(self.q[:, i_frame], self.qdot[:, i_frame], True)
-            for segment_name, index in zip(segment_names, last_dof_indices):
-                self.segments_angular_momentum[segment_name][: i_frame] = segment_angular_momentum[index].to_array()
-                self.segments_angular_momentum_normalized[segment_name][:, i_frame] = self.segments_angular_momentum[segment_name][:, i_frame] / (
-                    self.subject_mass * self.segments_length[segment_name] * np.sqrt(self.gravity * self.segments_length[segment_name])
-                )
+
+        # TODO: The normalization of the segments' angular momentum is not implemented yet.
+        # It would require providing anthropometric measurement from the participant.
+
+        # # Make sure segment_length is of the right type
+        # if self.segments_length is None:
+        #     self.segments_length = {segment_name: np.nan for segment_name in segment_names}
+        # elif not isinstance(self.segments_length, dict):
+        #     raise ValueError("segments_length must be a dictionary with segment names as keys and lengths as values.")
+        # elif not all(segment_name in self.segments_length for segment_name in segment_names):
+        #     raise ValueError("segments_length must contain all segment names from the model.")
+        # elif len(self.segments_length) != len(segment_names):
+        #     raise ValueError("segments_length must contain the same number of segments as the model.")
+
+        # self.segments_angular_momentum_normalized = {segment_name: np.zeros((3, self.nb_frames)) for segment_name in segment_names}
+        # for i_frame in range(self.nb_frames):
+        #     segment_angular_momentum = self.model.CalcSegmentsAngularMomentum(self.q[:, i_frame], self.qdot[:, i_frame], True)
+        #     for segment_name, index in zip(segment_names, last_dof_indices):
+        #         self.segments_angular_momentum[segment_name][: i_frame] = segment_angular_momentum[index].to_array()
+        #         self.segments_angular_momentum_normalized[segment_name][:, i_frame] = self.segments_angular_momentum[segment_name][:, i_frame] / (
+        #             self.subject_mass * self.segments_length[segment_name] * np.sqrt(self.gravity * self.segments_length[segment_name])
+        #         )
 
         return
 
@@ -161,7 +167,7 @@ class AngularMomentumCalculator:
                 self.total_angular_momentum = data["total_angular_momentum"]
                 self.total_angular_momentum_normalized = data["total_angular_momentum_normalized"]
                 self.segments_angular_momentum = data["segments_angular_momentum"]
-                self.segments_angular_momentum_normalized = data["segments_angular_momentum_normalized"]
+                # self.segments_angular_momentum_normalized = data["segments_angular_momentum_normalized"]
                 self.is_loaded_angular_momentum = True
             return True
         else:
@@ -196,5 +202,5 @@ class AngularMomentumCalculator:
             "total_angular_momentum": self.total_angular_momentum,
             "total_angular_momentum_normalized": self.total_angular_momentum_normalized,
             "segments_angular_momentum": self.segments_angular_momentum,
-            "segments_angular_momentum_normalized": self.segments_angular_momentum_normalized,
+            # "segments_angular_momentum_normalized": self.segments_angular_momentum_normalized,
         }

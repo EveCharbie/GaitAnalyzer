@@ -216,11 +216,8 @@ class ResultManager:
             self.experimental_data,
             self.kinematics_reconstructor,
             self.subject,
-            segments_length=segments_length,
             skip_if_existing=skip_if_existing,
         )
-
-        self.angular_momentum_calculator.calculate_angular_momentum()
 
     def estimate_optimally(
         self,
