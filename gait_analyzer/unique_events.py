@@ -122,7 +122,7 @@ class UniqueEvents:
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
             result_folder = self.experimental_data.result_folder
-        trial_name = self.experimental_data.c3d_file_name.split("/")[-1][:-4]
+        trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
         result_file_full_path = f"{result_folder}/events_{trial_name}.pkl"
         return result_file_full_path
 

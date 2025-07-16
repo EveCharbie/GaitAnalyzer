@@ -1,5 +1,7 @@
+import os
 import ezc3d
 import numpy as np
+from pyomeca import Analogs
 
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.operator import Operator
@@ -17,6 +19,7 @@ class ExperimentalData:
         result_folder: str,
         model_creator: ModelCreator,
         markers_to_ignore: list[str],
+        analogs_to_ignore: list[str],
         animate_c3d_flag: bool,
     ):
         """
@@ -34,6 +37,8 @@ class ExperimentalData:
             The subject's personalized biorbd model.
         markers_to_ignore: list[str]
             Supplementary markers to ignore in the analysis.
+        analogs_to_ignore: list[str]
+            Supplementary analogs to ignore in the analysis (e.g., EMG signals).
         animate_c3d_flag: bool
             If True, the c3d file will be animated.
         """
@@ -47,10 +52,10 @@ class ExperimentalData:
         self.force_threshold = 15  # N
 
         # Initial attributes
-        self.c3d_file_name = c3d_file_name
-        self.c3d_full_file_path = "../data/" + c3d_file_name
+        self.c3d_full_file_path = c3d_file_name
         self.model_creator = model_creator
         self.markers_to_ignore = markers_to_ignore
+        self.analogs_to_ignore = analogs_to_ignore
         self.result_folder = result_folder
 
         # Extended attributes
@@ -61,8 +66,9 @@ class ExperimentalData:
         self.marker_units = None
         self.nb_marker_frames = None
         self.markers_sorted = None
-        self.markers_sorted_with_virtual = None
         self.analogs_sampling_frequency = None
+        self.normalized_emg = None
+        self.analog_names = None
         self.platform_corners = None
         self.analogs_dt = None
         self.nb_analog_frames = None
@@ -72,7 +78,7 @@ class ExperimentalData:
         self.analogs_time_vector = None
 
         # Extract data from the c3d file
-        print(f"Reading experimental data from file {self.c3d_file_name} ...")
+        print(f"Reading experimental data from file {self.c3d_full_file_path} ...")
         self.perform_initial_treatment()
         self.extract_gait_parameters()
         if animate_c3d_flag:
@@ -84,8 +90,11 @@ class ExperimentalData:
         """
 
         def load_model():
-            self.model_marker_names = [m.to_string() for m in self.model_creator.biorbd_model.markerNames()]
-            # model_muscle_names = [m.to_string() for m in self.model_creator.biorbd_model.muscleNames()]
+            self.model_marker_names = [
+                m.to_string()
+                for m in self.model_creator.biorbd_model.markerNames()
+                if m.to_string() not in self.markers_to_ignore
+            ]
 
         def sort_markers():
             self.c3d = ezc3d.c3d(self.c3d_full_file_path, extract_forceplat_data=True)
@@ -96,10 +105,6 @@ class ExperimentalData:
             exp_marker_names = [
                 m for m in self.c3d["parameters"]["POINT"]["LABELS"]["value"] if m not in self.markers_to_ignore
             ]
-
-            # TODO: FloEthv -> When this study is completed, please remove this hacky fix
-            if "STER" in exp_marker_names:
-                exp_marker_names[exp_marker_names.index("STER")] = "STR"
 
             self.marker_units = 1
             if self.c3d["parameters"]["POINT"]["UNITS"]["value"][0] == "mm":
@@ -121,29 +126,10 @@ class ExperimentalData:
                     markers_sorted[:, marker_idx, :] = markers[:3, i_marker, :] * self.marker_units
             self.markers_sorted = markers_sorted
 
-        def add_virtual_markers():
-            """
-            This function augments the marker set with virtual markers to improve the extended Kalman filter kinematics reconstruction.
-            """
-            markers_for_virtual = self.model_creator.markers_for_virtual
-            markers_sorted_with_virtual = np.zeros(
-                (3, len(self.model_marker_names) + len(markers_for_virtual.keys()), self.nb_marker_frames)
-            )
-            markers_sorted_with_virtual[:, : len(self.model_marker_names), :] = self.markers_sorted[:, :, :]
-            for i_marker, name in enumerate(markers_for_virtual.keys()):
-                exp_marker_position = np.zeros((3, len(markers_for_virtual[name]), self.nb_marker_frames))
-                for i in range(len(markers_for_virtual[name])):
-                    exp_marker_position[:, i, :] = self.markers_sorted[
-                        :, self.model_marker_names.index(markers_for_virtual[name][i]), :
-                    ]
-                markers_sorted_with_virtual[:, len(self.model_marker_names) + i_marker, :] = np.mean(
-                    exp_marker_position, axis=1
-                )
-            self.markers_sorted_with_virtual = markers_sorted_with_virtual
-
         def sort_analogs():
             """
-            TODO: -> treatment of the EMG signal to remove stimulation artifacts here
+            Sort the analogs data from the c3d file.
+            Extract the EMG signals, filter, and normalize (using MVC).
             """
 
             # Get an array of the experimental muscle activity
@@ -151,14 +137,44 @@ class ExperimentalData:
             self.nb_analog_frames = analogs.shape[2]
             self.analogs_sampling_frequency = self.c3d["parameters"]["ANALOG"]["RATE"]["value"][0]  # Hz
             self.analogs_dt = 1 / self.c3d["header"]["analogs"]["frame_rate"]
+            self.analog_names = [
+                name
+                for name in self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]
+                if name not in self.analogs_to_ignore
+            ]
 
-            # print(analog_names)
-            # emg_sorted = np.zeros((len(model_muscle_names), self.nb_analog_frames))
-            # for i_muscle, name in enumerate(model_muscle_names):
-            #     muscle_idx = analog_names.index(name)
-            #     emg_sorted[i_muscle, :] = analogs[muscle_idx, :]
-            # self.emg_sorted = emg_sorted
-            return
+            self.emg_units = 1
+            if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
+                self.emg_units = 1_000_000  # Convert to microV
+
+            # Make sure all MVC are declared
+            for analog_name in self.analog_names:
+                if analog_name not in self.model_creator.mvc_values.keys():
+                    raise RuntimeError(
+                        f"There was not MVC trial for muscle {analog_name}, available muscles are {self.model_creator.mvc_values.keys()}. Please check that the MVC trials are correctly named and placed in the folder {self.model_creator.mvc_trials_path}."
+                    )
+
+            # Process the EMG signals
+            emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
+            emg_processed = (
+                # emg.interpolate_na(dim="time", method="linear")
+                emg.meca.interpolate_missing_data()
+                .meca.band_pass(order=2, cutoff=[10, 425])
+                .meca.center()
+                .meca.abs()
+                .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
+            ) * self.emg_units
+            normalized_emg = np.zeros((len(self.analog_names), self.nb_analog_frames))
+            for i_muscle, muscle_name in enumerate(self.analog_names):
+                normalized_emg[i_muscle, :] = (
+                    np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
+                )
+                normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = (
+                    0  # There are still small negative values after meca.abs()
+                )
+            self.normalized_emg = normalized_emg
+
+            # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here
 
         def extract_force_platform_data():
             """
@@ -239,7 +255,7 @@ class ExperimentalData:
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
-                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-3:
+                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-2:
                     is_good_trial = False
 
                 if not is_good_trial:
@@ -284,7 +300,6 @@ class ExperimentalData:
         # Perform the initial treatment
         load_model()
         sort_markers()
-        add_virtual_markers()
         sort_analogs()
         extract_force_platform_data()
         compute_time_vectors()
@@ -294,7 +309,7 @@ class ExperimentalData:
             from pyorerun import BiorbdModel, PhaseRerun
         except:
             raise RuntimeError("To animate the .c3d, you first need to install Pyorerun.")
-        raise NotImplementedError("Aniomation of c3d files is not implemented yet.")
+        raise NotImplementedError("Animation of c3d files is not implemented yet.")
         pass
 
     def extract_gait_parameters(self):
@@ -323,4 +338,5 @@ class ExperimentalData:
             "f_ext_sorted_filtered": self.f_ext_sorted_filtered,
             "markers_time_vector": self.markers_time_vector,
             "analogs_time_vector": self.analogs_time_vector,
+            "normalized_emg": self.normalized_emg,
         }
