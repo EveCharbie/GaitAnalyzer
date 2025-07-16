@@ -230,7 +230,7 @@ class KinematicsReconstructor:
         if plot_kinematics_flag:
             self.plot_kinematics()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the kinematics reconstruction already exists.
         If it exists, load the q.

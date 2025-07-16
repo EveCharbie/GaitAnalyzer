@@ -85,7 +85,7 @@ class InverseDynamicsPerformer:
         if animate_dynamics_flag:
             self.animate_dynamics()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the events detection already exists.
         If it exists, load the events.

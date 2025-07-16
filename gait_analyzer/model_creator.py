@@ -394,7 +394,7 @@ class ModelCreator:
         if animate_model_flag:
             self.animate_model()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the model already exists.
         If it exists, load the model and the mvc_values.

@@ -1,12 +1,12 @@
-from gait_analyzer.AngularMomentumCalculator import AngularMomentumCalculator
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
-from gait_analyzer.cyclic_events import CyclicEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
+from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.unique_events import UniqueEvents
 
 
 class ResultManager:
@@ -176,28 +176,6 @@ class ResultManager:
             plot_kinematics_flag=plot_kinematics_flag,
         )
 
-    def compute_angular_momentum(self):
-        if self.model_creator is None:
-            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
-        if self.experimental_data is None:
-            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
-        if self.kinematics_reconstructor is None:
-            raise Exception(
-                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
-        if self.angular_momentum_calculator is not None:
-            raise Exception("Angular momentum has already been calculated")
-
-        self.angular_momentum_calculator = AngularMomentumCalculator(
-            self.model_creator.biorbd_model,
-            self.kinematics_reconstructor.q_filtered,
-            self.kinematics_reconstructor.qdot,
-            self.subject.subject_mass,
-            self.subject.subject_height,
-            self.subject.subject_name,
-        )
-
-        self.angular_momentum_calculator.calculate_angular_momentum()
-
     def perform_inverse_dynamics(
         self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
     ):
@@ -221,6 +199,28 @@ class ResultManager:
             reintegrate_flag=reintegrate_flag,
             animate_dynamics_flag=animate_dynamics_flag,
         )
+
+    def compute_angular_momentum(self, skip_if_existing: bool = False):
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
+        if self.angular_momentum_calculator is not None:
+            raise Exception("Angular momentum has already been calculated")
+
+        self.angular_momentum_calculator = AngularMomentumCalculator(
+            self.model_creator.biorbd_model,
+            self.experimental_data,
+            self.kinematics_reconstructor,
+            self.subject,
+            segments_length=segments_length,
+            skip_if_existing=skip_if_existing,
+        )
+
+        self.angular_momentum_calculator.calculate_angular_momentum()
 
     def estimate_optimally(
         self,
