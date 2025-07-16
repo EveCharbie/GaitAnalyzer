@@ -162,21 +162,26 @@ class ResultManager:
         )
 
     def compute_angular_momentum(self):
-        """
-        Fonction principale qui gère le calcul du moment angulaire.
-        """
-        # Vérifications
         if self.model_creator is None:
             raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
         if self.experimental_data is None:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.kinematics_reconstructor is None:
-            raise Exception("Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
         if self.angular_momentum_calculator is not None:
-            raise Exception("Angular momentum was already calculate")
+            raise Exception("Angular momentum has already been calculated")
+
         self.angular_momentum_calculator = AngularMomentumCalculator(
-            self.model_creator.biorbd_model, self.kinematics_reconstructor.q_filtered,
-            self.kinematics_reconstructor.qdot, self.subject.subject_mass, self.subject.subject_height)
+            self.model_creator.biorbd_model,
+            self.kinematics_reconstructor.q_filtered,
+            self.kinematics_reconstructor.qdot,
+            self.subject.subject_mass,
+            self.subject.subject_height,
+            self.subject.subject_name,
+        )
+
+        self.angular_momentum_calculator.calculate_angular_momentum()
 
     def perform_inverse_dynamics(
         self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False

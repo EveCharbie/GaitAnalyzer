@@ -33,11 +33,11 @@ def analysis_to_perform(
         skip_scaling=True,  # We skip the scaling since it was already done in OpenSim's GUI
         animate_model_flag=False)
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4"], animate_c3d_flag=False
+        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4","*49","*50"], animate_c3d_flag=False
     )
     if "Vicon" in c3d_file_name:
         results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
-    elif "Qualisys" in c3d_file_name:
+    elif "qtm" in c3d_file_name:
         results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False,
                                   plot_phases_flag=False)
     else:
@@ -47,7 +47,7 @@ def analysis_to_perform(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
     results.compute_angular_momentum()
     return results
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     # Inputs to correct for AOT_01: dominant_leg, subject_height
-    subjects_to_analyze.append(Subject(subject_name="AOT_01", subject_mass=69.2, subject_height=1.84, dominant_leg=Side.RIGHT, preferential_speed=1.06))
+    subjects_to_analyze.append(Subject(subject_name="LAP_06", subject_mass=91.5, subject_height=1.78, dominant_leg=Side.RIGHT, preferential_speed=1.06))
     # Inputs to correct for VIF_04: preferential_speed, dominant_leg
     # subjects_to_analyze.append(
     #     Subject(subject_name="VIF_04", subject_mass=71.0,subject_height=1.84, dominant_leg=Side.RIGHT, preferential_speed=1.06)  # ?  # ?
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=None,
         result_folder="results",
-        trails_to_analyze=["_L400_F50_I60_Qualisys"],  # If not specified, all trials will be analyzed
+        trails_to_analyze=None,  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 

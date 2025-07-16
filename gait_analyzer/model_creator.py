@@ -236,9 +236,6 @@ class ModelCreator:
         c3d = ezc3d.c3d(self.static_trial)
         labels = c3d["parameters"]["POINT"]["LABELS"]["value"]
 
-        # TODO: FloEthv -> When this study is completed, please remove this hacky fix
-        if "STER" in labels:
-            labels[labels.index("STER")] = "STR"
 
         frame_rate = c3d["header"]["points"]["frame_rate"]
         marker_data = c3d["data"]["points"][:3, :, :] / 1000  # Convert in meters
