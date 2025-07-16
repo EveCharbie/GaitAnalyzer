@@ -207,7 +207,8 @@ class ResultManager:
             raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
         if self.kinematics_reconstructor is None:
             raise Exception(
-                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
         if self.angular_momentum_calculator is not None:
             raise Exception("Angular momentum has already been calculated")
 

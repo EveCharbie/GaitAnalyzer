@@ -39,23 +39,24 @@ def analysis_to_perform(
     )
 
     markers_to_ignore = []
-    analogs_to_ignore = ["Channel_01",
-                            "Channel_02",
-                            "Channel_03",
-                            "Channel_04",
-                            "Channel_05",
-                            "Channel_06",
-                            "Channel_07",
-                            "Channel_08",
-                            "Channel_09",
-                            "Channel_10",
-                            "Channel_11",
-                            "Channel_12",
-                            "Bertec_treadmill_speed",
-                          ]
-    results.add_experimental_data(c3d_file_name=c3d_file_name,
-                                  markers_to_ignore=markers_to_ignore,
-                                  analogs_to_ignore=analogs_to_ignore)
+    analogs_to_ignore = [
+        "Channel_01",
+        "Channel_02",
+        "Channel_03",
+        "Channel_04",
+        "Channel_05",
+        "Channel_06",
+        "Channel_07",
+        "Channel_08",
+        "Channel_09",
+        "Channel_10",
+        "Channel_11",
+        "Channel_12",
+        "Bertec_treadmill_speed",
+    ]
+    results.add_experimental_data(
+        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore
+    )
 
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
 
@@ -89,7 +90,13 @@ if __name__ == "__main__":
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     subjects_to_analyze.append(
-        Subject(subject_name="LEM_PRE_chev", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06, subject_height=1.75)
+        Subject(
+            subject_name="LEM_PRE_chev",
+            subject_mass=69.2,
+            dominant_leg=Side.RIGHT,
+            preferential_speed=1.06,
+            subject_height=1.75,
+        )
         # Subject(subject_name="ECH", subject_mass=64.59, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     )
     # subjects_to_analyze.append(

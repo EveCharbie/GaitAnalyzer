@@ -7,6 +7,7 @@ from gait_analyzer.subject import Subject
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.experimental_data import ExperimentalData
 
+
 class AngularMomentumCalculator:
     """
     This class computes the angular momentum of the whole body (total_angular_momentum) and of each segment (segments_angular_momentum).
@@ -14,12 +15,14 @@ class AngularMomentumCalculator:
     Similarly, the segments' angular momentum is also normalised by segment_mass * segment_length * sqrt(gravity * segment_length).
     """
 
-    def __init__(self,
-                 biorbd_model: biorbd.Model,
-                 experimental_data: ExperimentalData,
-                 kinematics_reconstructor: KinematicsReconstructor,
-                 subject: Subject,
-                 skip_if_existing: bool):
+    def __init__(
+        self,
+        biorbd_model: biorbd.Model,
+        experimental_data: ExperimentalData,
+        kinematics_reconstructor: KinematicsReconstructor,
+        subject: Subject,
+        skip_if_existing: bool,
+    ):
         """
         Initialize the AngularMomentumCalculator.
         .
@@ -72,14 +75,18 @@ class AngularMomentumCalculator:
         """
         self.total_angular_momentum = np.zeros((3, self.nb_frames))
         for i_frame in range(self.nb_frames):
-            self.total_angular_momentum[:, i_frame] = self.model.angularMomentum(self.q[:, i_frame], self.qdot[:, i_frame], True).to_array()
+            self.total_angular_momentum[:, i_frame] = self.model.angularMomentum(
+                self.q[:, i_frame], self.qdot[:, i_frame], True
+            ).to_array()
 
     def normalize_total_angular_momentum(self):
         """
         Normalize the angular momentum with respect to the mass and height of the subject.
         """
         if self.gravity[0] != 0.0 or self.gravity[1] != 0.0 or self.gravity[2] == 0.0:
-            raise NotImplementedError(f"The gravity of this model is not aligned with the z axis ({self.gravity}), which id not implemented yet.")
+            raise NotImplementedError(
+                f"The gravity of this model is not aligned with the z axis ({self.gravity}), which id not implemented yet."
+            )
 
         gravity_factor = np.array([1.0, 1.0, np.abs(self.gravity[2])])
         normalization_factor = self.subject_mass * self.subject_height * np.sqrt(gravity_factor * self.subject_height)
@@ -148,7 +155,6 @@ class AngularMomentumCalculator:
         #         )
 
         return
-
 
     def check_if_existing(self) -> bool:
         """
