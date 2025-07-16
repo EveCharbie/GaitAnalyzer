@@ -1,11 +1,12 @@
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
-from gait_analyzer.cyclic_events import CyclicEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
+from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.unique_events import UniqueEvents
 
 
 class ResultManager:
@@ -54,6 +55,7 @@ class ResultManager:
         self.kinematics_reconstructor = None
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
+        self.angular_momentum_calculator = None
 
     def create_model(
         self,
@@ -196,6 +198,26 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
             reintegrate_flag=reintegrate_flag,
             animate_dynamics_flag=animate_dynamics_flag,
+        )
+
+    def compute_angular_momentum(self, skip_if_existing: bool = False):
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
+        if self.angular_momentum_calculator is not None:
+            raise Exception("Angular momentum has already been calculated")
+
+        self.angular_momentum_calculator = AngularMomentumCalculator(
+            self.model_creator.biorbd_model,
+            self.experimental_data,
+            self.kinematics_reconstructor,
+            self.subject,
+            skip_if_existing=skip_if_existing,
         )
 
     def estimate_optimally(

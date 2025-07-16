@@ -183,3 +183,7 @@ examples/results/
 *.png
 
 osim_to_biomod/
+
+*.mat
+
+results/

@@ -313,6 +313,24 @@ class ModelCreator:
         animate_model_flag: bool,
         vtp_geometry_path: str,
     ):
+        """
+        Initialize the ModelCreator.
+        .
+        Parameters
+        ----------
+        subject: Subject
+            The subject to create the model for.
+        static_trial: str
+            The path to the static trial c3d file to use to create the model.
+        models_result_folder: str
+            The folder where the models will be saved.
+        osim_model_type: OsimModels
+            The type of model to create.
+        skip_if_existing: bool
+            If the model already exists, skip the creation.
+        animate_model_flag: bool
+            If True, animate the model after creating it.
+        """
 
         # Checks
         if not isinstance(subject, Subject):
@@ -376,7 +394,7 @@ class ModelCreator:
         if animate_model_flag:
             self.animate_model()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the model already exists.
         If it exists, load the model and the mvc_values.

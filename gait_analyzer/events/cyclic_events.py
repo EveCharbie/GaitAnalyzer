@@ -108,7 +108,7 @@ class CyclicEvents:
         if plot_phases_flag:
             self.plot_events()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the events detection already exists.
         If it exists, load the events.

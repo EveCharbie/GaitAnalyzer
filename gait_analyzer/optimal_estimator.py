@@ -13,7 +13,7 @@ from gait_analyzer.operator import Operator
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.experimental_data import ExperimentalData
-from gait_analyzer.cyclic_events import CyclicEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
 from gait_analyzer.subject import Subject
 
 
