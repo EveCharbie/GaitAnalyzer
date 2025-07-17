@@ -9,6 +9,8 @@ from .kinematics_reconstructor import KinematicsReconstructor, ReconstructionTyp
 from .operator import Operator
 from .optimal_estimator import OptimalEstimator
 from .statistical_analysis.organized_result import OrganizedResult, LegToPlot, PlotType, EventIndexType
+from .statistical_analysis.stats_utils import QuantityToExtractType, StatsType
+from .statistical_analysis.stats_performer import StatsPerformer
 from .plots.plot_leg_data import PlotLegData, LegToPlot, PlotType, EventIndexType
 from .plots.plot_biomechanics_quantity import PlotBiomechanicsQuantity
 from .result_manager import ResultManager

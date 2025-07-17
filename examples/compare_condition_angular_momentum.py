@@ -8,6 +8,9 @@ from gait_analyzer import (
     Side,
     ReconstructionType,
     OrganizedResult,
+    StatsPerformer,
+    QuantityToExtractType,
+    StatsType,
 )
 
 
@@ -120,3 +123,11 @@ if __name__ == "__main__":
     plot.draw_plot()
     plot.save("results/AngMom_temporary.png")
     plot.show()
+
+    # --- Example of how compare peak-to-peak angular momentum with a paired t-test --- #
+    stats_results = StatsPerformer(
+        organized_result=organized_result,
+        stats_type=StatsType.PAIRED_T_TEST(QuantityToExtractType.PEAK_TO_PEAK),
+    )
+    stats_results.perform_stats()
+    stats_results.plot_stats()

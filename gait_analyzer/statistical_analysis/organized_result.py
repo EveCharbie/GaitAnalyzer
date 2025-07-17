@@ -230,6 +230,8 @@ class ResultObject:
 
         # Extended attributes
         self.data = {}
+        self.mean_data_per_subject = None
+        self.mean_data_per_group = None
 
     def add(self, data: list[np.ndarray], subject_name: str, condition_name: str, group_name: str | None = None):
         """
@@ -285,6 +287,7 @@ class ResultObject:
                     )
                     subject_mean[group_name][condition_name][subject_name] = mean_data
                     subject_std[group_name][condition_name][subject_name] = std_data
+        self.mean_data_per_subject = subject_mean
         return subject_mean, subject_std
 
     def mean_per_group(self, subject_mean: dict[dict[dict[np.ndarray]]]):
@@ -306,6 +309,7 @@ class ResultObject:
                 if group_data is not None:
                     group_mean[group_name][condition_name] = np.nanmean(group_data, axis=2)
                     group_std[group_name][condition_name] = np.nanstd(group_data, axis=2)
+        self.mean_data_per_group = group_mean
         return group_mean, group_std
 
     def save(self, file_path: str):
