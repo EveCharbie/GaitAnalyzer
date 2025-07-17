@@ -8,9 +8,9 @@ from gait_analyzer.statistical_analysis.stats_utils import StatsType, Stats
 
 class StatsPerformer:
     def __init__(
-            self,
-            organized_result: OrganizedResult,
-            stats_type: Stats,
+        self,
+        organized_result: OrganizedResult,
+        stats_type: Stats,
     ):
         # Checks
         if not isinstance(organized_result, OrganizedResult):
@@ -27,4 +27,3 @@ class StatsPerformer:
 
     def plot_stats(self):
         return self.stats_type.plot_stats(self.organized_result.results.mean_data_per_subject)
-

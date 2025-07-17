@@ -10,6 +10,7 @@ class QuantityToExtractType(Enum):
     """
     Enum for the quantity to extract from the time series. This is used for the t-tests.
     """
+
     PEAK_TO_PEAK = "peak_to_peak"
     MEAN = "mean"
     MAX = "max"
@@ -26,7 +27,6 @@ class StatsType:
                 raise ValueError("quantity_to_extract must be of type QuantityToExtractType")
             self.quantity_to_extract = quantity_to_extract
 
-
         def get_data_frame(self, data):
             metrics_name = self.quantity_to_extract.value
             data_df = None
@@ -37,12 +37,14 @@ class StatsType:
                     if data_df is None:
                         nb_components = data["all"][condition][subject].shape[0]
                         metrics_names = [f"{metrics_name}_{i}" for i in range(nb_components)]
-                        columns = ['group', 'condition', 'subject'] + metrics_names
+                        columns = ["group", "condition", "subject"] + metrics_names
                         data_df = DataFrame(columns)
 
                     # Get the right values based on the quantity to extract
                     if self.quantity_to_extract == QuantityToExtractType.PEAK_TO_PEAK:
-                        values = np.nanmax(data["all"][condition][subject], axis=1) - np.nanmin(data["all"][condition][subject], axis=1)
+                        values = np.nanmax(data["all"][condition][subject], axis=1) - np.nanmin(
+                            data["all"][condition][subject], axis=1
+                        )
                     elif self.quantity_to_extract == QuantityToExtractType.MEAN:
                         values = np.nanmean(data["all"][condition][subject], axis=1)
                     elif QuantityToExtractType.MIN:
@@ -53,15 +55,17 @@ class StatsType:
                         raise NotImplementedError(f"Unsupported quantity to extract: {self.quantity_to_extract.value}")
 
                 # Add the data to the dataframe
-                data_df = data_df.append({
-                    'group': 'all',
-                    'condition': condition,
-                    'subject': subject,
-                    **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)}
-                }, ignore_index=True)
+                data_df = data_df.append(
+                    {
+                        "group": "all",
+                        "condition": condition,
+                        "subject": subject,
+                        **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)},
+                    },
+                    ignore_index=True,
+                )
 
             return data_df, metrics_names
-
 
         def perform_stats(self, data):
             """
@@ -72,9 +76,15 @@ class StatsType:
 
             data_df, metrics_names = self.get_data_frame(data)
             for metrics_name in metrics_names:
-                posthoc = pairwise_tests(data=data_df, dv=metrics_name, within="conditions", subject="subject",
-                                            parametric=True, effsize='hedges')
-                print_table(posthoc, floatfmt='.3f')
+                posthoc = pairwise_tests(
+                    data=data_df,
+                    dv=metrics_name,
+                    within="conditions",
+                    subject="subject",
+                    parametric=True,
+                    effsize="hedges",
+                )
+                print_table(posthoc, floatfmt=".3f")
 
         def plot_stats(self, data) -> None:
             data_df, metrics_names = self.get_data_frame(data)
