@@ -18,7 +18,6 @@ class PlotBiomechanicsQuantity(PlotAbstract):
         # Prepare the plot
         self.get_plot_indices_and_labels()
 
-
     def get_plot_indices_and_labels(self):
 
         # Establish the plot indices and labels

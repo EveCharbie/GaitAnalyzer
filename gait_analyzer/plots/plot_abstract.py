@@ -61,7 +61,9 @@ class PlotAbstract:
                         alpha=0.3,
                     )
                     if i_ax == 0:
-                        lines_list += ax.plot(normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index])
+                        lines_list += ax.plot(
+                            normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index]
+                        )
                         labels_list += [label]
                     else:
                         ax.plot(normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index])

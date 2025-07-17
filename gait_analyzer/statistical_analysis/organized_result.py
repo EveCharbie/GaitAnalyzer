@@ -16,7 +16,7 @@ class OrganizedResult:
         groups_to_compare: dict[str, list[str]] | None = None,
         leg_to_plot: LegToPlot = LegToPlot.RIGHT,
         unique_event_to_split: dict = None,
-        nb_frames_interp: int = 101
+        nb_frames_interp: int = 101,
     ):
         # Checks
         if not isinstance(result_folder, str):
@@ -188,18 +188,23 @@ class OrganizedResult:
                         if self.groups_to_compare is not None:
                             for group in self.groups_to_compare:
                                 if subject_name in self.groups_to_compare[group]:
-                                    self.results.add(data=this_cycles_data, subject_name=subject_name, condition_name=condition_name, group_name=group)
+                                    self.results.add(
+                                        data=this_cycles_data,
+                                        subject_name=subject_name,
+                                        condition_name=condition_name,
+                                        group_name=group,
+                                    )
                         else:
-                            self.results.add(data=this_cycles_data, subject_name=subject_name,
-                                             condition_name=condition_name)
+                            self.results.add(
+                                data=this_cycles_data, subject_name=subject_name, condition_name=condition_name
+                            )
 
             else:
                 if result_file.endswith("results.pkl"):
                     this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
                         current_file=result_file, partial_output_file_name=result_file
                     )
-                    self.results.add(data=this_cycles_data, subject_name=subject_name,
-                                     condition_name=condition_name)
+                    self.results.add(data=this_cycles_data, subject_name=subject_name, condition_name=condition_name)
 
     def save(self, file_path: str):
         """
@@ -210,7 +215,9 @@ class OrganizedResult:
             The path to save the organized result.
         """
         if file_path.endswith("_results.pkl"):
-            raise RuntimeError("The file_path cannot end with '_results.pkl'. This is reserved for the result from the AnalysisPerformer.")
+            raise RuntimeError(
+                "The file_path cannot end with '_results.pkl'. This is reserved for the result from the AnalysisPerformer."
+            )
         self.results.save(file_path=file_path)
 
 
@@ -224,11 +231,7 @@ class ResultObject:
         # Extended attributes
         self.data = {}
 
-    def add(self,
-            data: list[np.ndarray],
-            subject_name: str,
-            condition_name: str,
-            group_name: str | None = None):
+    def add(self, data: list[np.ndarray], subject_name: str, condition_name: str, group_name: str | None = None):
         """
         Add a result to the ResultObject.
         .
@@ -275,7 +278,11 @@ class ResultObject:
                 for subject_name in self.data[group_name][condition_name].keys():
                     if len(self.data[group_name][condition_name][subject_name]) == 0:
                         continue
-                    mean_data, std_data = mean_cycles(data=self.data[group_name][condition_name][subject_name], index_to_keep=None, nb_frames_interp=self.nb_frames_interp)
+                    mean_data, std_data = mean_cycles(
+                        data=self.data[group_name][condition_name][subject_name],
+                        index_to_keep=None,
+                        nb_frames_interp=self.nb_frames_interp,
+                    )
                     subject_mean[group_name][condition_name][subject_name] = mean_data
                     subject_std[group_name][condition_name][subject_name] = std_data
         return subject_mean, subject_std
@@ -293,7 +300,8 @@ class ResultObject:
                         group_data = subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis]
                     else:
                         group_data = np.concatenate(
-                            (group_data, subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis]), axis=2
+                            (group_data, subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis]),
+                            axis=2,
                         )
                 if group_data is not None:
                     group_mean[group_name][condition_name] = np.nanmean(group_data, axis=2)
@@ -303,7 +311,9 @@ class ResultObject:
     def save(self, file_path: str):
 
         if file_path.endswith("_results.pkl"):
-            raise RuntimeError("The file_path cannot end with '_results.pkl'. This is reserved for the result from the AnalysisPerformer.")
+            raise RuntimeError(
+                "The file_path cannot end with '_results.pkl'. This is reserved for the result from the AnalysisPerformer."
+            )
 
         subject_mean, subject_std = self.mean_per_subject()
         group_mean, group_std = self.mean_per_group(subject_mean=subject_mean)

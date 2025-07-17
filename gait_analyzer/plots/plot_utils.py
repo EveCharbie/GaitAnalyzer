@@ -32,6 +32,7 @@ class EventIndexType(Enum):
     """
     If the index of the events should be expressed in the analogs or in the markers time vector.
     """
+
     MARKERS = "markers"
     ANALOGS = "analogs"
 
