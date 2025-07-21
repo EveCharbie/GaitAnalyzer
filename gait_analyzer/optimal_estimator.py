@@ -147,15 +147,16 @@ class OptimalEstimator:
 
     def generate_no_contacts_model(self):
 
-        segments_to_remove_dofs_from = ["toes_r_rotation_transform",
-                                        "toes_l_rotation_transform",
-                                        "lunate_r_rotation_transform",
-                                        "hand_r_rotation_transform",
-                                        "fingers_r_rotation_transform",
-                                        "lunate_l_rotation_transform",
-                                        "hand_l_rotation_transform",
-                                        "fingers_l_rotation_transform"
-                                        ]
+        segments_to_remove_dofs_from = [
+            "toes_r_rotation_transform",
+            "toes_l_rotation_transform",
+            "lunate_r_rotation_transform",
+            "hand_r_rotation_transform",
+            "fingers_r_rotation_transform",
+            "lunate_l_rotation_transform",
+            "hand_l_rotation_transform",
+            "fingers_l_rotation_transform",
+        ]
 
         no_contact_model = biobuddy.BiomechanicalModelReal().from_biomod(self.model_creator.biorbd_model_full_path)
         for segment in no_contact_model.segments:
@@ -391,7 +392,9 @@ class OptimalEstimator:
                     muscle_speudo = self.model_creator.osim_model_type.muscle_name_mapping[muscle_name]
                     if muscle_speudo is not None:
                         muscle_index = self.experimental_data.analog_names.index(muscle_speudo)
-                        self.emg_normalized_exp_ocp[i_muscle, i_frame] = np.nanmean(self.experimental_data.normalized_emg[muscle_index, idx_analogs - 5 : idx_analogs + 5])
+                        self.emg_normalized_exp_ocp[i_muscle, i_frame] = np.nanmean(
+                            self.experimental_data.normalized_emg[muscle_index, idx_analogs - 5 : idx_analogs + 5]
+                        )
 
         self.markers_exp_ocp = self.experimental_data.markers_sorted[:, :, idx_to_keep]
         # Fill NaNs in markers
@@ -548,7 +551,9 @@ class OptimalEstimator:
                 """
                 Custom Torque model to handle the no contact case.
                 """
-                super().__init__(biorbd_model_path, external_force_set=external_force_set, with_residual_torque=with_residual_torque)
+                super().__init__(
+                    biorbd_model_path, external_force_set=external_force_set, with_residual_torque=with_residual_torque
+                )
                 if with_residual_forces:
                     self.control_configuration += [
                         lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
@@ -618,10 +623,20 @@ class OptimalEstimator:
         nb_q = bio_model.nb_q
         nb_muscles = bio_model.nb_muscles
         r_foot_marker_index = np.array(
-            [bio_model.marker_index(f"RCAL"), bio_model.marker_index(f"RMFH1"), bio_model.marker_index(f"RMFH5"), bio_model.marker_index(f"R_foot_up")]
+            [
+                bio_model.marker_index(f"RCAL"),
+                bio_model.marker_index(f"RMFH1"),
+                bio_model.marker_index(f"RMFH5"),
+                bio_model.marker_index(f"R_foot_up"),
+            ]
         )
         l_foot_marker_index = np.array(
-            [bio_model.marker_index(f"LCAL"), bio_model.marker_index(f"LMFH1"), bio_model.marker_index(f"LMFH5"), bio_model.marker_index(f"L_foot_up")]
+            [
+                bio_model.marker_index(f"LCAL"),
+                bio_model.marker_index(f"LMFH1"),
+                bio_model.marker_index(f"LMFH5"),
+                bio_model.marker_index(f"L_foot_up"),
+            ]
         )
 
         # Declaration of the objectives
@@ -710,7 +725,12 @@ class OptimalEstimator:
         u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
-        u_bounds.add("muscles", min_bound=[0.0001] * nb_muscles, max_bound=[0.0001] * nb_muscles, interpolation=InterpolationType.CONSTANT)
+        u_bounds.add(
+            "muscles",
+            min_bound=[0.0001] * nb_muscles,
+            max_bound=[0.0001] * nb_muscles,
+            interpolation=InterpolationType.CONSTANT,
+        )
         if with_residual_forces:
             u_bounds.add(
                 "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
@@ -721,12 +741,16 @@ class OptimalEstimator:
 
         u_init = InitialGuessList()
         u_init.add("tau", initial_guess=[0] * nb_q, interpolation=InterpolationType.CONSTANT)
-        u_init.add("muscles", initial_guess=self.emg_normalized_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add(
+            "muscles", initial_guess=self.emg_normalized_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME
+        )
         if with_residual_forces:
             u_init.add("contact_forces", initial_guess=[0] * 6, interpolation=InterpolationType.CONSTANT)
             u_init.add(
                 "contact_positions",
-                initial_guess=np.vstack((self.f_ext_exp_ocp["left_leg"][0:3, :-1], self.f_ext_exp_ocp["right_leg"][0:3, :-1])),
+                initial_guess=np.vstack(
+                    (self.f_ext_exp_ocp["left_leg"][0:3, :-1], self.f_ext_exp_ocp["right_leg"][0:3, :-1])
+                ),
                 interpolation=InterpolationType.EACH_FRAME,
             )
 
