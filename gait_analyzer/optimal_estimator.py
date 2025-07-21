@@ -11,6 +11,7 @@ except ImportError:
     print("Skipped Bioptim import as it is not installed")
 
 from gait_analyzer.operator import Operator
+from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
 from gait_analyzer.experimental_data import ExperimentalData
@@ -30,7 +31,7 @@ class OptimalEstimator:
         self,
         cycle_to_analyze: int,
         subject: Subject,
-        biorbd_model_path: str,
+        model_creator: ModelCreator,
         experimental_data: ExperimentalData,
         events: CyclicEvents,
         kinematics_reconstructor: KinematicsReconstructor,
@@ -50,8 +51,8 @@ class OptimalEstimator:
             TODO: Charbie -> Maybe we should chose the most representative cycle instead of picking one?
         subject: Subject
             The subject to analyze.
-        biorbd_model_path: str
-            The full path to the biorbd model.
+        model_creator: ModelCreator
+            The model creator for this subject.
         experimental_data: ExperimentalData
             The experimental data to match.
         events: CyclicEvents
@@ -76,8 +77,8 @@ class OptimalEstimator:
             raise ValueError("cycle_to_analyze must be an int")
         if not isinstance(subject, Subject):
             raise ValueError("subject must be a Subject")
-        if not isinstance(biorbd_model_path, str):
-            raise ValueError("biorbd_model_path must be a string")
+        if not isinstance(model_creator, ModelCreator):
+            raise ValueError("model_creator must be a ModelCreator")
         if not isinstance(experimental_data, ExperimentalData):
             raise ValueError("experimental_data must be an ExperimentalData")
         if not isinstance(events, CyclicEvents):
@@ -90,7 +91,7 @@ class OptimalEstimator:
         # Initial attributes
         self.cycle_to_analyze = cycle_to_analyze
         self.subject = subject
-        self.biorbd_model_path = biorbd_model_path
+        self.model_creator = model_creator
         self.experimental_data = experimental_data
         self.events = events
         self.kinematics_reconstructor = kinematics_reconstructor
@@ -102,6 +103,7 @@ class OptimalEstimator:
         self.q_exp_ocp = None
         self.qdot_exp_ocp = None
         self.tau_exp_ocp = None
+        self.emg_normalized_exp_ocp = None
         self.f_ext_exp_ocp = None
         self.markers_exp_ocp = None
         self.emg_exp_ocp = None
@@ -122,12 +124,12 @@ class OptimalEstimator:
         else:
             print("Performing optimal estimation...")
 
-            if implicit_contacts:
-                self.generate_contact_biomods()
             self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
             if implicit_contacts:
+                self.generate_contact_biomods()
                 self.prepare_ocp_implicit()
             else:
+                self.generate_no_contacts_model()
                 self.prepare_ocp_fext(with_residual_forces=True)
 
             self.solve(show_online_optim=True)
@@ -142,6 +144,29 @@ class OptimalEstimator:
         if animate_solution_flag:
             self.animate_solution()
         self.extract_muscle_forces()
+
+    def generate_no_contacts_model(self):
+
+        segments_to_remove_dofs_from = ["toes_r_rotation_transform",
+                                        "toes_l_rotation_transform",
+                                        "lunate_r_rotation_transform",
+                                        "hand_r_rotation_transform",
+                                        "fingers_r_rotation_transform",
+                                        "lunate_l_rotation_transform",
+                                        "hand_l_rotation_transform",
+                                        "fingers_l_rotation_transform"
+                                        ]
+
+        no_contact_model = biobuddy.BiomechanicalModelReal().from_biomod(self.model_creator.biorbd_model_full_path)
+        for segment in no_contact_model.segments:
+            if segment.name in segments_to_remove_dofs_from:
+                segment.rotations = biobuddy.Rotations.NONE
+                segment.translations = biobuddy.Translations.NONE
+                segment.dof_names = None
+                segment.q_ranges = None
+                segment.qdot_ranges = None
+
+        no_contact_model.to_biomod(self.model_creator.biorbd_model_full_path.replace(".bioMod", "_no_contacts.bioMod"))
 
     # def generate_contact_biomods(self):
     #     """
@@ -260,56 +285,6 @@ class OptimalEstimator:
     #     for condition in conditions:
     #         new_model_path = original_model_path.replace(".bioMod", f"_{condition}.bioMod")
     #         model_to_modify = biobuddy.BiomechanicalModelReal().from_biomod(original_model_path)
-    #         with open(new_model_path, "w+", encoding="utf-8") as file:
-    #             for i_line, line in enumerate(lines):
-    #                 if i_line + 1 in [
-    #                     557,  # toes_r_mtp_angle_r
-    #                     558,
-    #                     559,
-    #                     571,  # toes_r_rotation_1 (range)
-    #                     572,
-    #                     584,  # toes_r_rotation_2 (range)
-    #                     585,
-    #                     1038,  # toes_r_mtp_angle_l
-    #                     1039,
-    #                     1040,
-    #                     1052,  # toes_l_rotation_1 (range)
-    #                     1053,
-    #                     1065,  # toes_l_rotation_2 (range)
-    #                     1066,
-    #                 ]:
-    #                     pass  # Remove the toes rotations
-    #                 elif i_line + 1 in [
-    #                     1636,  # lunate_r_rotation_transform
-    #                     1637,
-    #                     1638,
-    #                     1704,  # hand_r_translation
-    #                     1705,
-    #                     1706,
-    #                     1964,  # fingers_r_translation
-    #                     1965,
-    #                     1966,
-    #                     2467,  # lunate_l_rotation_transform
-    #                     2468,
-    #                     2469,
-    #                     2535,  # hand_l_translation
-    #                     2536,
-    #                     2537,
-    #                     2795,  # fingers_l_translation
-    #                     2796,
-    #                     2797,
-    #                 ]:
-    #                     pass
-    #                 elif i_line + 1 in [
-    #                     1251,  # head_and_neck_rotation_transform
-    #                     1252,
-    #                     1253,
-    #                     1254,
-    #                     1255,
-    #                 ]:
-    #                     pass  # Remove the hands rotations
-    #                 else:
-    #                     file.write(line)
     #             model_to_modify = add_contacts_per_condition(model_to_modify, condition, self.)
     #             model_to_modify.to_biomod(new_model_path)
 
@@ -319,26 +294,27 @@ class OptimalEstimator:
         (and the number of degrees of freedom is reduced?).
         """
         # self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_heelL_toesL.bioMod")
-        self.model_ocp = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
+        self.model_ocp = self.model_creator.biorbd_model_full_path.replace(".bioMod", "_no_contacts.bioMod")
+        model = biorbd.Model(self.model_ocp)
 
-        # # Only one right leg swing (while left leg in flat foot)
-        # swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
-        # right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
-        # this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
-        # this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
-        #     analogs_time_vector=self.experimental_data.analogs_time_vector,
-        #     markers_time_vector=self.experimental_data.markers_time_vector,
-        #     analog_idx=this_sequence_analogs,
-        # )
-
-        # One full cycle
-        cycle_timings = self.events.events["right_leg_heel_touch"]
-        this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
+        # Only one right leg swing (while left leg in flat foot)
+        swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
+        right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
+        this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
         this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
             analogs_time_vector=self.experimental_data.analogs_time_vector,
             markers_time_vector=self.experimental_data.markers_time_vector,
             analog_idx=this_sequence_analogs,
         )
+
+        # # One full cycle
+        # cycle_timings = self.events.events["right_leg_heel_touch"]
+        # this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
+        # this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
+        #     analogs_time_vector=self.experimental_data.analogs_time_vector,
+        #     markers_time_vector=self.experimental_data.markers_time_vector,
+        #     analog_idx=this_sequence_analogs,
+        # )
 
         # Skipping some frames to lighten the OCP
         marker_start = this_sequence_markers[0]
@@ -361,29 +337,29 @@ class OptimalEstimator:
                 8,  # femur_r rot Z
                 9,  # tibia_r rot X
                 10,  # talus_r rot X
-                11,  # calc_r rot X (not toes_r rot X)
-                13,  # femur_r rot X
-                14,  # femur_r rot Y
-                15,  # femur_r rot Z
-                16,  # tibia_r rot X
-                17,  # talus_r rot X
-                18,  # calc_r rot X (not toes_r rot X)
-                20,  # torse rot X
-                21,  # torse rot Y
-                22,  # torse rot Z
+                11,  # calc_r rot X (skip toes_r rot X)
+                13,  # femur_l rot X
+                14,  # femur_l rot Y
+                15,  # femur_l rot Z
+                16,  # tibia_l rot X
+                17,  # talus_l rot X
+                18,  # calc_l rot X (skip toes_l rot X)
+                20,  # thorax rot X
+                21,  # thorax rot Y
+                22,  # thorax rot Z
                 23,  # head_and_neck rot X
                 24,  # head_and_neck rot Y
                 25,  # head_and_neck rot Z
-                26,
-                27,
-                28,
-                29,
-                30,
-                34,
-                35,
-                36,
-                37,
-                38,
+                26,  # humerus_r rot X
+                27,  # humerus_r rot Y
+                28,  # humerus_r rot Z
+                29,  # ulna_r rot X
+                30,  # radius_r rot X (skip lunate, hand and fingers)
+                34,  # humerus_r rot X
+                35,  # humerus_r rot Y
+                36,  # humerus_r rot Z
+                37,  # ulna_l rot X
+                38,  # radius_l rot X (skip lunate, hand and fingers)
             ]
         )
 
@@ -395,6 +371,9 @@ class OptimalEstimator:
             "left_leg": np.zeros((9, self.n_shooting + 1)),
             "right_leg": np.zeros((9, self.n_shooting + 1)),
         }
+        muscle_names = [m.to_string() for m in model.muscleNames()]
+        nb_muscles = len(muscle_names)
+        self.emg_normalized_exp_ocp = np.zeros((nb_muscles, self.n_shooting + 1))
         for i_frame, marker_frame in enumerate(idx_to_keep):
             idx_analogs = Operator.from_marker_frame_to_analog_frame(
                 analogs_time_vector=self.experimental_data.analogs_time_vector,
@@ -407,6 +386,12 @@ class OptimalEstimator:
             self.f_ext_exp_ocp["right_leg"][:, i_frame] = np.mean(
                 self.experimental_data.f_ext_sorted[1, :, idx_analogs - 5 : idx_analogs + 5], axis=1
             )
+            for i_muscle, muscle_name in enumerate(muscle_names):
+                if muscle_name in self.model_creator.osim_model_type.muscle_name_mapping:
+                    muscle_speudo = self.model_creator.osim_model_type.muscle_name_mapping[muscle_name]
+                    if muscle_speudo is not None:
+                        muscle_index = self.experimental_data.analog_names.index(muscle_speudo)
+                        self.emg_normalized_exp_ocp[i_muscle, i_frame] = np.nanmean(self.experimental_data.normalized_emg[muscle_index, idx_analogs - 5 : idx_analogs + 5])
 
         self.markers_exp_ocp = self.experimental_data.markers_sorted[:, :, idx_to_keep]
         # Fill NaNs in markers
@@ -468,6 +453,7 @@ class OptimalEstimator:
             plt.savefig("Tau_exp.png")
             plt.show()
             print(f"There are {np.sum(np.isnan(self.tau_exp_ocp))} NaNs in Tau.")
+            print(f"There are {np.sum(np.isnan(self.emg_normalized_exp_ocp))} NaNs in muscle activation.")
 
             # Plot Markers to see if some are missing
             plt.figure()
@@ -485,7 +471,7 @@ class OptimalEstimator:
 
         if animate_exp_data_flag:
             try:
-                from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers
+                from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers, PyoMuscles
             except:
                 raise RuntimeError("To animate the initial guess, you must install Pyorerun.")
 
@@ -496,7 +482,8 @@ class OptimalEstimator:
             viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
             # Add experimental markers
-            markers = PyoMarkers(data=self.markers_exp_ocp, channels=list(model.marker_names), show_labels=False)
+            markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
+            emg = PyoMuscles(data=self.emg_normalized_exp_ocp, muscle_names=list(model.muscle_names))
 
             # Add force plates to the animation
             viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -513,7 +500,7 @@ class OptimalEstimator:
             )
 
             # Add the kinematics
-            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers)
+            viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers, muscle_activations_intensity=emg)
 
             # Play
             viz.rerun_by_frame("OCP initial guess from experimental data")
@@ -525,7 +512,7 @@ class OptimalEstimator:
 
         try:
             from bioptim import (
-                TorqueBiorbdModel,
+                MusclesBiorbdModel,
                 ConfigureProblem,
                 DynamicsFunctions,
                 DynamicsEvaluation,
@@ -556,12 +543,12 @@ class OptimalEstimator:
         except:
             raise RuntimeError("To reconstruct optimally, you must install Bioptim")
 
-        class CustomTorqueModelNoContacts(TorqueBiorbdModel):
-            def __init__(self, biorbd_model_path, external_force_set=None):
+        class CustomMuscleModelNoContacts(MusclesBiorbdModel):
+            def __init__(self, biorbd_model_path, external_force_set=None, with_residual_torque=True):
                 """
                 Custom Torque model to handle the no contact case.
                 """
-                super().__init__(biorbd_model_path, external_force_set=external_force_set)
+                super().__init__(biorbd_model_path, external_force_set=external_force_set, with_residual_torque=with_residual_torque)
                 if with_residual_forces:
                     self.control_configuration += [
                         lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
@@ -582,7 +569,13 @@ class OptimalEstimator:
 
                 q = DynamicsFunctions.get(nlp.states["q"], states)
                 qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
-                tau = DynamicsFunctions.get(nlp.controls["tau"], controls)
+
+                # Get torques
+                tau_residual = DynamicsFunctions.get(nlp.controls["tau"], controls)
+                mus_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
+                tau = tau_residual + DynamicsFunctions.compute_tau_from_muscle(nlp, q, qdot, mus_activations, None)
+
+                # Get external forces
                 if with_residual_forces:
                     f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
                     f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
@@ -619,10 +612,11 @@ class OptimalEstimator:
             point_of_application=self.f_ext_exp_ocp["right_leg"][:3, :-1],
         )
         numerical_time_series = {"external_forces": external_force_set.to_numerical_time_series()}
-        biorbd_model_path = self.biorbd_model_path.replace(".bioMod", "_no_contacts.bioMod")
-        bio_model = CustomTorqueModelNoContacts(biorbd_model_path, external_force_set=external_force_set)
+        biorbd_model_path = self.model_creator.biorbd_model_full_path.replace(".bioMod", "_no_contacts.bioMod")
+        bio_model = CustomMuscleModelNoContacts(biorbd_model_path, external_force_set=external_force_set)
 
         nb_q = bio_model.nb_q
+        nb_muscles = bio_model.nb_muscles
         r_foot_marker_index = np.array(
             [bio_model.marker_index(f"RCAL"), bio_model.marker_index(f"RMFH1"), bio_model.marker_index(f"RMFH5"), bio_model.marker_index(f"R_foot_up")]
         )
@@ -635,13 +629,20 @@ class OptimalEstimator:
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
-            weight=0.001,
+            weight=0.1,
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
             weight=1.0,
             index=[0, 1, 2, 3, 4, 5],
+        )
+        objective_functions.add(
+            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+            key="muscles",
+            weight=0.01,
+            target=self.emg_normalized_exp_ocp[:10, :-1],
+            index=[0, 1, 2, 4, 5, 6, 7, 8, 9, 10],  # Only the right leg (except tfl)
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100.0, node=Node.ALL, target=self.markers_exp_ocp
@@ -680,7 +681,7 @@ class OptimalEstimator:
 
         constraints = ConstraintList()
 
-        dynamics = DynamicsOptionsList()  # TODO: Charbie -> Change for muscles
+        dynamics = DynamicsOptionsList()
         dynamics.add(
             numerical_data_timeseries=numerical_time_series,
             phase_dynamics=PhaseDynamics.SHARED_DURING_THE_PHASE,
@@ -688,17 +689,13 @@ class OptimalEstimator:
         )
 
         x_bounds = BoundsList()
-        # # Bounds from model
-        # x_bounds["q"] = bio_model.bounds_from_ranges("q")
-        # x_bounds["qdot"] = bio_model.bounds_from_ranges("qdot")
-
         # Bounds personalized to the subject's current kinematics
         min_q = self.q_exp_ocp[:, :] - 0.3
         min_q[:6, :] = self.q_exp_ocp[:6, :] - 0.05
         max_q = self.q_exp_ocp[:, :] + 0.3
         max_q[:6, :] = self.q_exp_ocp[:6, :] + 0.05
         x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
-        # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-5)
+        # Bounds personalized to the subject's current joint velocities (not a real limitation, so it is executed with +-10)
         x_bounds.add(
             "qdot",
             min_bound=self.qdot_exp_ocp - 10,
@@ -713,6 +710,7 @@ class OptimalEstimator:
         u_bounds = BoundsList()
         # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
+        u_bounds.add("muscles", min_bound=[0.0001] * nb_muscles, max_bound=[0.0001] * nb_muscles, interpolation=InterpolationType.CONSTANT)
         if with_residual_forces:
             u_bounds.add(
                 "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
@@ -722,7 +720,8 @@ class OptimalEstimator:
             )
 
         u_init = InitialGuessList()
-        u_init.add("tau", initial_guess=self.tau_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add("tau", initial_guess=[0] * nb_q, interpolation=InterpolationType.CONSTANT)
+        u_init.add("muscles", initial_guess=self.emg_normalized_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
         if with_residual_forces:
             u_init.add("contact_forces", initial_guess=[0] * 6, interpolation=InterpolationType.CONSTANT)
             u_init.add(
@@ -1299,7 +1298,7 @@ class OptimalEstimator:
     def inputs(self):
         return {
             "cycle_to_analyze": self.cycle_to_analyze,
-            "biorbd_model_path": self.biorbd_model_path,
+            "biorbd_model_path": self.model_creator.biorbd_model_full_path,
             "experimental_data": self.experimental_data,
             "events": self.events,
             "kinematics_reconstructor": self.kinematics_reconstructor,
