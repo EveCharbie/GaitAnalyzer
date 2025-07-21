@@ -176,6 +176,13 @@ class ExperimentalData:
                 )
             self.normalized_emg = normalized_emg
 
+            if np.any(self.normalized_emg > 1):
+                # raise RuntimeError("The experimental trial reached EMG values above the MVC, which is not expected. ")
+                for i_emg in range(self.normalized_emg.shape[0]):
+                    if np.nanmax(self.normalized_emg[i_emg, :]) > 1:
+                        print(f"Muscle {self.analog_names[i_emg]} reached {np.nanmax(self.normalized_emg[i_emg, :])}... renormalizing with this new maximum.")
+                        self.normalized_emg[i_emg, :] /= np.nanmax(self.normalized_emg[i_emg, :])
+
             # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here
 
         def extract_force_platform_data():
