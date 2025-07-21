@@ -83,6 +83,7 @@ class OsimModels:
         4. Change the ranges of motion for the segments (ranges_to_adjust)
         5. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
         6. Add the marker clusters (markers_to_add)
+        7. Fix the conditional and moving via points
         """
         # Modify gravity vector
         model.gravity_vector = np.array([0, 0, -9.81])
@@ -139,6 +140,8 @@ class OsimModels:
                     )
                 )
 
+        # Fix via points
+        model.fix_via_points()
         return model
 
     # Child classes acting as an enum
