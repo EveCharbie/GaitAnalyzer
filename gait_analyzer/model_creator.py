@@ -14,13 +14,13 @@ from biobuddy import (
     RangeOfMotion,
     Ranges,
     C3dData,
-    RotoTransMatrix,
     MarkerReal,
     JointCenterTool,
     Score,
     Sara,
     Translations,
     Rotations,
+    MarkerWeight,
 )
 from gait_analyzer.subject import Subject
 
@@ -105,21 +105,18 @@ class OsimModels:
                 segment.qdot_ranges = None
 
         # Modify muscles
+        # Remove muscles
         muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]
-        via_points = deepcopy(model.via_points)
-        for via_point in via_points:
-            if via_point.muscle_name in muscles_to_ignore:
-                model.remove_via_point(via_point.name)
-
+        for muscle_group in model.muscle_groups:
+            muscles = deepcopy(model.muscle_groups[muscle_group.name].muscles)
+            for muscle in muscles:
+                if muscle.name in muscles_to_ignore:
+                    model.muscle_groups[muscle_group.name].remove_muscle(muscle.name)
+        # Remove muscle groups that are now empty
         muscle_groups = deepcopy(model.muscle_groups)
         for muscle_group in muscle_groups:
-            if muscle_group.origin_parent_name in muscles_to_ignore:
+            if muscle_group.nb_muscles == 0:
                 model.remove_muscle_group(muscle_group.name)
-            elif muscle_group.insertion_parent_name in muscles_to_ignore:
-                model.remove_muscle_group(muscle_group.name)
-
-        for muscle in muscles_to_ignore:
-            model.remove_muscle(muscle)
 
         # Add the marker clusters
         jcs_in_global = model.forward_kinematics()
@@ -127,8 +124,7 @@ class OsimModels:
         for segment_name in self.markers_to_add.keys():
             for marker in self.markers_to_add[segment_name]:
                 position_in_global = c3d_data.mean_marker_position(marker)
-                rt = RotoTransMatrix()
-                rt.from_rt_matrix(jcs_in_global[segment_name])
+                rt = jcs_in_global[segment_name][0]
                 position_in_local = rt.inverse @ position_in_global
                 model.segments[segment_name].add_marker(
                     MarkerReal(
@@ -337,13 +333,15 @@ class OsimModels:
                 "semiten_r": "SEMITENDINOUS",
                 "bifemlh_r": "BICEPS_FEM",
                 "sar_r": "RECTUS_FEM",
-                "tfl_r": "RECTUS_FEM",
-                "vas_med_r": "RECTUS_FEM",
-                "vas_lat_r": "RECTUS_FEM",
+                "tfl_r": None,
+                "vas_med_r": "VASTM",
+                "vas_lat_r": "VASTM",
                 "soleus_r": "SOL",
                 "tib_post_r": "SOL",
                 "tib_ant_r": "TIB",
-                "per_long_r": "SOL",
+                "per_long_r": "GM",
+                "med_gas_r": "GM",
+                "lat_gas_r": "GM",
             }
 
         def perform_modifications(self, model, static_trial):
@@ -464,9 +462,7 @@ class ModelCreator:
     def scale_model(self):
         scale_tool = ScaleTool(original_model=self.model).from_xml(filepath=self.osim_model_type.xml_setup_file)
         self.model = scale_tool.scale(
-            filepath=self.static_trial,
-            first_frame=100,
-            last_frame=200,
+            static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
             q_regularization_weight=0.01,
             make_static_pose_the_models_zero=True,
@@ -506,13 +502,11 @@ class ModelCreator:
         # Hip Right
         joint_center_tool.add(
             Score(
-                filepath=trials_list["right_hip"],
+                functional_c3d=C3dData(trials_list["right_hip"], first_frame=500, last_frame=-500),
                 parent_name="pelvis",
                 child_name="femur_r",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
                 child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -520,7 +514,7 @@ class ModelCreator:
         # Knee right
         joint_center_tool.add(
             Sara(
-                filepath=trials_list["right_knee"],
+                functional_c3d=C3dData(trials_list["right_knee"], first_frame=500, last_frame=-500),
                 parent_name="femur_r",
                 child_name="tibia_r",
                 parent_marker_names=["RGT"] + self.osim_model_type.markers_to_add["femur_r"],
@@ -528,8 +522,6 @@ class ModelCreator:
                 joint_center_markers=["RLFE", "RMFE"],
                 distal_markers=["RLM", "RSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -537,7 +529,7 @@ class ModelCreator:
         # Ankle right
         joint_center_tool.add(
             Score(
-                filepath=trials_list["right_ankle"],
+                functional_c3d=C3dData(trials_list["right_ankle"], first_frame=500, last_frame=-500),
                 parent_name="tibia_r",
                 child_name="calcn_r",
                 parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
@@ -549,13 +541,11 @@ class ModelCreator:
         # Hip Left
         joint_center_tool.add(
             Score(
-                filepath=trials_list["left_hip"],
+                functional_c3d=C3dData(trials_list["left_hip"], first_frame=500, last_frame=-500),
                 parent_name="pelvis",
                 child_name="femur_l",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
                 child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -563,7 +553,7 @@ class ModelCreator:
         # Knee Left
         joint_center_tool.add(
             Sara(
-                filepath=trials_list["left_knee"],
+                functional_c3d=C3dData(trials_list["left_knee"], first_frame=500, last_frame=-500),
                 parent_name="femur_l",
                 child_name="tibia_l",
                 parent_marker_names=["LGT"] + self.osim_model_type.markers_to_add["femur_l"],
@@ -571,8 +561,6 @@ class ModelCreator:
                 joint_center_markers=["LLFE", "LMFE"],
                 distal_markers=["LLM", "LSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -580,7 +568,7 @@ class ModelCreator:
         # Ankle Left
         joint_center_tool.add(
             Score(
-                filepath=trials_list["left_ankle"],
+                functional_c3d=C3dData(trials_list["left_ankle"], first_frame=500, last_frame=-500),
                 parent_name="tibia_l",
                 child_name="calcn_l",
                 parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
@@ -589,6 +577,12 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
+
+        original_marker_weights = deepcopy(self.marker_weights)
+        for key in self.osim_model_type.markers_to_add.keys():
+            for marker in self.osim_model_type.markers_to_add[key]:
+                if marker not in original_marker_weights:
+                    self.marker_weights._append(MarkerWeight(name=marker, weight=1.0))
 
         self.model = joint_center_tool.replace_joint_centers(self.marker_weights)
 
