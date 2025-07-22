@@ -124,12 +124,13 @@ class OptimalEstimator:
         else:
             print("Performing optimal estimation...")
 
-            self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
             if implicit_contacts:
                 self.generate_contact_biomods()
+                self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
                 self.prepare_ocp_implicit()
             else:
                 self.generate_no_contacts_model()
+                self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
                 self.prepare_ocp_fext(with_residual_forces=True)
 
             self.solve(show_online_optim=True)
@@ -511,6 +512,9 @@ class OptimalEstimator:
 
             # Play
             viz.rerun_by_frame("OCP initial guess from experimental data")
+
+
+
 
     def prepare_ocp_fext(self, with_residual_forces: bool = False):
         """
