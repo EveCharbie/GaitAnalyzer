@@ -85,8 +85,8 @@ class OsimModels:
         6. Add the marker clusters (markers_to_add)
         7. Fix the conditional and moving via points
         """
-        # Modify gravity vector
-        model.gravity_vector = np.array([0, 0, -9.81])
+        # Modify gravity
+        model.gravity = np.array([0, 0, -9.81])
 
         # Modify segments
         for segment in model.segments:

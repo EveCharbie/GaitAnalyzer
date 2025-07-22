@@ -124,7 +124,7 @@ class OptimalEstimator:
         else:
             print("Performing optimal estimation...")
 
-            self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=False)
+            self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
             if implicit_contacts:
                 self.generate_contact_biomods()
                 self.prepare_ocp_implicit()
@@ -482,6 +482,10 @@ class OptimalEstimator:
             model = BiorbdModel(self.model_ocp)
             model.options.transparent_mesh = False
             model.options.show_gravity = True
+            model.options.show_marker_labels = False
+            model.options.show_muscle_labels = False
+            model.options.show_center_of_mass_labels = False
+
             viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
             # Add experimental markers
