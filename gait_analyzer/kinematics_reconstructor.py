@@ -4,7 +4,6 @@ from enum import Enum
 import numpy as np
 import matplotlib.pyplot as plt
 import biorbd
-from pyomeca import Markers
 
 from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
@@ -288,8 +287,10 @@ class KinematicsReconstructor:
             position_diffs = np.diff(valid_positions, axis=1)  # shape: (3, n_valid-1)
             distances = np.linalg.norm(position_diffs, axis=0)  # shape: (n_valid-1,)
 
-            # Check for jumps > 0.5
-            jump_indices = np.where(distances > 0.5)[0]
+            # Check for jumps > 10m/s
+            jump_indices = np.where(
+                distances / np.diff(valid_frames) * self.experimental_data.marker_sampling_frequency > 10
+            )[0]
 
             if len(jump_indices) > 0:
                 # Report the first jump found
@@ -298,10 +299,23 @@ class KinematicsReconstructor:
                 frame_after = valid_frames[jump_idx + 1]
                 jump_distance = distances[jump_idx]
 
+                try:
+                    from pyorerun import c3d
+                except:
+                    raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
+
+                c3d(
+                    self.experimental_data.c3d_full_file_path,
+                    show_forces=False,
+                    show_events=False,
+                    marker_trajectories=True,
+                    show_marker_labels=False,
+                )
+
                 raise RuntimeError(
                     f"Marker {marker_name} seems to be inverted between frames "
                     f"{frame_before} and {frame_after} as the distance is "
-                    f"{jump_distance:.3f} (larger than 0.5)."
+                    f"{jump_distance:.3f} (larger than 10m/s) see the animation to make sure."
                 )
 
             print(f"Marker {marker_name} OK: max distance = {np.max(distances):.3f} m")
@@ -343,10 +357,10 @@ class KinematicsReconstructor:
 
             # Check if this reconstruction was acceptable
             print(
-                f"75 percentile between : {np.min(np.percentile(residuals[:, self.frame_range], 75, axis=0))} and "
-                f"{np.max(np.percentile(residuals[:, self.frame_range], 75, axis=0))}"
+                f"75 percentile between : {np.min(np.nanpercentile(residuals[:, self.frame_range], 75, axis=0))} and "
+                f"{np.max(np.nanpercentile(residuals[:, self.frame_range], 75, axis=0))}"
             )
-            if np.all(np.percentile(residuals, 75, axis=0) < self.acceptance_threshold):
+            if np.all(np.nanpercentile(residuals, 75, axis=0) < self.acceptance_threshold):
                 is_successful_reconstruction = True
                 break
 
@@ -441,7 +455,7 @@ class KinematicsReconstructor:
         Animate the kinematics
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers, PyoMuscles
         except:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
@@ -451,41 +465,69 @@ class KinematicsReconstructor:
         model.options.show_gravity = True
         model.options.show_marker_labels = False
         model.options.show_center_of_mass_labels = False
-
-        # Visualization
-        viz = PhaseRerun(self.t)
+        model.options.show_gravity = False
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
         marker_data_with_ones[:3, :, :] = self.markers
-        markers = Markers(data=marker_data_with_ones, channels=marker_names)
 
-        # Force plates
-        force_plate_idx = Operator.from_marker_frame_to_analog_frame(
-            self.experimental_data.analogs_time_vector,
-            self.experimental_data.markers_time_vector,
-            list(self.frame_range),
-        )
-        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
-        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
-        viz.add_force_data(
-            num=1,
-            force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
-            force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, force_plate_idx].T,
-        )
-        viz.add_force_data(
-            num=2,
-            force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, force_plate_idx].T,
-            force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, force_plate_idx].T,
-        )
-
+        t_animation = self.t
+        frame_range = self.frame_range
         if self.q.shape[0] == model.nb_q:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
             q_animation = self.q_filtered.T
-        viz.add_animated_model(model, q_animation, tracked_markers=markers, show_tracked_marker_labels=False)
-        viz.rerun_by_frame("Kinematics reconstruction")
+
+        if q_animation.shape[1] > 200:
+            print("To avoid computer crashes, only the first 200 frames will be displayed in the animation. ")
+            q_animation = q_animation[:, :200]
+            t_animation = t_animation[:200]
+            frame_range = frame_range[:200]
+            marker_data_with_ones = marker_data_with_ones[:, :, :200]
+
+        # Visualization
+        viz = PhaseRerun(t_animation)
+
+        markers = PyoMarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
+        muscle_names = [m.to_string() for m in self.biorbd_model.muscleNames()]
+
+        # Force plates
+        analog_idx = Operator.from_marker_frame_to_analog_frame(
+            self.experimental_data.analogs_time_vector,
+            self.experimental_data.markers_time_vector,
+            list(frame_range),
+        )
+
+        # EMGs
+        emg_data = []
+        muscle_name_mapping = self.model_creator.osim_model_type.muscle_name_mapping
+        mvc_names = list(self.model_creator.mvc_values.keys())
+        for muscle_name in muscle_names:
+            if muscle_name in muscle_name_mapping.keys() and muscle_name_mapping[muscle_name] in mvc_names:
+                muscle_index = mvc_names.index(muscle_name_mapping[muscle_name])
+                emg_data += [self.experimental_data.normalized_emg[muscle_index, :]]
+            else:
+                nb_frames = self.experimental_data.normalized_emg.shape[1]
+                emg_data += [np.zeros((nb_frames,))]
+        emg_data = np.array(emg_data)[:, analog_idx]
+        emg = PyoMuscles(data=emg_data, muscle_names=muscle_names, colormap="viridis")
+
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        viz.add_force_data(
+            num=1,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, analog_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, analog_idx].T,
+        )
+        viz.add_force_data(
+            num=2,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, analog_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, analog_idx].T,
+        )
+
+        viz.add_animated_model(model, q_animation, tracked_markers=markers, muscle_activations_intensity=emg)
+        viz.rerun("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:

@@ -26,12 +26,12 @@ class Subject:
         ----------
         subject_name: str
             The name of the subject
-        subject_mass: float | None
-            The mass of the subject in kg. If None, the mass is measured through the force plate data in the static trial.
         dominant_leg: Side
             The dominant leg of the subject (Side.LEFT or Side.RIGHT)
         preferential_speed: float
             The preferential speed of the subject in m/s. This is not used (it is just to keep track of the subject's speed).
+        subject_mass: float | None
+            The mass of the subject in kg. If None, the mass is measured through the force plate data in the static trial.
         """
         # Checks
         if not isinstance(subject_name, str):

@@ -15,7 +15,7 @@ git clone https://github.com/laboratoireIRISSE/GaitAnalyzer.git
 But if you would like to contribute, you can fork the repository and clone your fork instead.
 To be able to use the GaitAnalyzer properly, you can install the following dependency packages from conda-forge
 ```bash
-conda install -c conda-forge numpy matplotlib biorbd=1.10.0 ezc3d scipy lxml pandas openpyxl gitpython pyorerun pyomeca opensim-org::opensim=4.5.1 rerun-sdk=0.21.0
+conda install -c conda-forge numpy matplotlib plotly biorbd=1.10.0 ezc3d scipy lxml pandas openpyxl gitpython pyorerun pyomeca opensim-org::opensim=4.5.1 rerun-sdk=0.21.0
 ```
 You must also install the following libraries:
 - BioBuddy (https://github.com/pyomeca/biobuddy) #TODO: add to conda-forge

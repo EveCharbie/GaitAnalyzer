@@ -14,13 +14,13 @@ from biobuddy import (
     RangeOfMotion,
     Ranges,
     C3dData,
-    RotoTransMatrix,
     MarkerReal,
     JointCenterTool,
     Score,
     Sara,
     Translations,
     Rotations,
+    MarkerWeight,
 )
 from gait_analyzer.subject import Subject
 
@@ -56,6 +56,89 @@ class OsimModels:
         raise RuntimeError(
             "This method is implemented in the child class. You should call OsimModels.[mode type name].markers_to_ignore."
         )
+
+    @property
+    def ranges_to_adjust(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].ranges_to_adjust."
+        )
+
+    @property
+    def segments_to_fix(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].segments_to_fix."
+        )
+
+    @property
+    def markers_to_add(self):
+        raise RuntimeError(
+            "This method is implemented in the child class. You should call OsimModels.[mode type name].markers_to_add."
+        )
+
+    def perform_modifications(self, model, static_trial):
+        """
+        1. Make the gravity vector point downwards (necessary because OpenSim is Y-up and biorbd is Z-up)
+        2. Remove the markers that are not needed (markers_to_ignore)
+        3. Remove the degrees of freedom that are not needed (segments_to_fix)
+        4. Change the ranges of motion for the segments (ranges_to_adjust)
+        5. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
+        6. Add the marker clusters (markers_to_add)
+        7. Fix the conditional and moving via points
+        """
+        # Modify gravity
+        model.gravity = np.array([0, 0, -9.81])
+
+        # Modify segments
+        for segment in model.segments:
+            markers = deepcopy(segment.markers)
+            for marker in markers:
+                if marker in self.markers_to_ignore:
+                    segment.remove_marker(marker)
+            if segment.name in self.ranges_to_adjust.keys():
+                min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
+                max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
+                segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
+            if segment in self.segments_to_fix:
+                segment.translations = Translations.NONE
+                segment.rotations = Rotations.NONE
+                segment.q_ranges = None
+                segment.qdot_ranges = None
+
+        # Modify muscles
+        # Remove muscles
+        muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]
+        for muscle_group in model.muscle_groups:
+            muscles = deepcopy(model.muscle_groups[muscle_group.name].muscles)
+            for muscle in muscles:
+                if muscle.name in muscles_to_ignore:
+                    model.muscle_groups[muscle_group.name].remove_muscle(muscle.name)
+        # Remove muscle groups that are now empty
+        muscle_groups = deepcopy(model.muscle_groups)
+        for muscle_group in muscle_groups:
+            if muscle_group.nb_muscles == 0:
+                model.remove_muscle_group(muscle_group.name)
+
+        # Add the marker clusters
+        jcs_in_global = model.forward_kinematics()
+        c3d_data = C3dData(static_trial, first_frame=100, last_frame=200)
+        for segment_name in self.markers_to_add.keys():
+            for marker in self.markers_to_add[segment_name]:
+                position_in_global = c3d_data.mean_marker_position(marker)
+                rt = jcs_in_global[segment_name][0]
+                position_in_local = rt.inverse @ position_in_global
+                model.segments[segment_name].add_marker(
+                    MarkerReal(
+                        name=marker,
+                        parent_name=segment_name,
+                        position=position_in_local,
+                        is_anatomical=False,
+                        is_technical=True,
+                    )
+                )
+
+        # Fix via points
+        model.fix_via_points()
+        return model
 
     # Child classes acting as an enum
     class WholeBody:
@@ -118,6 +201,8 @@ class OsimModels:
                 "LAT2_l",
                 "PECM2",
                 "PECM2_l",
+                "glut_med1_r",
+                "glut_med1_l",
             ]
 
         @property
@@ -230,74 +315,37 @@ class OsimModels:
                 "femur_l": ["L_fem_up", "L_fem_downF", "L_fem_downB"],
                 "tibia_r": ["R_tib_up", "R_tib_downF", "R_tib_downB"],
                 "tibia_l": ["L_tib_up", "L_tib_downF", "L_tib_downB"],
+                "calcn_r": ["R_foot_up"],
+                "calcn_l": ["L_foot_up"],
                 "humerus_r": ["R_arm_up", "R_arm_downF", "R_arm_downB"],
                 "radius_r": ["R_fore_up", "R_fore_downF", "R_fore_downB"],
                 "humerus_l": ["L_arm_up", "L_arm_downF", "L_arm_downB"],
                 "radius_l": ["L_fore_up", "L_fore_downF", "L_fore_downB"],
             }
 
+        @property
+        def muscle_name_mapping(self):
+            """
+            This method returns a dictionary that maps the muscle names from the original model to the experimental EMG names.
+            This is useful as multiple muscles might be associated with the same EMG signal.
+            """
+            return {
+                "semiten_r": "SEMITENDINOUS",
+                "bifemlh_r": "BICEPS_FEM",
+                "sar_r": "RECTUS_FEM",
+                "tfl_r": None,
+                "vas_med_r": "VASTM",
+                "vas_lat_r": "VASTM",
+                "soleus_r": "SOL",
+                "tib_post_r": "SOL",
+                "tib_ant_r": "TIB",
+                "per_long_r": "GM",
+                "med_gas_r": "GM",
+                "lat_gas_r": "GM",
+            }
+
         def perform_modifications(self, model, static_trial):
-            """
-            1. Remove the markers that are not needed (markers_to_ignore)
-            2. Remove the degrees of freedom that are not needed (segments_to_fix)
-            3. Change the ranges of motion for the segments (ranges_to_adjust)
-            4. Remove the muscles/via_points/muscle_groups that are not needed (muscles_to_ignore)
-            5. Add the marker clusters (markers_to_add)
-            """
-
-            # Modify segments
-            for segment in model.segments:
-                markers = deepcopy(segment.markers)
-                for marker in markers:
-                    if marker in self.markers_to_ignore:
-                        segment.remove_marker(marker)
-                if segment.name in self.ranges_to_adjust.keys():
-                    min_bounds = [r[0] for r in self.ranges_to_adjust[segment.name]]
-                    max_bounds = [r[1] for r in self.ranges_to_adjust[segment.name]]
-                    segment.q_ranges = RangeOfMotion(Ranges.Q, min_bounds, max_bounds)
-                if segment in self.segments_to_fix:
-                    segment.translations = Translations.NONE
-                    segment.rotations = Rotations.NONE
-                    segment.q_ranges = None
-                    segment.qdot_ranges = None
-
-            # Modify muscles
-            muscles_to_ignore = [m for m in self.muscles_to_ignore if m in model.muscle_names]
-            via_points = deepcopy(model.via_points)
-            for via_point in via_points:
-                if via_point.muscle_name in muscles_to_ignore:
-                    model.remove_via_point(via_point.name)
-
-            muscle_groups = deepcopy(model.muscle_groups)
-            for muscle_group in muscle_groups:
-                if muscle_group.origin_parent_name in muscles_to_ignore:
-                    model.remove_muscle_group(muscle_group.name)
-                elif muscle_group.insertion_parent_name in muscles_to_ignore:
-                    model.remove_muscle_group(muscle_group.name)
-
-            for muscle in muscles_to_ignore:
-                model.remove_muscle(muscle)
-
-            # Add the marker clusters
-            jcs_in_global = model.forward_kinematics()
-            c3d_data = C3dData(static_trial, first_frame=100, last_frame=200)
-            for segment_name in self.markers_to_add.keys():
-                for marker in self.markers_to_add[segment_name]:
-                    position_in_global = c3d_data.mean_marker_position(marker)
-                    rt = RotoTransMatrix()
-                    rt.from_rt_matrix(jcs_in_global[segment_name])
-                    position_in_local = rt.inverse @ position_in_global
-                    model.segments[segment_name].add_marker(
-                        MarkerReal(
-                            name=marker,
-                            parent_name=segment_name,
-                            position=position_in_local,
-                            is_anatomical=False,
-                            is_technical=True,
-                        )
-                    )
-
-            return model
+            OsimModels.perform_modifications(self, model, static_trial)
 
 
 class ModelCreator:
@@ -432,13 +480,11 @@ class ModelCreator:
     def scale_model(self):
         scale_tool = ScaleTool(original_model=self.model).from_xml(filepath=self.osim_model_type.xml_setup_file)
         self.model = scale_tool.scale(
-            filepath=self.static_trial,
-            first_frame=100,
-            last_frame=200,
+            static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
             q_regularization_weight=0.01,
             make_static_pose_the_models_zero=True,
-            visualize_optimal_static_pose=False,
+            visualize_optimal_static_pose=True,
             method="lm",
         )
         self.marker_weights = scale_tool.marker_weights
@@ -457,9 +503,6 @@ class ModelCreator:
             "left_hip": None,
             "left_knee": None,
             "left_ankle": None,
-            "shoulders": None,
-            "elbows": None,
-            "neck": None,
         }
         # Find the functional trials
         for trial_name in trials_list.keys():
@@ -477,13 +520,11 @@ class ModelCreator:
         # Hip Right
         joint_center_tool.add(
             Score(
-                filepath=trials_list["right_hip"],
+                functional_c3d=C3dData(trials_list["right_hip"], first_frame=500, last_frame=-500),
                 parent_name="pelvis",
                 child_name="femur_r",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
                 child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -491,7 +532,7 @@ class ModelCreator:
         # Knee right
         joint_center_tool.add(
             Sara(
-                filepath=trials_list["right_knee"],
+                functional_c3d=C3dData(trials_list["right_knee"], first_frame=500, last_frame=-500),
                 parent_name="femur_r",
                 child_name="tibia_r",
                 parent_marker_names=["RGT"] + self.osim_model_type.markers_to_add["femur_r"],
@@ -499,35 +540,30 @@ class ModelCreator:
                 joint_center_markers=["RLFE", "RMFE"],
                 distal_markers=["RLM", "RSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot ?
-        # # Ankle right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["right_ankle"],
-        #         parent_name="tibia_r",
-        #         child_name="calcn_r",
-        #         parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
-        #         child_marker_names=["RCAL", "RMFH1", "RMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Ankle right
+        joint_center_tool.add(
+            Score(
+                functional_c3d=C3dData(trials_list["right_ankle"], first_frame=500, last_frame=-500),
+                parent_name="tibia_r",
+                child_name="calcn_r",
+                parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
+                child_marker_names=["RCAL", "RMFH1", "RMFH5"] + self.osim_model_type.markers_to_add["calcn_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Hip Left
         joint_center_tool.add(
             Score(
-                filepath=trials_list["left_hip"],
+                functional_c3d=C3dData(trials_list["left_hip"], first_frame=500, last_frame=-500),
                 parent_name="pelvis",
                 child_name="femur_l",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
                 child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -535,7 +571,7 @@ class ModelCreator:
         # Knee Left
         joint_center_tool.add(
             Sara(
-                filepath=trials_list["left_knee"],
+                functional_c3d=C3dData(trials_list["left_knee"], first_frame=500, last_frame=-500),
                 parent_name="femur_l",
                 child_name="tibia_l",
                 parent_marker_names=["LGT"] + self.osim_model_type.markers_to_add["femur_l"],
@@ -543,97 +579,28 @@ class ModelCreator:
                 joint_center_markers=["LLFE", "LMFE"],
                 distal_markers=["LLM", "LSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
-                first_frame=500,
-                last_frame=-500,
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
         )
-        # # TODO: add one more marker on the foot ?
-        # # Ankle Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["left_ankle"],
-        #         parent_name="tibia_l",
-        #         child_name="calcn_l",
-        #         parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
-        #         child_marker_names=["LCAL", "LMFH1", "LMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Ankle Left
+        joint_center_tool.add(
+            Score(
+                functional_c3d=C3dData(trials_list["left_ankle"], first_frame=500, last_frame=-500),
+                parent_name="tibia_l",
+                child_name="calcn_l",
+                parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
+                child_marker_names=["LCAL", "LMFH1", "LMFH5"] + self.osim_model_type.markers_to_add["calcn_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
 
-        # To be removed for walking
-        # # Shoulder Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_r",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["RLHE", "RMHE"] + self.osim_model_type.markers_to_add["humerus_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_r",
-        #         child_name="radius_r",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
-        #         child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Shoulder Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_l",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["LLHE", "LMHE"] + self.osim_model_type.markers_to_add["humerus_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_l",
-        #         child_name="radius_l",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
-        #         child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Neck
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["neck"],
-        #         parent_name="torso",
-        #         child_name="head_and_neck",
-        #         parent_marker_names=["STR", "RA", "LA", "C7", "T10", "SUP"],
-        #         child_marker_names=["SEL", "OCC", "RTEMP", "LTEMP", "HV"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        original_marker_weights = deepcopy(self.marker_weights)
+        for key in self.osim_model_type.markers_to_add.keys():
+            for marker in self.osim_model_type.markers_to_add[key]:
+                if marker not in original_marker_weights:
+                    self.marker_weights._append(MarkerWeight(name=marker, weight=1.0))
 
         self.model = joint_center_tool.replace_joint_centers(self.marker_weights)
 
@@ -646,26 +613,20 @@ class ModelCreator:
         Animate the model
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import LiveModelAnimation
         except:
             raise RuntimeError("To animate the model, you must install Pyorerun.")
 
-        # Model
-        model = BiorbdModel(self.biorbd_model_full_path)
-        model.options.transparent_mesh = False
-        model.options.show_gravity = True
-        model.options.show_marker_labels = False
-        model.options.show_center_of_mass_labels = False
-
-        # Visualization
-        viz = PhaseRerun(np.linspace(0, 1, 10))
-        viz.add_animated_model(model, np.zeros((model.nb_q, 10)))
-        viz.rerun_by_frame("Kinematics reconstruction")
+        animation = LiveModelAnimation(self.biorbd_model_full_path, with_q_charts=True)
+        animation.rerun()
 
     def get_mvc_values(self, plot_emg_flag: bool = False):
         """
         Extract the maximal EMG signal as the max of the filtered EMG signal for each muscle during the MVC trial.
         """
+        if self.mvc_trials_path is None:
+            raise NotImplementedError("This should eb allowed but I did not take the time to implement it.")
+
         mvc_values = {}
         emg_values = {}
         for mvc in os.listdir(self.mvc_trials_path):
@@ -682,7 +643,6 @@ class ModelCreator:
                             os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
                         )
                         emg_processed = (
-                            # emg.interpolate_na(dim="time", method="linear")
                             emg.meca.interpolate_missing_data()
                             .meca.band_pass(order=2, cutoff=[10, 425])
                             .meca.center()
@@ -690,7 +650,7 @@ class ModelCreator:
                             .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
                         ) * emg_units
                         emg_values[name] = np.array(emg_processed)
-                        mvc_values[name] = float(np.max(emg_processed))
+                        mvc_values[name] = float(np.nanmax(emg_processed))
         self.mvc_values = mvc_values
 
         if plot_emg_flag:
