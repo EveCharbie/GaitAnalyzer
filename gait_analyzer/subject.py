@@ -14,10 +14,10 @@ class Subject:
     def __init__(
         self,
         subject_name: str,
-        subject_mass: float,
-        subject_height: float,
-        dominant_leg: Side,
-        preferential_speed: float,
+        subject_mass: float = None,
+        subject_height: float = None,
+        dominant_leg: Side = None,
+        preferential_speed: float = None,
     ):
         """
         Initialize the SubjectList.
@@ -42,9 +42,9 @@ class Subject:
             # Check to make sure no child is analyzed (since scaling would not be adapted) and mass is not entered in pounds.
             if subject_mass < 30 or subject_mass > 100:
                 raise ValueError(f"Mass of subject {subject_name} must be a expressed in [30, 100] kg.")
-        if not isinstance(dominant_leg, Side):
+        if dominant_leg is not None and not isinstance(dominant_leg, Side):
             raise ValueError("dominant_leg must be a Side")
-        if not isinstance(preferential_speed, float):
+        if preferential_speed is not None and not isinstance(preferential_speed, float):
             raise ValueError("preferential_speed must be a float")
 
         # Initial attributes

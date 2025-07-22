@@ -78,23 +78,16 @@ if __name__ == "__main__":
     subjects_to_analyze = []
     subjects_to_analyze.append(
         Subject(
-            subject_name="LEM_PRE",
-            subject_mass=69.2,
-            dominant_leg=Side.RIGHT,
-            preferential_speed=1.06,
-            subject_height=1.75,
+            subject_name="CHE_AngMom",
+            subject_height=1.70,
         )
     )
     subjects_to_analyze.append(
         Subject(
-            subject_name="LEM_PRE_chev",
-            subject_mass=69.2,
-            dominant_leg=Side.RIGHT,
-            preferential_speed=1.06,
-            subject_height=1.75,
+            subject_name="AOT_AngMom",
+            subject_height=1.75,  # TODO: Yevan -> OK ?
         )
     )
-    # ... add other participants here
 
     # --- Example of how to run the analysis --- #
     AnalysisPerformer(
@@ -102,15 +95,14 @@ if __name__ == "__main__":
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
-        skip_if_existing=True,
+        trails_to_analyze=["_zero", "_plus_20", "_moins_20"],
+        skip_if_existing=False,
     )
 
     # --- Example of how to create a OrganizedResult object --- #
     organized_result = OrganizedResult(
         result_folder="results",
-        # conditions_to_compare=["EMG_m20", "EMG_0", "EMG_p20"],
-        conditions_to_compare=["_1p25"],
+        conditions_to_compare=["_zero", "_plus_20", "_moins_20"],
         plot_type=PlotType.ANGULAR_MOMENTUM,
         nb_frames_interp=101,
     )
