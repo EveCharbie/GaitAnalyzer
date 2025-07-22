@@ -8,8 +8,8 @@ import biorbd
 from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.model_creator import ModelCreator
-from gait_analyzer.cyclic_events import CyclicEvents
-from gait_analyzer.unique_events import UniqueEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
+from gait_analyzer.events.unique_events import UniqueEvents
 
 
 class ReconstructionType(Enum):
@@ -229,7 +229,7 @@ class KinematicsReconstructor:
         if plot_kinematics_flag:
             self.plot_kinematics()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the kinematics reconstruction already exists.
         If it exists, load the q.

@@ -184,10 +184,6 @@ examples/results/
 
 osim_to_biomod/
 
-results/LEM_PRE_chev/models/
+*.mat
 
-results/LEM_PRE_chev/
-
-results/LEM_PRE/
-
-results/Geometry_cleaned/
+results/

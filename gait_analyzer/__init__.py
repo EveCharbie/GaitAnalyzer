@@ -1,6 +1,9 @@
 from .analysis_performer import AnalysisPerformer
+from .biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from .model_creator import ModelCreator, OsimModels
 from .experimental_data import ExperimentalData
+from .events.cyclic_events import CyclicEvents
+from .events.unique_events import UniqueEvents
 from .helper import helper
 from .kinematics_reconstructor import KinematicsReconstructor, ReconstructionType
 from .operator import Operator
