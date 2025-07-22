@@ -13,6 +13,7 @@ from .statistical_analysis.stats_utils import QuantityToExtractType, StatsType
 from .statistical_analysis.stats_performer import StatsPerformer
 from .plots.plot_leg_data import PlotLegData, LegToPlot, PlotType, EventIndexType
 from .plots.plot_biomechanics_quantity import PlotBiomechanicsQuantity
+from .utils.marker_labeling_handler import MarkerLabelingHandler
 from .result_manager import ResultManager
 from .subject import Subject, Side
 

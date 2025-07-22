@@ -32,7 +32,7 @@ def analysis_to_perform(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=True,
+        skip_if_existing=False,
         animate_model_flag=False,
     )
 
@@ -65,10 +65,16 @@ def analysis_to_perform(
         skip_if_existing=True,
     )
 
-    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=True, animate_dynamics_flag=True)
+    results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
 
     # --- Example of analysis that can be performed in any order --- #
-    results.estimate_optimally(cycle_to_analyze=9, plot_solution_flag=True, animate_solution_flag=False)
+    results.estimate_optimally(
+        cycle_to_analyze=5,
+        plot_solution_flag=True,
+        animate_solution_flag=True,
+        implicit_contacts=False,
+        skip_if_existing=False,
+    )
 
     return results
 
@@ -85,19 +91,13 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    subjects_to_analyze.append(
-        Subject(
-            subject_name="LEM_PRE_chev",
-            subject_mass=69.2,
-            dominant_leg=Side.RIGHT,
-            preferential_speed=1.06,
-            subject_height=1.75,
-        )
-        # Subject(subject_name="ECH", subject_mass=64.59, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-    )
+    # subjects_to_analyze.append(
+    #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
+    # )
     # subjects_to_analyze.append(
     #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
     # )
+    subjects_to_analyze.append(Subject(subject_name="LEM_PRE_chev", dominant_leg=Side.RIGHT, preferential_speed=1.25))
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #

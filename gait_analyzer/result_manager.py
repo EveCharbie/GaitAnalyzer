@@ -61,8 +61,8 @@ class ResultManager:
         self,
         osim_model_type,
         functional_trials_path: str,
-        mvc_trials_path: str,
         skip_if_existing: bool,
+        mvc_trials_path: str = None,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
@@ -226,6 +226,7 @@ class ResultManager:
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
         implicit_contacts: bool = False,
+        skip_if_existing: bool = False,
     ):
 
         # Checks
@@ -248,7 +249,7 @@ class ResultManager:
         self.optimal_estimator = OptimalEstimator(
             cycle_to_analyze=cycle_to_analyze,
             subject=self.subject,
-            biorbd_model_path=self.model_creator.biorbd_model_full_path,
+            model_creator=self.model_creator,
             experimental_data=self.experimental_data,
             events=self.events,
             kinematics_reconstructor=self.kinematics_reconstructor,
@@ -256,4 +257,5 @@ class ResultManager:
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
             implicit_contacts=implicit_contacts,
+            skip_if_existing=skip_if_existing,
         )
