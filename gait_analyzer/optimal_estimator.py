@@ -513,9 +513,6 @@ class OptimalEstimator:
             # Play
             viz.rerun_by_frame("OCP initial guess from experimental data")
 
-
-
-
     def prepare_ocp_fext(self, with_residual_forces: bool = False):
         """
         Let's say swing phase only for now
