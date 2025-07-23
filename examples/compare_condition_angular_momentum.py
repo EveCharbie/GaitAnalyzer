@@ -1,3 +1,4 @@
+import logging
 from gait_analyzer import (
     ResultManager,
     OsimModels,
@@ -34,8 +35,8 @@ def analysis_to_perform(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=True,
-        animate_model_flag=False,
+        skip_if_existing=False,
+        animate_model_flag=True,
     )
 
     markers_to_ignore = []
@@ -73,6 +74,16 @@ def analysis_to_perform(
 
 
 if __name__ == "__main__":
+
+    # Configure logging
+    logging.basicConfig(
+        level=logging.DEBUG,  # Set the logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            # logging.FileHandler("app.log"),  # Log to a file
+            logging.StreamHandler()  # Log to the console
+        ],
+    )
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []

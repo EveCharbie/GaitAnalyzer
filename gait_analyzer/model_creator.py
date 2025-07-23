@@ -21,6 +21,8 @@ from biobuddy import (
     Translations,
     Rotations,
     MarkerWeight,
+    AxisWiseScaling,
+    RotoTransMatrix,
 )
 from gait_analyzer.subject import Subject
 
@@ -138,6 +140,7 @@ class OsimModels:
 
         # Fix via points
         model.fix_via_points()
+
         return model
 
     # Child classes acting as an enum
@@ -478,7 +481,22 @@ class ModelCreator:
         )
 
     def scale_model(self):
+
+        # Modify the model's ground orientation
+        rt_matrix = RotoTransMatrix()
+        rt_matrix.from_euler_angles_and_translation(angle_sequence="xy",
+                                                    angles=np.array([np.pi/2, np.pi]),
+                                                    translation=np.array([0, 0, 0]))
+        self.model.segments["ground"].segment_coordinate_system.scs = rt_matrix
+
         scale_tool = ScaleTool(original_model=self.model).from_xml(filepath=self.osim_model_type.xml_setup_file)
+        scale_tool.scaling_segments["torso"].scaling_type=AxisWiseScaling(
+                    marker_pairs={
+                        Translations.X: [["STR", "T10"], ["SUP", "C7"]],
+                        Translations.Y: [["RASIS", "RA"], ["LASIS", "LA"], ["RPSIS", "RA"], ["LPSIS", "LA"]],
+                        Translations.Z: [["LA", "RA"]],
+                    },
+                )
         self.model = scale_tool.scale(
             static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
