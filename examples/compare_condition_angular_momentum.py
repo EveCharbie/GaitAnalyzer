@@ -12,6 +12,7 @@ from gait_analyzer import (
     StatsPerformer,
     QuantityToExtractType,
     StatsType,
+    MarkerLabelingHandler,
 )
 
 
@@ -33,11 +34,16 @@ def analysis_to_perform(
 
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
+        # functional_trials_path=None,  # If you want to skip the functional trials for this example
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=False,
-        animate_model_flag=True,
+        skip_if_existing=True,
+        animate_model_flag=False,
     )
+    results.model_creator.osim_model_type.muscle_name_mapping = {
+            "soleus_r": "Droite",
+            "soleus_l": "Gauche",
+        }
 
     markers_to_ignore = []
     analogs_to_ignore = [
@@ -62,10 +68,10 @@ def analysis_to_perform(
     results.add_cyclic_events(force_plate_sides=[Side.LEFT, Side.RIGHT], skip_if_existing=True, plot_phases_flag=False)
 
     results.reconstruct_kinematics(
-        reconstruction_type=[ReconstructionType.ONLY_LM],  # , ReconstructionType.LM, ReconstructionType.TRF],
-        animate_kinematics_flag=False,
+        reconstruction_type=[ReconstructionType.LSQ, ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
+        animate_kinematics_flag=True,
         plot_kinematics_flag=False,
-        skip_if_existing=True,
+        skip_if_existing=False,
     )
 
     results.compute_angular_momentum()

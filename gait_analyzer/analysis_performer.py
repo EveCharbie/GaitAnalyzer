@@ -17,7 +17,7 @@ class AnalysisPerformer:
         self,
         analysis_to_perform: callable,
         subjects_to_analyze: list[Subject],
-        cycles_to_analyze: range | None = None,
+        cycles_to_analyze: range | dict[str, dict[str, range]] | None = None,
         result_folder: str = os.path.dirname(os.path.abspath(__file__)) + "/results/",
         trails_to_analyze: list[str] = None,
         skip_if_existing: bool = False,
@@ -52,10 +52,25 @@ class AnalysisPerformer:
         for subject in subjects_to_analyze:
             if not isinstance(subject, Subject):
                 raise ValueError("All elements of subjects_to_analyze must be Subject")
-        if not (isinstance(cycles_to_analyze, range) or cycles_to_analyze is None):
-            raise ValueError(
-                "cycles_to_analyze must be a range of cycles to analyze or None if all cycles should be analyzed."
-            )
+        if cycles_to_analyze is None:
+            cycles_to_analyze = {}
+            for subject in subjects_to_analyze:
+                cycles_to_analyze[subject.subject_name] = None
+        elif isinstance(cycles_to_analyze, range):
+            temporary_cycles_to_analyze = cycles_to_analyze
+            cycles_to_analyze = {}
+            for subject in subjects_to_analyze:
+                cycles_to_analyze[subject.subject_name] = temporary_cycles_to_analyze
+        elif isinstance(cycles_to_analyze, dict):
+            for subject_name, cycles in cycles_to_analyze.items():
+                if not isinstance(subject_name, str):
+                    raise ValueError("Keys of cycles_to_analyze must be strings (subject names)")
+                if not (isinstance(cycles, (range, dict)) or cycles is None):
+                    raise ValueError(
+                        "Values of cycles_to_analyze must be ranges of cycles to analyze or None if all cycles should be analyzed."
+                    )
+        else:
+            raise ValueError("cycles_to_analyze must be a range or a dictionary of ranges ({'subject_name': {'trial_name': range}})")
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
         if not isinstance(trails_to_analyze, list) and trails_to_analyze is not None:
@@ -119,7 +134,7 @@ class AnalysisPerformer:
         }
         return version_dic
 
-    def save_subject_results(self, results, result_file_name: str):
+    def save_subject_results(self, results, result_file_name: str, cycles_to_analyze: range | None):
         """
         Save the results of the analysis in a pickle file and a matlab file.
         .
@@ -129,10 +144,12 @@ class AnalysisPerformer:
             The ResultManager containing the results of the analysis performed by analysis_to_perform
         result_file_name: str
             The name of the file where the results will be saved. The file will be saved as result_file_name.pkl and result_file_name.mat
+        cycles_to_analyze: range | None
+            The range of cycles to analyze. If None, all cycles will be analyzed.
         """
 
         result_dict = self.get_version()
-        result_dict["cycles_to_analyze"] = self.cycles_to_analyze if self.cycles_to_analyze is not None else 0
+        result_dict["cycles_to_analyze"] = cycles_to_analyze if cycles_to_analyze is not None else 0
         for attr_name in dir(results):
             attr = getattr(results, attr_name)
             if not callable(attr) and not attr_name.startswith("__"):
@@ -190,6 +207,33 @@ class AnalysisPerformer:
                         parent_path + f"/models/OpenSim_models/Geometry/{file}",
                         parent_path + f"/examples/results/Geometry/{file}",
                     )
+
+    def get_cycles_to_analyze_for_this_trial(self, subject_name: str, data_file: str):
+        if self.cycles_to_analyze is None:
+            cycles_to_analyze = None
+        else:
+            if subject_name not in self.cycles_to_analyze.keys():
+                raise ValueError("Please provide a cycles_to_analyze for each subject in the subjects_to_analyze list.")
+            temporary_cycles_to_analyze = self.cycles_to_analyze[subject_name]
+            if temporary_cycles_to_analyze is None:
+                cycles_to_analyze = None
+            elif isinstance(temporary_cycles_to_analyze, range):
+                cycles_to_analyze = temporary_cycles_to_analyze
+            elif isinstance(temporary_cycles_to_analyze, dict):
+                file_found = False
+                for key in temporary_cycles_to_analyze.keys():
+                    if data_file[:-4].endswith(key):
+                        cycles_to_analyze = temporary_cycles_to_analyze[key]
+                        break
+                if not file_found:
+                    ValueError(
+                        f"Please provide a cycles_to_analyze for each trial in the data file {data_file} for subject {subject_name}."
+                    )
+            else:
+                ValueError(
+                    f"cycles_to_analyze for subject {subject_name} must be a range or a dictionary of ranges, not {type(temporary_cycles_to_analyze)}"
+                )
+        return cycles_to_analyze
 
     def run_analysis(self):
         """
@@ -263,14 +307,16 @@ class AnalysisPerformer:
                     print(f"Skipping {subject_name} - {data_file} because it already exists.")
                     continue
 
+                cycles_to_analyze = self.get_cycles_to_analyze_for_this_trial(subject_name, data_file)
+
                 # Actually perform the analysis
                 print("\n\n\nAnalyzing ", subject_name, " : ***** ", data_file, " *****")
                 results = self.analysis_to_perform(
                     subject,
-                    self.cycles_to_analyze,
+                    cycles_to_analyze,
                     static_trial_full_file_path,
                     c3d_file_name,
                     result_folder,
                     **self.kwargs,
                 )
-                self.save_subject_results(results, result_file_name)
+                self.save_subject_results(results, result_file_name, cycles_to_analyze)

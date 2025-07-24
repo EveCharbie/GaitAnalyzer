@@ -154,198 +154,240 @@ class OsimModels:
         Mass properties for the arms were estimated from 1 and de Leva, 1996. The model also include 30 superficial muscles of the whole body.
         [Charbie -> Link ?]
         """
-
-        @property
-        def osim_model_name(self):
-            return "wholebody"
-
-        @property
-        def original_osim_model_full_path(self):
+        def __init__(self):
+            # Generic
+            self.osim_model_name = "wholebody"
             parent_path = os.path.dirname(os.path.abspath(__file__))
-            return parent_path + "/../models/OpenSim_models/wholebody_Flo.osim"
+            self._original_osim_model_full_path =  parent_path + "/../models/OpenSim_models/wholebody_Flo.osim"
+            self._xml_setup_file = parent_path + "/../models/OpenSim_models/wholebody_Flo.xml"
+
+            # Specific
+            self._muscles_to_ignore = [
+                    "ant_delt_r",
+                    "ant_delt_l",
+                    "medial_delt_l",
+                    "post_delt_r",
+                    "post_delt_l",
+                    "medial_delt_r",
+                    "ercspn_r",
+                    "ercspn_l",
+                    "rect_abd_r",
+                    "rect_abd_l",
+                    "r_stern_mast",
+                    "l_stern_mast",
+                    "r_trap_acr",
+                    "l_trap_acr",
+                    "TRIlong",
+                    "TRIlong_l",
+                    "TRIlat",
+                    "TRIlat_l",
+                    "BIClong",
+                    "BIClong_l",
+                    "BRD",
+                    "BRD_l",
+                    "FCR",
+                    "FCR_l",
+                    "ECRL",
+                    "ECRL_l",
+                    "PT",
+                    "PT_l",
+                    "LAT2",
+                    "LAT2_l",
+                    "PECM2",
+                    "PECM2_l",
+                    "glut_med1_r",
+                    "glut_med1_l",
+                ]
+            self._markers_to_ignore = []
+            self._ranges_to_adjust = {
+                    "pelvis_translation": [
+                        [-3, 3],
+                        [-3, 3],
+                        [-3, 3],
+                    ],
+                    "pelvis_rotation_transform": [
+                        [-np.pi / 4, np.pi / 4],
+                        [-np.pi / 4, np.pi / 4],
+                        [-np.pi, np.pi],
+                    ],
+                    "femur_r_rotation_transform": [
+                        [-40 * np.pi / 180, 120 * np.pi / 180],
+                        [-60 * np.pi / 180, 30 * np.pi / 180],
+                        [-30 * np.pi / 180, 30 * np.pi / 180],
+                    ],
+                    "tibia_r_rotation_transform": [
+                        [-150 * np.pi / 180, 150 * np.pi / 180],
+                    ],
+                    "talus_r_ankle_angle_r": [
+                        [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
+                    ],
+                    "calcn_r_subtalar_angle_r": [
+                        [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
+                    ],
+                    "toes_r_rotation_transform": [
+                        [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
+                    ],
+                    "femur_l_rotation_transform": [
+                        [-40 * np.pi / 180, 120 * np.pi / 180],
+                        [-60 * np.pi / 180, 30 * np.pi / 180],
+                        [-30 * np.pi / 180, 30 * np.pi / 180],
+                    ],
+                    "tibia_l_rotation_transform": [
+                        [-150 * np.pi / 180, 150 * np.pi / 180],
+                    ],
+                    "talus_l_ankle_angle_l": [
+                        [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
+                    ],
+                    "calcn_l_subtalar_angle_l": [
+                        [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
+                    ],
+                    "toes_l_rotation_transform": [
+                        [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
+                    ],
+                    "torso_rotation_transform": [
+                        [-90 * np.pi / 180, 45 * np.pi / 180],
+                        [-35 * np.pi / 180, 35 * np.pi / 180],
+                        [-45 * np.pi / 180, 45 * np.pi / 180],
+                    ],
+                    "head_neck_rotation_transform": [[-50 * np.pi / 180, 45 * np.pi / 180], [-0.6, 0.6], [-1.2217, 1.2217]],
+                    "humerus_r_rotation_transform": [
+                        [-np.pi / 2, np.pi],
+                        [-3.8397, np.pi / 2],
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                    "ulna_r_elbow_flex_r": [
+                        [0.0, np.pi],
+                    ],
+                    "radius_r_pro_sup_r": [
+                        [-np.pi, np.pi],
+                    ],
+                    "lunate_r_rotation_transform": [
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                    "hand_r_rotation_transform": [
+                        [-0.43633231, 0.61086524],
+                    ],
+                    "fingers_r_rotation_transform": [
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                    "humerus_l_rotation_transform": [
+                        [-np.pi / 2, np.pi],
+                        [-3.8397, np.pi / 2],
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                    "ulna_l_elbow_flex_l": [
+                        [0.0, np.pi],
+                    ],
+                    "radius_l_pro_sup_l": [
+                        [-np.pi, np.pi],
+                    ],
+                    "lunate_l_rotation_transform": [
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                    "hand_l_rotation_transform": [
+                        [-0.43633231, 0.61086524],
+                    ],
+                    "fingers_l_rotation_transform": [
+                        [-np.pi / 2, np.pi / 2],
+                    ],
+                }
+            self._segments_to_fix = []
+            self._markers_to_add = {
+                    "femur_r": ["R_fem_up", "R_fem_downF", "R_fem_downB"],
+                    "femur_l": ["L_fem_up", "L_fem_downF", "L_fem_downB"],
+                    "tibia_r": ["R_tib_up", "R_tib_downF", "R_tib_downB"],
+                    "tibia_l": ["L_tib_up", "L_tib_downF", "L_tib_downB"],
+                    "calcn_r": ["R_foot_up"],
+                    "calcn_l": ["L_foot_up"],
+                    "humerus_r": ["R_arm_up", "R_arm_downF", "R_arm_downB"],
+                    "radius_r": ["R_fore_up", "R_fore_downF", "R_fore_downB"],
+                    "humerus_l": ["L_arm_up", "L_arm_downF", "L_arm_downB"],
+                    "radius_l": ["L_fore_up", "L_fore_downF", "L_fore_downB"],
+                }
+            self._muscle_name_mapping = {
+                    "semiten_r": "SEMITENDINOUS",
+                    "bifemlh_r": "BICEPS_FEM",
+                    "sar_r": "RECTUS_FEM",
+                    "tfl_r": None,
+                    "vas_med_r": "VASTM",
+                    "vas_lat_r": "VASTM",
+                    "soleus_r": "SOL",
+                    "tib_post_r": "SOL",
+                    "tib_ant_r": "TIB",
+                    "per_long_r": "GM",
+                    "med_gas_r": "GM",
+                    "lat_gas_r": "GM",
+                }
+
 
         @property
-        def xml_setup_file(self):
-            parent_path = os.path.dirname(os.path.abspath(__file__))
-            return parent_path + "/../models/OpenSim_models/wholebody_Flo.xml"
+        def original_osim_model_full_path(self) -> str:
+            return self._original_osim_model_full_path
+
+        @original_osim_model_full_path.setter
+        def original_osim_model_full_path(self, value: str) -> None:
+            self._original_osim_model_full_path = value
 
         @property
-        def muscles_to_ignore(self):
-            return [
-                "ant_delt_r",
-                "ant_delt_l",
-                "medial_delt_l",
-                "post_delt_r",
-                "post_delt_l",
-                "medial_delt_r",
-                "ercspn_r",
-                "ercspn_l",
-                "rect_abd_r",
-                "rect_abd_l",
-                "r_stern_mast",
-                "l_stern_mast",
-                "r_trap_acr",
-                "l_trap_acr",
-                "TRIlong",
-                "TRIlong_l",
-                "TRIlat",
-                "TRIlat_l",
-                "BIClong",
-                "BIClong_l",
-                "BRD",
-                "BRD_l",
-                "FCR",
-                "FCR_l",
-                "ECRL",
-                "ECRL_l",
-                "PT",
-                "PT_l",
-                "LAT2",
-                "LAT2_l",
-                "PECM2",
-                "PECM2_l",
-                "glut_med1_r",
-                "glut_med1_l",
-            ]
+        def xml_setup_file(self) -> str:
+            return self._xml_setup_file
+
+        @xml_setup_file.setter
+        def xml_setup_file(self, value: str) -> None:
+            self._xml_setup_file = value
 
         @property
-        def markers_to_ignore(self):
-            return []
+        def muscles_to_ignore(self) -> list[str]:
+            return self._muscles_to_ignore
+
+        @muscles_to_ignore.setter
+        def muscles_to_ignore(self, value: list[str]) -> None:
+            self._muscles_to_ignore = value
 
         @property
-        def ranges_to_adjust(self):
-            return {
-                "pelvis_translation": [
-                    [-3, 3],
-                    [-3, 3],
-                    [-3, 3],
-                ],
-                "pelvis_rotation_transform": [
-                    [-np.pi / 4, np.pi / 4],
-                    [-np.pi / 4, np.pi / 4],
-                    [-np.pi, np.pi],
-                ],
-                "femur_r_rotation_transform": [
-                    [-40 * np.pi / 180, 120 * np.pi / 180],
-                    [-60 * np.pi / 180, 30 * np.pi / 180],
-                    [-30 * np.pi / 180, 30 * np.pi / 180],
-                ],
-                "tibia_r_rotation_transform": [
-                    [-150 * np.pi / 180, 0.0],
-                ],
-                "talus_r_ankle_angle_r": [
-                    [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
-                ],
-                "calcn_r_subtalar_angle_r": [
-                    [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
-                ],
-                "toes_r_rotation_transform": [
-                    [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
-                ],
-                "femur_l_rotation_transform": [
-                    [-40 * np.pi / 180, 120 * np.pi / 180],
-                    [-60 * np.pi / 180, 30 * np.pi / 180],
-                    [-30 * np.pi / 180, 30 * np.pi / 180],
-                ],
-                "tibia_l_rotation_transform": [
-                    [0.0, 150 * np.pi / 180],
-                ],
-                "talus_l_ankle_angle_l": [
-                    [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
-                ],
-                "calcn_l_subtalar_angle_l": [
-                    [-15 * np.pi / 180, 15 * np.pi / 180],  # Ankle Inversion
-                ],
-                "toes_l_rotation_transform": [
-                    [-25 * np.pi / 180, 25 * np.pi / 180],  # Toes Flexion
-                ],
-                "torso_rotation_transform": [
-                    [-90 * np.pi / 180, 45 * np.pi / 180],
-                    [-35 * np.pi / 180, 35 * np.pi / 180],
-                    [-45 * np.pi / 180, 45 * np.pi / 180],
-                ],
-                "head_neck_rotation_transform": [[-50 * np.pi / 180, 45 * np.pi / 180], [-0.6, 0.6], [-1.2217, 1.2217]],
-                "humerus_r_rotation_transform": [
-                    [-np.pi / 2, np.pi],
-                    [-3.8397, np.pi / 2],
-                    [-np.pi / 2, np.pi / 2],
-                ],
-                "ulna_r_elbow_flex_r": [
-                    [0.0, np.pi],
-                ],
-                "radius_r_pro_sup_r": [
-                    [-np.pi, np.pi],
-                ],
-                "lunate_r_rotation_transform": [
-                    [-np.pi / 2, np.pi / 2],
-                ],
-                "hand_r_rotation_transform": [
-                    [-0.43633231, 0.61086524],
-                ],
-                "fingers_r_rotation_transform": [
-                    [-np.pi / 2, np.pi / 2],
-                ],
-                "humerus_l_rotation_transform": [
-                    [-np.pi / 2, np.pi],
-                    [-3.8397, np.pi / 2],
-                    [-np.pi / 2, np.pi / 2],
-                ],
-                "ulna_l_elbow_flex_l": [
-                    [0.0, np.pi],
-                ],
-                "radius_l_pro_sup_l": [
-                    [-np.pi, np.pi],
-                ],
-                "lunate_l_rotation_transform": [
-                    [-np.pi / 2, np.pi / 2],
-                ],
-                "hand_l_rotation_transform": [
-                    [-0.43633231, 0.61086524],
-                ],
-                "fingers_l_rotation_transform": [
-                    [-np.pi / 2, np.pi / 2],
-                ],
-            }
+        def markers_to_ignore(self) -> list[str]:
+            return self._markers_to_ignore
+
+        @markers_to_ignore.setter
+        def markers_to_ignore(self, value: list[str]) -> None:
+            self._markers_to_ignore = value
 
         @property
-        def segments_to_fix(self):
-            return []
+        def ranges_to_adjust(self) -> dict[str, list[list[float]]]:
+            return self._ranges_to_adjust
+
+        @ranges_to_adjust.setter
+        def ranges_to_adjust(self, value: dict[str, list[list[float]]]) -> None:
+            self._ranges_to_adjust = value
 
         @property
-        def markers_to_add(self):
-            return {
-                "femur_r": ["R_fem_up", "R_fem_downF", "R_fem_downB"],
-                "femur_l": ["L_fem_up", "L_fem_downF", "L_fem_downB"],
-                "tibia_r": ["R_tib_up", "R_tib_downF", "R_tib_downB"],
-                "tibia_l": ["L_tib_up", "L_tib_downF", "L_tib_downB"],
-                "calcn_r": ["R_foot_up"],
-                "calcn_l": ["L_foot_up"],
-                "humerus_r": ["R_arm_up", "R_arm_downF", "R_arm_downB"],
-                "radius_r": ["R_fore_up", "R_fore_downF", "R_fore_downB"],
-                "humerus_l": ["L_arm_up", "L_arm_downF", "L_arm_downB"],
-                "radius_l": ["L_fore_up", "L_fore_downF", "L_fore_downB"],
-            }
+        def segments_to_fix(self) -> list[str]:
+            return self._segments_to_fix
+
+        @segments_to_fix.setter
+        def segments_to_fix(self, value: list[str]) -> None:
+            self._segments_to_fix = value
 
         @property
-        def muscle_name_mapping(self):
+        def markers_to_add(self) -> dict[str, list[str]]:
+            return self._markers_to_add
+
+        @markers_to_add.setter
+        def markers_to_add(self, value: dict[str, list[str]]) -> None:
+            self._markers_to_add = value
+
+        @property
+        def muscle_name_mapping(self) -> dict[str, str]:
             """
             This method returns a dictionary that maps the muscle names from the original model to the experimental EMG names.
             This is useful as multiple muscles might be associated with the same EMG signal.
+            The keys are the name of the muscles in the model, and the values are the name of the analog (EMG) input in the c3d (motion capture system).
             """
-            return {
-                "semiten_r": "SEMITENDINOUS",
-                "bifemlh_r": "BICEPS_FEM",
-                "sar_r": "RECTUS_FEM",
-                "tfl_r": None,
-                "vas_med_r": "VASTM",
-                "vas_lat_r": "VASTM",
-                "soleus_r": "SOL",
-                "tib_post_r": "SOL",
-                "tib_ant_r": "TIB",
-                "per_long_r": "GM",
-                "med_gas_r": "GM",
-                "lat_gas_r": "GM",
-            }
+            return self._muscle_name_mapping
+
+        @muscle_name_mapping.setter
+        def muscle_name_mapping(self, value: dict[str, str]) -> None:
+            self._muscle_name_mapping = value
 
         def perform_modifications(self, model, static_trial):
             OsimModels.perform_modifications(self, model, static_trial)
@@ -388,10 +430,11 @@ class ModelCreator:
             raise ValueError("subject must be a Subject.")
         if not isinstance(static_trial, str):
             raise ValueError("static_trial must be a string.")
-        if not isinstance(functional_trials_path, str):
-            raise ValueError("functional_trials_path must be a string.")
-        if not os.path.exists(functional_trials_path):
-            raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
+        if functional_trials_path is not None:
+            if not isinstance(functional_trials_path, str):
+                raise ValueError("functional_trials_path must be a string.")
+            if not os.path.exists(functional_trials_path):
+                raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
         if not os.path.exists(mvc_trials_path):
             raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
@@ -436,7 +479,10 @@ class ModelCreator:
             self.read_osim_model()
             self.scale_model()
             self.osim_model_type.perform_modifications(self.model, self.static_trial)
-            self.relocate_joint_centers_functionally(animate_model_flag)
+            if self.functional_trials_path is None:
+                print("Skipping functional trials relocation of joint centers.")
+            else:
+                self.relocate_joint_centers_functionally(animate_model_flag)
             self.create_biorbd_model()
             self.biorbd_model = biorbd.Model(self.biorbd_model_full_path)
             self.get_mvc_values(plot_emg_flag=False)
@@ -468,6 +514,7 @@ class ModelCreator:
                 data = pickle.load(file)
                 self.new_model_created = False
                 self.mvc_values = data["mvc_values"]
+                self.marker_weights = data["marker_weights"]
             return True
         else:
             return False
@@ -538,7 +585,7 @@ class ModelCreator:
         # Hip Right
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["right_hip"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["right_hip"]),
                 parent_name="pelvis",
                 child_name="femur_r",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
@@ -550,7 +597,7 @@ class ModelCreator:
         # Knee right
         joint_center_tool.add(
             Sara(
-                functional_c3d=C3dData(trials_list["right_knee"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["right_knee"]),
                 parent_name="femur_r",
                 child_name="tibia_r",
                 parent_marker_names=["RGT"] + self.osim_model_type.markers_to_add["femur_r"],
@@ -565,7 +612,7 @@ class ModelCreator:
         # Ankle right
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["right_ankle"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["right_ankle"]),
                 parent_name="tibia_r",
                 child_name="calcn_r",
                 parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
@@ -577,7 +624,7 @@ class ModelCreator:
         # Hip Left
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["left_hip"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["left_hip"]),
                 parent_name="pelvis",
                 child_name="femur_l",
                 parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
@@ -589,7 +636,7 @@ class ModelCreator:
         # Knee Left
         joint_center_tool.add(
             Sara(
-                functional_c3d=C3dData(trials_list["left_knee"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["left_knee"]),
                 parent_name="femur_l",
                 child_name="tibia_l",
                 parent_marker_names=["LGT"] + self.osim_model_type.markers_to_add["femur_l"],
@@ -604,7 +651,7 @@ class ModelCreator:
         # Ankle Left
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["left_ankle"], first_frame=500, last_frame=-500),
+                functional_c3d=C3dData(trials_list["left_ankle"]),
                 parent_name="tibia_l",
                 child_name="calcn_l",
                 parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
@@ -618,7 +665,7 @@ class ModelCreator:
         for key in self.osim_model_type.markers_to_add.keys():
             for marker in self.osim_model_type.markers_to_add[key]:
                 if marker not in original_marker_weights:
-                    self.marker_weights._append(MarkerWeight(name=marker, weight=1.0))
+                    self.marker_weights._append(MarkerWeight(name=marker, weight=5.0))
 
         self.model = joint_center_tool.replace_joint_centers(self.marker_weights)
 
@@ -721,4 +768,5 @@ class ModelCreator:
             "functional_trials_path": self.functional_trials_path,
             "mvc_trials_path": self.mvc_trials_path,
             "mvc_values": self.mvc_values,
+            "marker_weights": self.marker_weights
         }

@@ -467,28 +467,28 @@ class CyclicEvents:
         self.detect_swing_phases_temporary(show_debug_plot_flag=False)
 
         # Detect events
-        self.detect_toes_off()
-        self.detect_heel_off()
+        # self.detect_toes_off()
+        # self.detect_heel_off()
         self.detect_heel_touch(show_debug_plot_flag=False)
-        self.detect_toes_touch()
+        # self.detect_toes_touch()
 
-        # Detect phases for each leg
-        self.phases_left_leg["swing"] = np.zeros_like(self.phases_left_leg["swing"])
-        self.phases_right_leg["swing"] = np.zeros_like(self.phases_right_leg["swing"])
-        self.detect_leg_phases_between_events("swing", "toes_off", "heel_touch")
-        self.detect_leg_phases_between_events("heel_only", "heel_touch", "toes_touch")
-        self.detect_leg_phases_between_events("flat_foot", "toes_touch", "heel_off")
-        self.detect_leg_phases_between_events("toes_only", "heel_off", "toes_off")
-
-        # Detect combined phases (both legs)
-        self.detect_phases_both_legs("heelR_toesR", "swing", "flat_foot")
-        self.detect_phases_both_legs("toesR", "swing", "toes_only")
-        self.detect_phases_both_legs("toesR_heelL", "heel_only", "toes_only")
-        self.detect_phases_both_legs("toesR_heelL_toesL", "flat_foot", "toes_only")
-        self.detect_phases_both_legs("heelL_toesL", "flat_foot", "swing")
-        self.detect_phases_both_legs("toesL", "toes_only", "swing")
-        self.detect_phases_both_legs("toesL_heelR", "toes_only", "heel_only")
-        self.detect_phases_both_legs("toesL_heelR_toesR", "toes_only", "flat_foot")
+        # # Detect phases for each leg
+        # self.phases_left_leg["swing"] = np.zeros_like(self.phases_left_leg["swing"])
+        # self.phases_right_leg["swing"] = np.zeros_like(self.phases_right_leg["swing"])
+        # self.detect_leg_phases_between_events("swing", "toes_off", "heel_touch")
+        # self.detect_leg_phases_between_events("heel_only", "heel_touch", "toes_touch")
+        # self.detect_leg_phases_between_events("flat_foot", "toes_touch", "heel_off")
+        # self.detect_leg_phases_between_events("toes_only", "heel_off", "toes_off")
+        #
+        # # Detect combined phases (both legs)
+        # self.detect_phases_both_legs("heelR_toesR", "swing", "flat_foot")
+        # self.detect_phases_both_legs("toesR", "swing", "toes_only")
+        # self.detect_phases_both_legs("toesR_heelL", "heel_only", "toes_only")
+        # self.detect_phases_both_legs("toesR_heelL_toesL", "flat_foot", "toes_only")
+        # self.detect_phases_both_legs("heelL_toesL", "flat_foot", "swing")
+        # self.detect_phases_both_legs("toesL", "toes_only", "swing")
+        # self.detect_phases_both_legs("toesL_heelR", "toes_only", "heel_only")
+        # self.detect_phases_both_legs("toesL_heelR_toesR", "toes_only", "flat_foot")
 
     def plot_events(self):
         """
@@ -646,7 +646,7 @@ class CyclicEvents:
         plt.savefig(result_file_full_path.replace(".pkl", ".png"))
         plt.show()
 
-    def get_frame_range(self, cycles_to_analyze: range):
+    def get_frame_range(self, cycles_to_analyze: range) -> tuple[range, range]:
         """
         Get the frame range to analyze.
         """
@@ -655,11 +655,17 @@ class CyclicEvents:
             self.experimental_data.markers_time_vector,
             self.events["right_leg_heel_touch"],
         )
-        start_cycle = 0 if cycles_to_analyze is None else cycles_to_analyze.start
-        end_cycle = -1 if cycles_to_analyze is None else cycles_to_analyze.stop
-        start_frame = heel_touches[start_cycle]
-        end_frame = heel_touches[end_cycle]
-        return range(start_frame, end_frame)
+        if cycles_to_analyze is None:
+            start_cycle = 0
+            end_cycle = -1
+        else:
+            start_cycle = cycles_to_analyze.start
+            end_cycle = cycles_to_analyze.stop
+        padded_start_cycle = start_cycle - 5 if start_cycle > 5 else 0
+        padded_end_cycle = end_cycle + 5 if (0 < end_cycle < len(heel_touches) - 5) else end_cycle
+        frame_range = range(heel_touches[start_cycle], heel_touches[end_cycle])
+        padded_frame_range = range(heel_touches[padded_start_cycle], heel_touches[padded_end_cycle])
+        return frame_range, padded_frame_range
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
