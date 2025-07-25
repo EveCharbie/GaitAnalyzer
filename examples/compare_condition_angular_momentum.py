@@ -38,7 +38,7 @@ def analysis_to_perform(
         # functional_trials_path=None,  # If you want to skip the functional trials for this example
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=False,
+        skip_if_existing=True,
         animate_model_flag=False,
     )
     results.model_creator.osim_model_type.muscle_name_mapping = {
@@ -97,6 +97,13 @@ if __name__ == "__main__":
         ],
     )
 
+    # # This step is to show the markers and eventually change their labeling manually
+    # marker_handler = MarkerLabelingHandler("/home/charbie/Documents/Programmation/GaitAnalyzer/data/CHE_AngMom/CHE_AngMom_plus_20.c3d")
+    # marker_handler.show_marker_labeling_plot()
+    # marker_handler.animate_c3d()
+    # marker_handler.invert_marker_labeling(["R_fem_downF", "R_fem_downB"], frame_start=0, frame_end=943)
+    # marker_handler.save_c3d("/home/charbie/Documents/Programmation/GaitAnalyzer/data/AOT_AngMom/AOT_AngMom_static.c3d")
+
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     subjects_to_analyze.append(
@@ -108,9 +115,26 @@ if __name__ == "__main__":
     subjects_to_analyze.append(
         Subject(
             subject_name="AOT_AngMom",
-            subject_height=1.75,  # TODO: Yevan -> OK ?
+            subject_height=1.83,
         )
     )
+    subjects_to_analyze.append(
+        Subject(
+            subject_name="DEY_AngMom",
+            subject_height=1.86,
+        )
+    )
+    cycles_to_analyze = {
+        "CHE_AngMom": {"_zero": range(15, 49),
+                       "_plus_20": range(5, 39),
+                       "_moins_20": range(130, 164)
+                       },
+        "AOT_AngMom": {"_zero": range(33, 67), "_plus_20": range(43, 77), "_moins_20": range(3, 37)},
+        "DEY_AngMom": {"_zero": range(87, 121),
+                       "_plus_20": range(120, 153),
+                       "_moins_20": range(137, 171)
+                       },
+    }
 
     # --- Example of how to run the analysis --- #
     AnalysisPerformer(
