@@ -18,7 +18,7 @@ class PlotType(Enum):
     QDDOT = "qddot"
     TAU = "tau"
     POWER = "power"
-    ANGULAR_MOMENTUM = "h"
+    ANGULAR_MOMENTUM = "total_angular_momentum_normalized"
     GRF = "f_ext_sorted_filtered"
     EMG = "normalized_emg"
 
@@ -26,6 +26,15 @@ class PlotType(Enum):
 class DimentionsToPlot(Enum):
     BIDIMENTIONAL = "2D"
     TRIDIMENTIONAL = "3D"
+
+
+class EventIndexType(Enum):
+    """
+    If the index of the events should be expressed in the analogs or in the markers time vector.
+    """
+
+    MARKERS = "markers"
+    ANALOGS = "analogs"
 
 
 def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) -> float | np.ndarray[float]:
@@ -219,7 +228,7 @@ def split_cycle(
 
 
 def mean_cycles(
-    data: list[np.ndarray], index_to_keep: list[int], nb_frames_interp: int
+    data: list[np.ndarray], index_to_keep: list[int] | None, nb_frames_interp: int
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     This function computes the mean over cycles.
@@ -228,8 +237,8 @@ def mean_cycles(
     ----------
     data: list[np.ndarray] nb_cycles x (data_dim, frames_dim)
         The data to compute the mean of the cycles
-    index_to_keep: list[int]
-        The index of the data to perform the mean on
+    index_to_keep: list[int] | None
+        The index of the data to perform the mean on. If None, all data dimensions are kept.
     nb_frames_interp: int
         The number of frames to interpolate the data on
 
@@ -248,7 +257,9 @@ def mean_cycles(
     if len(data) == 0:
         raise ValueError("data must not be empty.")
 
+    index_to_keep = index_to_keep if index_to_keep is not None else list(range(data[0].shape[0]))
     data_dim = len(index_to_keep)
+
     interpolated_data_array = np.zeros((len(data), data_dim, nb_frames_interp))
     interpolated_data_array[:] = np.nan  # Initialize with NaNs to handle missing data
     fig_data_dim = data[0].shape[0]

@@ -5,6 +5,7 @@ import ezc3d
 
 class MarkerLabelingHandler:
     def __init__(self, c3d_path: str):
+        self.c3d_path = c3d_path
         self.c3d = ezc3d.c3d(c3d_path)
         self.markers = self.c3d["data"]["points"]
         self.marker_names = self.c3d["parameters"]["POINT"]["LABELS"]["value"]
@@ -79,6 +80,16 @@ class MarkerLabelingHandler:
         self.c3d["data"]["points"] = self.markers
 
         return
+
+    def animate_c3d(self):
+        try:
+            import pyorerun
+
+            pyorerun.c3d(
+                self.c3d_path, show_forces=False, show_events=False, marker_trajectories=False, show_marker_labels=True
+            )
+        except ImportError:
+            raise ImportError("pyorerun is not installed. Please install it to animate the C3D data.")
 
     def save_c3d(self, output_c3d_path: str):
         """

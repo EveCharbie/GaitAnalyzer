@@ -187,3 +187,5 @@ osim_to_biomod/
 *.mat
 
 results/
+
+*.html

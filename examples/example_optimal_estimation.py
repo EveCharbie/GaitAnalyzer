@@ -2,7 +2,6 @@ from gait_analyzer import (
     helper,
     ResultManager,
     OsimModels,
-    Operator,
     AnalysisPerformer,
     PlotLegData,
     LegToPlot,
@@ -10,7 +9,6 @@ from gait_analyzer import (
     Subject,
     Side,
     ReconstructionType,
-    EventIndexType,
 )
 
 
@@ -68,8 +66,6 @@ def analysis_to_perform(
     )
 
     results.perform_inverse_dynamics(skip_if_existing=True, reintegrate_flag=False, animate_dynamics_flag=False)
-
-    results.compute_angular_momentum()
 
     # --- Example of analysis that can be performed in any order --- #
     results.estimate_optimally(

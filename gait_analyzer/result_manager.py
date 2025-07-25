@@ -60,8 +60,8 @@ class ResultManager:
     def create_model(
         self,
         osim_model_type,
-        functional_trials_path: str,
         skip_if_existing: bool,
+        functional_trials_path: str = None,
         mvc_trials_path: str = None,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
