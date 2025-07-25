@@ -15,7 +15,7 @@ class StatsPerformer:
         # Checks
         if not isinstance(organized_result, OrganizedResult):
             raise ValueError("organized_result must be a OrganizedResult")
-        if not isinstance(stats_type, StatsType):
+        if not isinstance(stats_type, (StatsType.PAIRED_T_TEST, StatsType.SPM1D)):
             raise ValueError("stats_type must be a StatsType")
 
         # Initial attributes
@@ -25,5 +25,5 @@ class StatsPerformer:
     def perform_stats(self):
         self.stats_type.perform_stats(self.organized_result.results.mean_data_per_subject)
 
-    def plot_stats(self):
-        return self.stats_type.plot_stats(self.organized_result.results.mean_data_per_subject)
+    def plot_stats(self, save_plot_name: str = None, order: list[str] = None):
+        return self.stats_type.plot_stats(self.organized_result.results.mean_data_per_subject, save_plot_name, order)

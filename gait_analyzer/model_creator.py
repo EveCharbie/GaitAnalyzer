@@ -291,7 +291,14 @@ class OsimModels:
                         [-np.pi / 2, np.pi / 2],
                     ],
                 }
-            self._segments_to_fix = []
+            self._segments_to_fix = [
+                "toes_r_rotation_transform",
+                "hand_r_rotation_transform",
+                "fingers_r_rotation_transform",
+                "toes_l_rotation_transform",
+                "hand_l_rotation_transform",
+                "fingers_l_rotation_transform",
+            ]
             self._markers_to_add = {
                     "femur_r": ["R_fem_up", "R_fem_downF", "R_fem_downB"],
                     "femur_l": ["L_fem_up", "L_fem_downF", "L_fem_downB"],
@@ -480,7 +487,7 @@ class ModelCreator:
             self.scale_model()
             self.osim_model_type.perform_modifications(self.model, self.static_trial)
             if self.functional_trials_path is None:
-                print("Skipping functional trials relocation of joint centers.")
+                print("Skipping relocation of joint centers based on functional trials.")
             else:
                 self.relocate_joint_centers_functionally(animate_model_flag)
             self.create_biorbd_model()

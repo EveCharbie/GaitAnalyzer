@@ -130,7 +130,7 @@ if __name__ == "__main__":
         organized_result=organized_result,
     )
     plot.draw_plot()
-    plot.save("results/AngMom_temporary.png")
+    plot.save("results/AngMom_temporary.svg")
     plot.show()
 
     # --- Example of how compare peak-to-peak angular momentum with a paired t-test --- #
@@ -139,4 +139,4 @@ if __name__ == "__main__":
         stats_type=StatsType.PAIRED_T_TEST(QuantityToExtractType.PEAK_TO_PEAK),
     )
     stats_results.perform_stats()
-    stats_results.plot_stats()
+    stats_results.plot_stats(save_plot_name="results/AngMom_paired_t_test.svg", order=["_moins_20", "_zero", "_plus_20"])

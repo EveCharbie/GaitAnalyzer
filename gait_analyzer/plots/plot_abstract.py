@@ -37,7 +37,6 @@ class PlotAbstract:
             self.n_cols = 1
         fig, axs = plt.subplots(n_rows, self.n_cols, figsize=(self.fig_width, 10))
         n_data_to_plot = len(self.data)
-        colors = [colormaps["magma"](i / n_data_to_plot) for i in range(n_data_to_plot)]
         normalized_time = np.linspace(0, 100, self.organized_result.nb_frames_interp)
 
         # Plot the data
@@ -46,8 +45,10 @@ class PlotAbstract:
         labels_list = []
         subject_mean, subject_std = self.organized_result.results.mean_per_subject()
         group_mean, group_std = self.organized_result.results.mean_per_group(subject_mean=subject_mean)
-        color_index = 0
         for group_name in group_mean.keys():
+            color_index = 0
+            nb_condition = len(group_mean[group_name].keys())
+            colors = [colormaps["magma"](i / nb_condition) for i in range(nb_condition)]
             for i_condition, condition_name in enumerate(group_mean[group_name].keys()):
                 mean_data = group_mean[group_name][condition_name][self.plot_idx, :]
                 std_data = group_std[group_name][condition_name][self.plot_idx, :]
