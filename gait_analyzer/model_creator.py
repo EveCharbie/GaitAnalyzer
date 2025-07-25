@@ -217,7 +217,7 @@ class OsimModels:
                     [-30 * np.pi / 180, 30 * np.pi / 180],
                 ],
                 "tibia_r_rotation_transform": [
-                    [-150 * np.pi / 180, 150 * np.pi / 180],
+                    [-150 * np.pi / 180, 0],
                 ],
                 "talus_r_ankle_angle_r": [
                     [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion
@@ -234,7 +234,7 @@ class OsimModels:
                     [-30 * np.pi / 180, 30 * np.pi / 180],
                 ],
                 "tibia_l_rotation_transform": [
-                    [-150 * np.pi / 180, 150 * np.pi / 180],
+                    [-150 * np.pi / 180, 0],
                 ],
                 "talus_l_ankle_angle_l": [
                     [-50 * np.pi / 180, 30 * np.pi / 180],  # Ankle Flexion

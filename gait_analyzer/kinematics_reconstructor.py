@@ -41,8 +41,8 @@ segment_dict = {
     "tibia_r": {
         "dof_idx": [9],
         "markers_idx": [7, 8, 9, 52, 53],
-        "min_bound": [-2.6179938779914944],  # This is False but the knee axis sometimes gets inverted
-        "max_bound": [2.6179938779914944],
+        "min_bound": [-2.6179938779914944],
+        "max_bound": [0],
     },
     "calcn_r": {
         "dof_idx": [10, 11],
@@ -65,8 +65,8 @@ segment_dict = {
     "tibia_l": {
         "dof_idx": [16],
         "markers_idx": [17, 18, 19, 58, 59],
-        "min_bound": [-2.6179938779914944],  # This is False but the knee axis sometimes gets inverted
-        "max_bound": [2.6179938779914944],
+        "min_bound": [-2.6179938779914944],
+        "max_bound": [0],
     },
     "calcn_l": {
         "dof_idx": [17, 18],
