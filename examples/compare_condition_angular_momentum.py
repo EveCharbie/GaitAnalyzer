@@ -125,15 +125,9 @@ if __name__ == "__main__":
         )
     )
     cycles_to_analyze = {
-        "CHE_AngMom": {"_zero": range(15, 49),
-                       "_plus_20": range(5, 39),
-                       "_moins_20": range(130, 164)
-                       },
+        "CHE_AngMom": {"_zero": range(15, 49), "_plus_20": range(5, 39), "_moins_20": range(130, 164)},
         "AOT_AngMom": {"_zero": range(33, 67), "_plus_20": range(43, 77), "_moins_20": range(3, 37)},
-        "DEY_AngMom": {"_zero": range(87, 121),
-                       "_plus_20": range(120, 153),
-                       "_moins_20": range(137, 171)
-                       },
+        "DEY_AngMom": {"_zero": range(87, 121), "_plus_20": range(120, 153), "_moins_20": range(137, 171)},
     }
 
     # --- Example of how to run the analysis --- #
