@@ -1,4 +1,5 @@
 import logging
+
 from gait_analyzer import (
     ResultManager,
     OsimModels,
@@ -37,13 +38,13 @@ def analysis_to_perform(
         # functional_trials_path=None,  # If you want to skip the functional trials for this example
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=True,
+        skip_if_existing=False,
         animate_model_flag=False,
     )
     results.model_creator.osim_model_type.muscle_name_mapping = {
-            "soleus_r": "Droite",
-            "soleus_l": "Gauche",
-        }
+        "soleus_r": "Droite",
+        "soleus_l": "Gauche",
+    }
 
     markers_to_ignore = []
     analogs_to_ignore = [
@@ -68,10 +69,15 @@ def analysis_to_perform(
     results.add_cyclic_events(force_plate_sides=[Side.LEFT, Side.RIGHT], skip_if_existing=True, plot_phases_flag=False)
 
     results.reconstruct_kinematics(
-        reconstruction_type=[ReconstructionType.LSQ, ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
+        reconstruction_type=[
+            ReconstructionType.LSQ,
+            ReconstructionType.ONLY_LM,
+            ReconstructionType.LM,
+            ReconstructionType.TRF,
+        ],
         animate_kinematics_flag=True,
         plot_kinematics_flag=False,
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
 
     results.compute_angular_momentum()
@@ -110,10 +116,10 @@ if __name__ == "__main__":
     AnalysisPerformer(
         analysis_to_perform,
         subjects_to_analyze=subjects_to_analyze,
-        cycles_to_analyze=range(5, -5),
+        cycles_to_analyze=cycles_to_analyze,
         result_folder="results",
         trails_to_analyze=["_zero", "_plus_20", "_moins_20"],
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
 
     # --- Example of how to create a OrganizedResult object --- #
@@ -139,4 +145,6 @@ if __name__ == "__main__":
         stats_type=StatsType.PAIRED_T_TEST(QuantityToExtractType.PEAK_TO_PEAK),
     )
     stats_results.perform_stats()
-    stats_results.plot_stats(save_plot_name="results/AngMom_paired_t_test.svg", order=["_moins_20", "_zero", "_plus_20"])
+    stats_results.plot_stats(
+        save_plot_name="results/AngMom_paired_t_test.svg", order=["_moins_20", "_zero", "_plus_20"]
+    )

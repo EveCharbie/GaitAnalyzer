@@ -52,23 +52,27 @@ class StatsType:
                         # Initialize here because we do not know in advance how many components the data has
                         nb_components = data["all"][condition][subject].shape[0]
                         metrics_names = [f"{metrics_name}_{i}" for i in range(nb_components)]
-                        data_df = DataFrame([
-                            {
-                                "group": "all",
-                                "condition": condition,
-                                "subject": subject,
-                                **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)},
-                            }]
+                        data_df = DataFrame(
+                            [
+                                {
+                                    "group": "all",
+                                    "condition": condition,
+                                    "subject": subject,
+                                    **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)},
+                                }
+                            ]
                         )
                     else:
                         # Add the data to the dataframe
-                        new_row = DataFrame([
-                            {
-                                "group": "all",
-                                "condition": condition,
-                                "subject": subject,
-                                **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)},
-                            }]
+                        new_row = DataFrame(
+                            [
+                                {
+                                    "group": "all",
+                                    "condition": condition,
+                                    "subject": subject,
+                                    **{f"{metrics_name}_{i}": values[i] for i in range(nb_components)},
+                                }
+                            ]
                         )
 
                         data_df = concat([data_df, new_row], ignore_index=True)
@@ -100,12 +104,9 @@ class StatsType:
             min_value = data_df[metrics_names].min().min()
             max_value = data_df[metrics_names].max().max()
             for i_metric, metrics_name in enumerate(metrics_names):
-                plot_paired(data=data_df,
-                            dv=metrics_name,
-                            within="condition",
-                            subject="subject",
-                            ax=axs[i_metric],
-                            order=order)
+                plot_paired(
+                    data=data_df, dv=metrics_name, within="condition", subject="subject", ax=axs[i_metric], order=order
+                )
                 axs[i_metric].set_ylim((min_value - 0.1 * max_value, 1.1 * max_value))
             if save_plot_name:
                 plt.savefig(save_plot_name, dpi=300, bbox_inches="tight")

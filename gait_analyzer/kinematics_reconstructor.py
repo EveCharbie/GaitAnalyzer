@@ -335,7 +335,11 @@ class KinematicsReconstructor:
         """
         self.frame_range, self.padded_frame_range = self.events.get_frame_range(self.cycles_to_analyze)
         if self.frame_range != self.padded_frame_range:
-            index_to_keep = range(self.frame_range.start - self.padded_frame_range.start, (self.frame_range.start - self.padded_frame_range.start) + (self.frame_range.stop - self.frame_range.start))
+            index_to_keep = range(
+                self.frame_range.start - self.padded_frame_range.start,
+                (self.frame_range.start - self.padded_frame_range.start)
+                + (self.frame_range.stop - self.frame_range.start),
+            )
         else:
             index_to_keep = range(len(self.frame_range))
         markers = self.experimental_data.markers_sorted[:, :, self.padded_frame_range]
@@ -351,15 +355,17 @@ class KinematicsReconstructor:
                 q_recons = ik.solve(method=recons_method.value)
                 residuals = ik.sol()["residuals"]
             elif recons_method == ReconstructionType.LSQ:
-                biobuddy_model = biobuddy.BiomechanicalModelReal().from_biomod(self.model_creator.biorbd_model_full_path)
+                biobuddy_model = biobuddy.BiomechanicalModelReal().from_biomod(
+                    self.model_creator.biorbd_model_full_path
+                )
                 q_recons, residuals = biobuddy_model.inverse_kinematics(
-                                                marker_positions=markers,
-                                                marker_names=biobuddy_model.marker_names,
-                                                marker_weights=self.model_creator.marker_weights,
-                                                method="lm",
-                                                animate_reconstruction=False,
-                                                compute_residual_distance=True,
-                                                )
+                    marker_positions=markers,
+                    marker_names=biobuddy_model.marker_names,
+                    marker_weights=self.model_creator.marker_weights,
+                    method="lm",
+                    animate_reconstruction=False,
+                    compute_residual_distance=True,
+                )
             elif recons_method == ReconstructionType.EKF:
                 # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
                 _, q_recons, _, _ = biorbd.extended_kalman_filter(

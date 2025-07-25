@@ -70,7 +70,9 @@ class AnalysisPerformer:
                         "Values of cycles_to_analyze must be ranges of cycles to analyze or None if all cycles should be analyzed."
                     )
         else:
-            raise ValueError("cycles_to_analyze must be a range or a dictionary of ranges ({'subject_name': {'trial_name': range}})")
+            raise ValueError(
+                "cycles_to_analyze must be a range or a dictionary of ranges ({'subject_name': {'trial_name': range}})"
+            )
         if not isinstance(result_folder, str):
             raise ValueError("result_folder must be a string")
         if not isinstance(trails_to_analyze, list) and trails_to_analyze is not None:
