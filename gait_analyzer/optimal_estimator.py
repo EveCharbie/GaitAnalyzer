@@ -114,6 +114,7 @@ class OptimalEstimator:
         self.q_opt = None
         self.qdot_opt = None
         self.tau_opt = None
+        self.muscles_opt = None
         self.opt_status = "CVG"
         self.is_loaded_optimal_solution = False
 
@@ -491,7 +492,10 @@ class OptimalEstimator:
 
             # Add experimental markers
             markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
-            emg = PyoMuscles(data=self.emg_normalized_exp_ocp, muscle_names=list(model.muscle_names))
+            emg = PyoMuscles(data=self.emg_normalized_exp_ocp,
+                             muscle_names=list(model.muscle_names),
+                             mvc=np.ones((len(model.muscle_names), 1)),
+                             )
 
             # Add force plates to the animation
             viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -649,12 +653,12 @@ class OptimalEstimator:
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
-            weight=0.1,
+            weight=0.001,
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="tau",
-            weight=1.0,
+            weight=0.1,
             index=[0, 1, 2, 3, 4, 5],
         )
         objective_functions.add(
@@ -728,12 +732,11 @@ class OptimalEstimator:
         x_init.add("qdot", initial_guess=self.qdot_exp_ocp, interpolation=InterpolationType.EACH_FRAME)
 
         u_bounds = BoundsList()
-        # TODO: Charbie -> Change for maximal tau during the trial to simulate limited force
         u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
         u_bounds.add(
             "muscles",
             min_bound=[0.0001] * nb_muscles,
-            max_bound=[0.0001] * nb_muscles,
+            max_bound=[1.0] * nb_muscles,
             interpolation=InterpolationType.CONSTANT,
         )
         if with_residual_forces:
@@ -745,7 +748,7 @@ class OptimalEstimator:
             )
 
         u_init = InitialGuessList()
-        u_init.add("tau", initial_guess=[0] * nb_q, interpolation=InterpolationType.CONSTANT)
+        u_init.add("tau", initial_guess=self.tau_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
         u_init.add(
             "muscles", initial_guess=self.emg_normalized_exp_ocp[:, :-1], interpolation=InterpolationType.EACH_FRAME
         )
@@ -1230,19 +1233,20 @@ class OptimalEstimator:
 
         solver = Solver.IPOPT(show_online_optim=show_online_optim, show_options=dict(show_bounds=True))
         solver.set_linear_solver("ma57")
-        solver.set_maximum_iterations(10_000)  # 10_000
+        solver.set_maximum_iterations(1000)  # 10_000
         solver.set_tol(1e-3)  # TODO: Charbie -> Change for a more appropriate value (just to see for now)
         self.solution = self.ocp.solve(solver=solver)
         self.time_opt = self.solution.decision_time(to_merge=SolutionMerge.NODES, time_alignment=TimeAlignment.STATES)
         self.q_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["q"]
         self.qdot_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
         self.tau_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
+        self.muscles_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["muscles"]
         self.opt_status = "CVG" if self.solution.status == 0 else "DVG"
 
     def animate_solution(self):
 
         try:
-            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers, PyoMuscles
         except:
             raise RuntimeError("To animate the optimal solution, you must install Pyorerun.")
 
@@ -1253,7 +1257,11 @@ class OptimalEstimator:
         viz = PhaseRerun(np.linspace(0, self.phase_time, self.n_shooting + 1))
 
         # Add experimental markers
-        markers = PyoMarkers(data=self.markers_exp_ocp, channels=list(model.marker_names), show_labels=False)
+        markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
+        emgs = PyoMuscles(data=self.muscles_opt,
+                          muscle_names=list(model.muscle_names),
+                          mvc=np.ones((len(model.muscle_names), 1)),
+                          )
 
         # Add force plates to the animation
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -1270,7 +1278,7 @@ class OptimalEstimator:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_opt, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_opt, tracked_markers=markers, muscle_activations_intensity=emgs)
 
         # Play
         viz.rerun_by_frame("OCP optimal solution")
