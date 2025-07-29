@@ -175,7 +175,9 @@ class OptimalEstimator:
 
         # One full cycle
         cycle_timings = self.events.events["right_leg_heel_touch"]
-        this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
+        this_sequence_analogs = list(
+            range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1])
+        )
         this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
             analogs_time_vector=self.experimental_data.analogs_time_vector,
             markers_time_vector=self.experimental_data.markers_time_vector,
@@ -192,8 +194,10 @@ class OptimalEstimator:
         nb_frames = len(idx_to_keep)
 
         frame_index_shifted_half_cycle = list(range(nb_frames))
-        frame_index_shifted_half_cycle[0: int(np.floor(nb_frames / 2))] = list(range(int(np.ceil(nb_frames / 2)), nb_frames))
-        frame_index_shifted_half_cycle[int(np.floor(nb_frames / 2)):] = list(range(0, int(np.ceil(nb_frames / 2))))
+        frame_index_shifted_half_cycle[0 : int(np.floor(nb_frames / 2))] = list(
+            range(int(np.ceil(nb_frames / 2)), nb_frames)
+        )
+        frame_index_shifted_half_cycle[int(np.floor(nb_frames / 2)) :] = list(range(0, int(np.ceil(nb_frames / 2))))
 
         # Skipping some DoFs to lighten the OCP
         dof_idx_to_keep = np.array(
@@ -274,7 +278,8 @@ class OptimalEstimator:
                 if muscle_speudo is not None:
                     i_muscle_l = muscle_names.index(muscle_name.replace("_r", "_l"))
                     self.emg_normalized_exp_ocp[i_muscle_l, :] = self.emg_normalized_exp_ocp[
-                        i_muscle, frame_index_shifted_half_cycle]
+                        i_muscle, frame_index_shifted_half_cycle
+                    ]
 
         self.markers_exp_ocp = self.experimental_data.markers_sorted[:, :, idx_to_keep]
         # Fill NaNs in markers
@@ -369,10 +374,11 @@ class OptimalEstimator:
 
             # Add experimental markers
             markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
-            emg = PyoMuscles(data=self.emg_normalized_exp_ocp,
-                             muscle_names=list(model.muscle_names),
-                             mvc=np.ones((len(model.muscle_names), 1)),
-                             )
+            emg = PyoMuscles(
+                data=self.emg_normalized_exp_ocp,
+                muscle_names=list(model.muscle_names),
+                mvc=np.ones((len(model.muscle_names), 1)),
+            )
 
             # Add force plates to the animation
             viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -696,10 +702,11 @@ class OptimalEstimator:
         # Add experimental markers
         markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
         nb_muscles = len(model.muscle_names)
-        emgs = PyoMuscles(data=np.hstack((self.muscles_opt, np.zeros((nb_muscles, 1)))),
-                          muscle_names=list(model.muscle_names),
-                          mvc=np.ones((nb_muscles, 1)),
-                          )
+        emgs = PyoMuscles(
+            data=np.hstack((self.muscles_opt, np.zeros((nb_muscles, 1)))),
+            muscle_names=list(model.muscle_names),
+            mvc=np.ones((nb_muscles, 1)),
+        )
 
         # Add force plates to the animation
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
@@ -775,7 +782,9 @@ class OptimalEstimator:
             muscles = model.stateSet()
             for i_muscle, muscle in enumerate(muscles):
                 muscle.setActivation(self.muscles_opt[i_muscle, i_frame])
-            self.muscle_forces[:, i_frame] = model.muscleForces(muscles, self.q_opt[:, i_frame], self.qdot_opt[:, i_frame]).to_array()
+            self.muscle_forces[:, i_frame] = model.muscleForces(
+                muscles, self.q_opt[:, i_frame], self.qdot_opt[:, i_frame]
+            ).to_array()
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
