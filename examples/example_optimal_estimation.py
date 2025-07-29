@@ -91,13 +91,6 @@ if __name__ == "__main__":
     # --- Example of how to get help on a GaitAnalyzer class --- #
     # helper(Operator)
 
-    # # This step is to show the markers and eventually change their labeling manually
-    # marker_handler = MarkerLabelingHandler("/home/charbie/Documents/Programmation/GaitAnalyzer/data/LEM_PRE_chev/LEM_PRE_chev_static.c3d")
-    # marker_handler.show_marker_labeling_plot()
-    # marker_handler.animate_c3d()
-    # marker_handler.invert_marker_labeling(["R_fem_downF", "R_fem_downB"], frame_start=0, frame_end=943)
-    # marker_handler.save_c3d("/home/charbie/Documents/Programmation/GaitAnalyzer/data/AOT_AngMom/AOT_AngMom_static.c3d")
-
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     subjects_to_analyze.append(Subject(subject_name="LEM_PRE_chev"))
@@ -108,17 +101,16 @@ if __name__ == "__main__":
         analysis_to_perform,
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
-        # cycles_to_analyze=None,
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 
     # --- Example of how to create a OrganizedResult object --- #
     organized_result = OrganizedResult(
         result_folder="results",
-        plot_type=PlotType.Q,
+        plot_type=PlotType.MUSCLE_FORCES,
         nb_frames_interp=101,
+        conditions_to_compare=["_1p25"],
     )
     organized_result.save("results/OptimEstim_organized.pkl")
 
@@ -127,5 +119,5 @@ if __name__ == "__main__":
         organized_result=organized_result,
     )
     plot.draw_plot()
-    plot.save("results/OptimEstim_Q_plot.png")
+    plot.save("results/OptimEstim_MUSCLE_FORCES_plot.png")
     plot.show()

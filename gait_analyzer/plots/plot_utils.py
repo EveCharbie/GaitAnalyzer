@@ -21,6 +21,7 @@ class PlotType(Enum):
     ANGULAR_MOMENTUM = "total_angular_momentum_normalized"
     GRF = "f_ext_sorted_filtered"
     EMG = "normalized_emg"
+    MUSCLE_FORCES = "muscle_forces"
 
 
 class DimentionsToPlot(Enum):
@@ -76,6 +77,8 @@ def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) 
         )
     elif plot_type == PlotType.EMG:
         unit_conversion = 1
+    elif plot_type == PlotType.MUSCLE_FORCES:
+        unit_conversion = 1
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_conversion
@@ -116,6 +119,8 @@ def get_unit_names(plot_type: PlotType) -> str | list[str]:
         ]
     elif plot_type == PlotType.EMG:
         unit_str = r"[$\mu$V]"
+    elif plot_type == PlotType.MUSCLE_FORCES:
+        unit_str = "[N]"
     else:
         raise ValueError("plot_type must be a PlotType.")
     return unit_str
