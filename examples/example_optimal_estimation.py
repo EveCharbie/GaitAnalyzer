@@ -75,7 +75,6 @@ def analysis_to_perform(
         cycle_to_analyze=5,
         plot_solution_flag=True,
         animate_solution_flag=True,
-        implicit_contacts=False,
         skip_if_existing=True,
     )
 

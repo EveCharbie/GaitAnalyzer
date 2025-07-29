@@ -227,7 +227,6 @@ class ResultManager:
         cycle_to_analyze: int,
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
-        implicit_contacts: bool = False,
         skip_if_existing: bool = False,
     ):
 
@@ -258,6 +257,5 @@ class ResultManager:
             inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
-            implicit_contacts=implicit_contacts,
             skip_if_existing=skip_if_existing,
         )
