@@ -115,6 +115,8 @@ class OptimalEstimator:
         self.qdot_opt = None
         self.tau_opt = None
         self.muscles_opt = None
+        self.f_ext_value_opt = None
+        self.f_ext_position_opt = None
         self.opt_status = "CVG"
         self.is_loaded_optimal_solution = False
 
@@ -300,31 +302,37 @@ class OptimalEstimator:
         self.model_ocp = self.model_creator.biorbd_model_full_path.replace(".bioMod", "_no_contacts.bioMod")
         model = biorbd.Model(self.model_ocp)
 
-        # Only one right leg swing (while left leg in flat foot)
-        swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
-        right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
-        this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
-        this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
-            analogs_time_vector=self.experimental_data.analogs_time_vector,
-            markers_time_vector=self.experimental_data.markers_time_vector,
-            analog_idx=this_sequence_analogs,
-        )
-
-        # # One full cycle
-        # cycle_timings = self.events.events["right_leg_heel_touch"]
-        # this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
+        # # Only one right leg swing (while left leg in flat foot)
+        # swing_timings = np.where(self.events.phases["heelL_toesL"])[0]
+        # right_swing_sequence = np.array_split(swing_timings, np.flatnonzero(np.diff(swing_timings) > 1) + 1)
+        # this_sequence_analogs = right_swing_sequence[self.cycle_to_analyze]
         # this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
         #     analogs_time_vector=self.experimental_data.analogs_time_vector,
         #     markers_time_vector=self.experimental_data.markers_time_vector,
         #     analog_idx=this_sequence_analogs,
         # )
 
+        # One full cycle
+        cycle_timings = self.events.events["right_leg_heel_touch"]
+        this_sequence_analogs = list(range(cycle_timings[self.cycle_to_analyze], cycle_timings[self.cycle_to_analyze + 1]))
+        this_sequence_markers = Operator.from_analog_frame_to_marker_frame(
+            analogs_time_vector=self.experimental_data.analogs_time_vector,
+            markers_time_vector=self.experimental_data.markers_time_vector,
+            analog_idx=this_sequence_analogs,
+        )
+
         # Skipping some frames to lighten the OCP
         marker_start = this_sequence_markers[0]
         marker_end = this_sequence_markers[-1]
-        marker_hop = 4
+        marker_hop = 1
         idx_to_keep = np.arange(marker_start, marker_end, marker_hop)
+        print(f"------------------ nb_frames = {len(idx_to_keep)} ------------------")
         index_to_keep_filtered_q = idx_to_keep - self.kinematics_reconstructor.frame_range.start
+        nb_frames = len(idx_to_keep)
+
+        frame_index_shifted_half_cycle = list(range(nb_frames))
+        frame_index_shifted_half_cycle[0: int(np.floor(nb_frames / 2))] = list(range(int(np.ceil(nb_frames / 2)), nb_frames))
+        frame_index_shifted_half_cycle[int(np.floor(nb_frames / 2)):] = list(range(0, int(np.ceil(nb_frames / 2))))
 
         # Skipping some DoFs to lighten the OCP
         dof_idx_to_keep = np.array(
@@ -397,6 +405,15 @@ class OptimalEstimator:
                         self.emg_normalized_exp_ocp[i_muscle, i_frame] = np.nanmean(
                             self.experimental_data.normalized_emg[muscle_index, idx_analogs - 5 : idx_analogs + 5]
                         )
+
+        # Copy the right leg activation to the left led with a time delay of 1/2 cycle
+        for i_muscle, muscle_name in enumerate(muscle_names):
+            if muscle_name in self.model_creator.osim_model_type.muscle_name_mapping:
+                muscle_speudo = self.model_creator.osim_model_type.muscle_name_mapping[muscle_name]
+                if muscle_speudo is not None:
+                    i_muscle_l = muscle_names.index(muscle_name.replace("_r", "_l"))
+                    self.emg_normalized_exp_ocp[i_muscle_l, :] = self.emg_normalized_exp_ocp[
+                        i_muscle, frame_index_shifted_half_cycle]
 
         self.markers_exp_ocp = self.experimental_data.markers_sorted[:, :, idx_to_keep]
         # Fill NaNs in markers
@@ -515,7 +532,7 @@ class OptimalEstimator:
             viz.add_animated_model(model, self.q_exp_ocp, tracked_markers=markers, muscle_activations_intensity=emg)
 
             # Play
-            viz.rerun_by_frame("OCP initial guess from experimental data")
+            viz.rerun("OCP initial guess from experimental data")
 
     def prepare_ocp_fext(self, with_residual_forces: bool = False):
         """
@@ -661,12 +678,13 @@ class OptimalEstimator:
             weight=0.1,
             index=[0, 1, 2, 3, 4, 5],
         )
+        # Note: all muscles have a target except tfl, see if we should hendle it differently
+        # index = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19]
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="muscles",
-            weight=0.01,
-            target=self.emg_normalized_exp_ocp[:10, :-1],
-            index=[0, 1, 2, 4, 5, 6, 7, 8, 9, 10],  # Only the right leg (except tfl)
+            weight=1,
+            target=self.emg_normalized_exp_ocp[:, :-1],
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100.0, node=Node.ALL, target=self.markers_exp_ocp
@@ -693,7 +711,7 @@ class OptimalEstimator:
                 objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
                 key="contact_forces",
                 node=Node.ALL_SHOOTING,
-                weight=1000,
+                weight=10,
             )
             objective_functions.add(  # Track CoP position
                 objective=ObjectiveFcn.Lagrange.TRACK_CONTROL,
@@ -1241,6 +1259,8 @@ class OptimalEstimator:
         self.qdot_opt = self.solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
         self.tau_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
         self.muscles_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["muscles"]
+        self.f_ext_value_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["contact_forces"]
+        self.f_ext_position_opt = self.solution.decision_controls(to_merge=SolutionMerge.NODES)["contact_positions"]
         self.opt_status = "CVG" if self.solution.status == 0 else "DVG"
 
     def animate_solution(self):
@@ -1258,14 +1278,17 @@ class OptimalEstimator:
 
         # Add experimental markers
         markers = PyoMarkers(data=self.markers_exp_ocp, marker_names=list(model.marker_names), show_labels=False)
-        emgs = PyoMuscles(data=self.muscles_opt,
+        nb_muscles = len(model.muscle_names)
+        emgs = PyoMuscles(data=np.hstack((self.muscles_opt, np.zeros((nb_muscles, 1)))),
                           muscle_names=list(model.muscle_names),
-                          mvc=np.ones((len(model.muscle_names), 1)),
+                          mvc=np.ones((nb_muscles, 1)),
                           )
 
         # Add force plates to the animation
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
         viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        viz.add_force_plate(num=3, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=4, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(
             num=1,
             force_origin=self.f_ext_exp_ocp["left_leg"][:3, :],
@@ -1276,12 +1299,22 @@ class OptimalEstimator:
             force_origin=self.f_ext_exp_ocp["right_leg"][:3, :],
             force_vector=self.f_ext_exp_ocp["right_leg"][6:9, :],
         )
+        viz.add_force_data(
+            num=3,
+            force_origin=np.hstack((self.f_ext_position_opt[:3, :], np.zeros((3, 1)))),
+            force_vector=np.hstack((self.f_ext_value_opt[:3, :], np.zeros((3, 1)))),
+        )
+        viz.add_force_data(
+            num=3,
+            force_origin=np.hstack((self.f_ext_position_opt[3:6, :], np.zeros((3, 1)))),
+            force_vector=np.hstack((self.f_ext_value_opt[3:6, :], np.zeros((3, 1)))),
+        )
 
         # Add the kinematics
         viz.add_animated_model(model, self.q_opt, tracked_markers=markers, muscle_activations_intensity=emgs)
 
         # Play
-        viz.rerun_by_frame("OCP optimal solution")
+        viz.rerun("OCP optimal solution")
 
     def check_if_existing(self):
         """
@@ -1309,6 +1342,10 @@ class OptimalEstimator:
                 self.q_opt = data["q_opt"]
                 self.qdot_opt = data["qdot_opt"]
                 self.tau_opt = data["tau_opt"]
+                self.muscles_opt = data["muscles_opt"]
+                self.f_ext_value_opt = data["f_ext_value_opt"]
+                self.f_ext_position_opt = data["f_ext_position_opt"]
+                self.opt_status = data["opt_status"]
             return True
         else:
             return False
@@ -1355,5 +1392,8 @@ class OptimalEstimator:
             "q_opt": self.q_opt,
             "qdot_opt": self.qdot_opt,
             "tau_opt": self.tau_opt,
+            "muscles_opt": self.muscles_opt,
+            "f_ext_value_opt": self.f_ext_value_opt,
+            "f_ext_position_opt": self.f_ext_position_opt,
             "opt_status": self.opt_status,
         }

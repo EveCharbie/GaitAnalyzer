@@ -76,7 +76,7 @@ def analysis_to_perform(
         plot_solution_flag=True,
         animate_solution_flag=True,
         implicit_contacts=False,
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
 
     return results
