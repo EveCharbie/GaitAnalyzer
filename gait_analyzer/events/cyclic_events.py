@@ -463,32 +463,33 @@ class CyclicEvents:
         # Please not that anything happening before the first temporary swing phase is not considered
         # TODO: Charbie -> Add references to the articles where these methods are described
         # TODO: Charbie -> Add an alternative AI detection method
+        # TODO - WARNING: This method does not work perfectly and should be improved
 
         self.detect_swing_phases_temporary(show_debug_plot_flag=False)
 
         # Detect events
-        # self.detect_toes_off()
-        # self.detect_heel_off()
+        self.detect_toes_off()
+        self.detect_heel_off()
         self.detect_heel_touch(show_debug_plot_flag=False)
-        # self.detect_toes_touch()
+        self.detect_toes_touch()
 
-        # # Detect phases for each leg
-        # self.phases_left_leg["swing"] = np.zeros_like(self.phases_left_leg["swing"])
-        # self.phases_right_leg["swing"] = np.zeros_like(self.phases_right_leg["swing"])
-        # self.detect_leg_phases_between_events("swing", "toes_off", "heel_touch")
-        # self.detect_leg_phases_between_events("heel_only", "heel_touch", "toes_touch")
-        # self.detect_leg_phases_between_events("flat_foot", "toes_touch", "heel_off")
-        # self.detect_leg_phases_between_events("toes_only", "heel_off", "toes_off")
-        #
-        # # Detect combined phases (both legs)
-        # self.detect_phases_both_legs("heelR_toesR", "swing", "flat_foot")
-        # self.detect_phases_both_legs("toesR", "swing", "toes_only")
-        # self.detect_phases_both_legs("toesR_heelL", "heel_only", "toes_only")
-        # self.detect_phases_both_legs("toesR_heelL_toesL", "flat_foot", "toes_only")
-        # self.detect_phases_both_legs("heelL_toesL", "flat_foot", "swing")
-        # self.detect_phases_both_legs("toesL", "toes_only", "swing")
-        # self.detect_phases_both_legs("toesL_heelR", "toes_only", "heel_only")
-        # self.detect_phases_both_legs("toesL_heelR_toesR", "toes_only", "flat_foot")
+        # Detect phases for each leg
+        self.phases_left_leg["swing"] = np.zeros_like(self.phases_left_leg["swing"])
+        self.phases_right_leg["swing"] = np.zeros_like(self.phases_right_leg["swing"])
+        self.detect_leg_phases_between_events("swing", "toes_off", "heel_touch")
+        self.detect_leg_phases_between_events("heel_only", "heel_touch", "toes_touch")
+        self.detect_leg_phases_between_events("flat_foot", "toes_touch", "heel_off")
+        self.detect_leg_phases_between_events("toes_only", "heel_off", "toes_off")
+
+        # Detect combined phases (both legs)
+        self.detect_phases_both_legs("heelR_toesR", "swing", "flat_foot")
+        self.detect_phases_both_legs("toesR", "swing", "toes_only")
+        self.detect_phases_both_legs("toesR_heelL", "heel_only", "toes_only")
+        self.detect_phases_both_legs("toesR_heelL_toesL", "flat_foot", "toes_only")
+        self.detect_phases_both_legs("heelL_toesL", "flat_foot", "swing")
+        self.detect_phases_both_legs("toesL", "toes_only", "swing")
+        self.detect_phases_both_legs("toesL_heelR", "toes_only", "heel_only")
+        self.detect_phases_both_legs("toesL_heelR_toesR", "toes_only", "flat_foot")
 
     def plot_events(self):
         """

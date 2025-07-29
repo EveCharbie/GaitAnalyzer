@@ -63,6 +63,7 @@ class ResultManager:
         skip_if_existing: bool,
         functional_trials_path: str = None,
         mvc_trials_path: str = None,
+        q_regularization_weight: float = 0.01,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
@@ -82,6 +83,7 @@ class ResultManager:
             mvc_trials_path=mvc_trials_path,
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
+            q_regularization_weight=q_regularization_weight,
             skip_if_existing=skip_if_existing,
             animate_model_flag=animate_model_flag,
             vtp_geometry_path=vtp_geometry_path,
@@ -225,7 +227,6 @@ class ResultManager:
         cycle_to_analyze: int,
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
-        implicit_contacts: bool = False,
         skip_if_existing: bool = False,
     ):
 
@@ -256,6 +257,5 @@ class ResultManager:
             inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
-            implicit_contacts=implicit_contacts,
             skip_if_existing=skip_if_existing,
         )

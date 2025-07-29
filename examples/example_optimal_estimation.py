@@ -9,6 +9,8 @@ from gait_analyzer import (
     Subject,
     Side,
     ReconstructionType,
+    MarkerLabelingHandler,
+    OrganizedResult,
 )
 
 
@@ -32,7 +34,8 @@ def analysis_to_perform(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        skip_if_existing=False,
+        q_regularization_weight=0.01,
+        skip_if_existing=True,
         animate_model_flag=False,
     )
 
@@ -59,7 +62,7 @@ def analysis_to_perform(
     results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
 
     results.reconstruct_kinematics(
-        reconstruction_type=[ReconstructionType.ONLY_LM],  # , ReconstructionType.LM, ReconstructionType.TRF],
+        reconstruction_type=[ReconstructionType.LSQ, ReconstructionType.ONLY_LM],
         animate_kinematics_flag=False,
         plot_kinematics_flag=False,
         skip_if_existing=True,
@@ -72,8 +75,7 @@ def analysis_to_perform(
         cycle_to_analyze=5,
         plot_solution_flag=True,
         animate_solution_flag=True,
-        implicit_contacts=False,
-        skip_if_existing=False,
+        skip_if_existing=True,
     )
 
     return results
@@ -91,13 +93,7 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # subjects_to_analyze.append(
-    #     Subject(subject_name="AOT_01", subject_mass=69.2, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-    # )
-    # subjects_to_analyze.append(
-    #     Subject(subject_name="CAR_17", subject_mass=69.5, dominant_leg=Side.RIGHT, preferential_speed=1.06)
-    # )
-    subjects_to_analyze.append(Subject(subject_name="LEM_PRE_chev", dominant_leg=Side.RIGHT, preferential_speed=1.25))
+    subjects_to_analyze.append(Subject(subject_name="LEM_PRE_chev"))
     # ... add other participants here
 
     # --- Example of how to run the analysis --- #
@@ -105,41 +101,23 @@ if __name__ == "__main__":
         analysis_to_perform,
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=range(5, -5),
-        # cycles_to_analyze=None,
         result_folder="results",
-        # trails_to_analyze=["_ManipStim_L400_F50_I60"],  # If not specified, all trials will be analyzed
         skip_if_existing=False,
     )
 
-    # --- Example of how to plot the joint angular velocities--- #
-    plot = PlotLegData(
+    # --- Example of how to create a OrganizedResult object --- #
+    organized_result = OrganizedResult(
         result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.QDOT,
-        conditions_to_compare=["_ManipStim_L400_F50_I20"],
+        plot_type=PlotType.MUSCLE_FORCES,
+        nb_frames_interp=101,
+        conditions_to_compare=["_1p25"],
     )
-    plot.draw_plot()
-    plot.save("results/AOT_01_QDOT_plot_temporary.png")
-    plot.show()
+    organized_result.save("results/OptimEstim_organized.pkl")
 
-    # --- Example of how to plot the joint torques --- #
+    # --- Example of how to plot the joint angles--- #
     plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.TAU,
-        conditions_to_compare=["_ManipStim_L200_F30_I20"],
+        organized_result=organized_result,
     )
     plot.draw_plot()
-    plot.save("results/AOT_01_Tau_plot_temporary.png")
-    plot.show()
-
-    # --- Example of how to plot the ground reaction forces --- #
-    plot = PlotLegData(
-        result_folder="results",
-        leg_to_plot=LegToPlot.RIGHT,
-        plot_type=PlotType.GRF,
-        conditions_to_compare=["_ManipStim_L200_F30_I20"],
-    )
-    plot.draw_plot()
-    plot.save("results/AOT_01_GRF_plot_temporary.png")
+    plot.save("results/OptimEstim_MUSCLE_FORCES_plot.png")
     plot.show()

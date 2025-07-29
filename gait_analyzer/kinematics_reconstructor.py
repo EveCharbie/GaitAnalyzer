@@ -358,11 +358,17 @@ class KinematicsReconstructor:
                 biobuddy_model = biobuddy.BiomechanicalModelReal().from_biomod(
                     self.model_creator.biorbd_model_full_path
                 )
+                # TODO: Charbie -> Make this modulable
+                q_regularization_weight = np.zeros((self.biorbd_model.nbQ(),))
+                q_regularization_weight[3:6] = 1.0
+                q_regularization_weight[20:23] = 1.0
                 q_recons, residuals = biobuddy_model.inverse_kinematics(
                     marker_positions=markers,
                     marker_names=biobuddy_model.marker_names,
                     marker_weights=self.model_creator.marker_weights,
                     method="lm",
+                    q_regularization_weight=q_regularization_weight,
+                    q_target=np.zeros((self.biorbd_model.nbQ(),)),
                     animate_reconstruction=False,
                     compute_residual_distance=True,
                 )
