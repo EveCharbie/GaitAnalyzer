@@ -107,7 +107,6 @@ class OptimalEstimator:
         self.n_shooting = None
         self.phase_time = None
         self.solution = None
-        self.muscle_forces = None
         self.q_opt = None
         self.qdot_opt = None
         self.tau_opt = None
@@ -115,6 +114,7 @@ class OptimalEstimator:
         self.f_ext_value_opt = None
         self.f_ext_position_opt = None
         self.opt_status = "CVG"
+        self.muscle_forces = None
         self.is_loaded_optimal_solution = False
 
         # Execution
@@ -127,8 +127,8 @@ class OptimalEstimator:
             self.generate_no_contacts_model()
             self.prepare_reduced_experimental_data(plot_exp_data_flag=False, animate_exp_data_flag=True)
             self.prepare_ocp_fext(with_residual_forces=True)
-
             self.solve(show_online_optim=True)
+            self.extract_muscle_forces()
             self.save_optimal_reconstruction()
 
             if plot_solution_flag:
@@ -139,7 +139,6 @@ class OptimalEstimator:
 
         if animate_solution_flag:
             self.animate_solution()
-        self.extract_muscle_forces()
 
     def generate_no_contacts_model(self):
 
@@ -764,13 +763,19 @@ class OptimalEstimator:
                 self.f_ext_value_opt = data["f_ext_value_opt"]
                 self.f_ext_position_opt = data["f_ext_position_opt"]
                 self.opt_status = data["opt_status"]
+                self.muscle_forces = data["muscle_forces"]
             return True
         else:
             return False
 
     def extract_muscle_forces(self):
-        # TODO: Charbie -> Extract muscle forces from the solution
-        self.muscle_forces = None
+        model = biorbd.Model(self.model_ocp)
+        self.muscle_forces = np.zeros((model.nbMuscles(), self.n_shooting))
+        for i_frame in range(self.n_shooting):
+            muscles = model.stateSet()
+            for i_muscle, muscle in enumerate(muscles):
+                muscle.setActivation(self.muscles_opt[i_muscle, i_frame])
+            self.muscle_forces[:, i_frame] = model.muscleForces(muscles, self.q_opt[:, i_frame], self.qdot_opt[:, i_frame]).to_array()
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
@@ -814,4 +819,5 @@ class OptimalEstimator:
             "f_ext_value_opt": self.f_ext_value_opt,
             "f_ext_position_opt": self.f_ext_position_opt,
             "opt_status": self.opt_status,
+            "muscle_forces": self.muscle_forces,
         }
