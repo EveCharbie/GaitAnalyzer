@@ -595,18 +595,18 @@ class ModelCreator:
                 abs_path = os.path.abspath(self.functional_trials_path)
                 raise RuntimeError(f"The functional trial for {trial_name} was not found in the directory {abs_path}.")
 
-        # Hip Right
-        joint_center_tool.add(
-            Score(
-                functional_c3d=C3dData(trials_list["right_hip"]),
-                parent_name="pelvis",
-                child_name="femur_r",
-                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-                child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-                initialize_whole_trial_reconstruction=False,
-                animate_rt=animate_reconstruction,
-            )
-        )
+        # # Hip Right
+        # joint_center_tool.add(
+        #     Score(
+        #         functional_c3d=C3dData(trials_list["right_hip"]),
+        #         parent_name="pelvis",
+        #         child_name="femur_r",
+        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+        #         child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
+        #         initialize_whole_trial_reconstruction=False,
+        #         animate_rt=animate_reconstruction,
+        #     )
+        # )
         # Knee right
         joint_center_tool.add(
             Sara(
@@ -634,18 +634,18 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # Hip Left
-        joint_center_tool.add(
-            Score(
-                functional_c3d=C3dData(trials_list["left_hip"]),
-                parent_name="pelvis",
-                child_name="femur_l",
-                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-                child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
-                initialize_whole_trial_reconstruction=False,
-                animate_rt=animate_reconstruction,
-            )
-        )
+        # # Hip Left
+        # joint_center_tool.add(
+        #     Score(
+        #         functional_c3d=C3dData(trials_list["left_hip"]),
+        #         parent_name="pelvis",
+        #         child_name="femur_l",
+        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+        #         child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
+        #         initialize_whole_trial_reconstruction=False,
+        #         animate_rt=animate_reconstruction,
+        #     )
+        # )
         # Knee Left
         joint_center_tool.add(
             Sara(
