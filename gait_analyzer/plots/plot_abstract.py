@@ -36,7 +36,14 @@ class PlotAbstract:
             self.plot_idx = list(range(n_rows))
             self.n_cols = 1
         fig, axs = plt.subplots(n_rows, self.n_cols, figsize=(self.fig_width, 10))
-        n_data_to_plot = len(self.data)
+        # If there are multiple columns, we force the order of concatenation
+        axs_list = None
+        for i_col in range(self.n_cols):
+            if axs_list is None:
+                axs_list = axs[:, i_col]
+            else:
+                axs_list = np.hstack((axs_list, axs[:, i_col]))
+        axs = axs_list
         normalized_time = np.linspace(0, 100, self.organized_result.nb_frames_interp)
 
         # Plot the data
@@ -70,7 +77,8 @@ class PlotAbstract:
                         ax.plot(normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index])
                     this_unit_str = unit_str if isinstance(unit_str, str) else unit_str[i_ax]
                     if self.plot_labels is not None:
-                        ax.set_ylabel(f"{self.plot_labels[i_ax]} " + this_unit_str)
+                        i_label = i_ax % len(self.plot_labels)
+                        ax.set_ylabel(f"{self.plot_labels[i_label]} " + this_unit_str)
                     else:
                         ax.set_ylabel(f"Data {i_ax} " + this_unit_str)
                 color_index += 1

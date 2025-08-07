@@ -34,6 +34,7 @@ class EventIndexType(Enum):
     """
     MARKERS = "markers"
     ANALOGS = "analogs"
+    NONE = "only one cycle"
 
 
 def get_unit_conversion_factor(plot_type: PlotType, subject_mass: float | None) -> float | np.ndarray[float]:
