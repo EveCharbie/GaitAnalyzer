@@ -23,6 +23,3 @@ axs[0].set_title("Total Angular Momentum Normalized")
 axs[2].set_xlabel("Time [s]")
 plt.savefig("total_angular_momentum_normalized.png")
 plt.show()
-
-
-
