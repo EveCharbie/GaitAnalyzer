@@ -63,9 +63,12 @@ class OrganizedResult:
         self.leg_to_plot = leg_to_plot
         self.unique_event_to_split = unique_event_to_split
         self.nb_frames_interp = nb_frames_interp
-        event_index_type = (
-            EventIndexType.ANALOGS if self.plot_type in [PlotType.GRF, PlotType.EMG] else EventIndexType.MARKERS
-        )
+        if self.plot_type in [PlotType.GRF, PlotType.EMG]:
+            event_index_type = EventIndexType.ANALOGS
+        elif self.plot_type in [PlotType.MUSCLE_FORCES]:
+            event_index_type = EventIndexType.NONE
+        else:
+            event_index_type = EventIndexType.MARKERS
         self.event_index_type = event_index_type
 
         # Extended attributes
@@ -102,6 +105,8 @@ class OrganizedResult:
             events_idx_q = np.array(event_idx_markers)[start_cycle:end_cycle]
             events_idx_q -= events_idx_q[0]
             event_index = list(events_idx_q)
+        elif self.event_index_type == EventIndexType.NONE:
+            event_index = None
         else:
             raise RuntimeError("The event_index_type must be either EventIndexType.ANALOGS or EventIndexType.MARKERS.")
         return event_index
@@ -127,7 +132,11 @@ class OrganizedResult:
                         f"Please check the groups_to_compare dictionary."
                     )
             if condition_name in self.conditions_to_compare:
-                if isinstance(data["events"], list):
+                if self.event_index_type == EventIndexType.NONE:
+                    # If the event index type is NONE, we do not split the cycles
+                    data_to_split = self.get_data_to_split(data)
+                    this_cycles_data = [data_to_split]
+                elif isinstance(data["events"], list):
                     cycle_start = self.unique_event_to_split["start"](data)
                     cycle_end = self.unique_event_to_split["stop"](data)
                     if self.unique_event_to_split["event_index_type"] == EventIndexType.ANALOGS:

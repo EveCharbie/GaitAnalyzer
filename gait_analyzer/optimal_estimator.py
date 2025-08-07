@@ -304,6 +304,20 @@ class OptimalEstimator:
             - self.experimental_data.markers_time_vector[idx_to_keep[0]]
         )
 
+        data = {
+            "n_shooting": self.n_shooting,
+            "phase_time": self.phase_time,
+            "q_exp": self.q_exp_ocp,
+            "qdot_exp": self.qdot_exp_ocp,
+            "tau_exp": self.tau_exp_ocp,
+            "f_ext_exp": self.f_ext_exp_ocp,
+            "emg_normalized_exp": self.emg_normalized_exp_ocp,
+            "markers_exp": self.markers_exp_ocp,
+        }
+        path = "opc_data.pkl"
+        with open(path, "wb") as file:
+            pickle.dump(data, file)
+
         if plot_exp_data_flag:
             import matplotlib.pyplot as plt
 
@@ -549,7 +563,7 @@ class OptimalEstimator:
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
             key="muscles",
-            weight=1,
+            weight=10,
             target=self.emg_normalized_exp_ocp[:, :-1],
         )
         objective_functions.add(
@@ -628,7 +642,10 @@ class OptimalEstimator:
                 "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
             )
             u_bounds.add(
-                "contact_positions", min_bound=[-2] * 6, max_bound=[2] * 6, interpolation=InterpolationType.CONSTANT
+                "contact_positions",
+                min_bound=[-2, -2, 0.0, -2, -2, 0.0],
+                max_bound=[2, 2, 0.005, 2, 2, 0.005],
+                interpolation=InterpolationType.CONSTANT,
             )
 
         u_init = InitialGuessList()

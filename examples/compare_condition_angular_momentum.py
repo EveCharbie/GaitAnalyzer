@@ -33,6 +33,7 @@ def analysis_to_perform(
         result_folder=result_folder,
     )
 
+    # The hip SCoREs did not seem to help improve the models, so they were not use din this example.
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
         # functional_trials_path=None,  # If you want to skip the functional trials for this example

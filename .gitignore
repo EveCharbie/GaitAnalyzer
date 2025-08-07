@@ -189,3 +189,7 @@ osim_to_biomod/
 results/
 
 *.html
+
+examples/hide_and_seek/
+
+examples/temporary.bioMod

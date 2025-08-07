@@ -34,7 +34,7 @@ def analysis_to_perform(
         osim_model_type=OsimModels.WholeBody(),
         functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
         mvc_trials_path=f"../data/{subject.subject_name}/maximal_voluntary_contractions/",
-        q_regularization_weight=0.01,
+        q_regularization_weight=1,
         skip_if_existing=True,
         animate_model_flag=False,
     )
@@ -109,7 +109,8 @@ if __name__ == "__main__":
     organized_result = OrganizedResult(
         result_folder="results",
         plot_type=PlotType.MUSCLE_FORCES,
-        nb_frames_interp=101,
+        leg_to_plot=LegToPlot.BOTH,
+        nb_frames_interp=105,
         conditions_to_compare=["_1p25"],
     )
     organized_result.save("results/OptimEstim_organized.pkl")

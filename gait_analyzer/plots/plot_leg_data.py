@@ -35,7 +35,7 @@ class PlotLegData(PlotAbstract):
             elif self.organized_result.leg_to_plot == LegToPlot.LEFT:
                 plot_idx = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
             elif self.organized_result.leg_to_plot == LegToPlot.BOTH:
-                plot_idx = [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]]
+                plot_idx = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
             else:
                 raise ValueError(
                     f"leg_to_plot {self.organized_result.leg_to_plot} not recognized. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT."
@@ -58,7 +58,7 @@ class PlotLegData(PlotAbstract):
             elif self.organized_result.leg_to_plot == LegToPlot.LEFT:
                 plot_idx = [20, 3, 13, 16, 17]
             elif self.organized_result.leg_to_plot == LegToPlot.BOTH:
-                plot_idx = [[20, 3, 6, 9, 10], [20, 3, 13, 16, 17]]
+                plot_idx = [20, 3, 6, 9, 10, 20, 3, 13, 16, 17]
             else:
                 raise ValueError(
                     f"leg_to_plot {self.organized_result.leg_to_plot} not recognized. It must be a in LegToPlot.RIGHT, LegToPlot.LEFT, LegToPlot.BOTH, or LegToPlot.DOMINANT."
