@@ -88,8 +88,8 @@ class AngularMomentumCalculator:
                 f"The gravity of this model is not aligned with the z axis ({self.gravity}), which id not implemented yet."
             )
 
-        gravity_factor = np.array([1.0, 1.0, np.abs(self.gravity[2])])
-        normalization_factor = self.subject_mass * self.subject_height * np.sqrt(gravity_factor * self.subject_height)
+        gravity_norm = np.linalg.norm(self.gravity)
+        normalization_factor = self.subject_mass * self.subject_height * np.sqrt(gravity_norm * self.subject_height)
         self.total_angular_momentum_normalized = self.total_angular_momentum / normalization_factor.reshape(3, 1)
 
     def extract_last_dof_per_segment(self):
