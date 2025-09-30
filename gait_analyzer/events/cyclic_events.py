@@ -108,7 +108,7 @@ class CyclicEvents:
         if plot_phases_flag:
             self.plot_events()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the events detection already exists.
         If it exists, load the events.
@@ -254,6 +254,7 @@ class CyclicEvents:
         """
         Detect hell off events when the heel marker moves faster than 0.1 m/s
         """
+        # TODO: check this
         # Left
         left_cal_velocity = (
             np.diff(
@@ -462,6 +463,7 @@ class CyclicEvents:
         # Please not that anything happening before the first temporary swing phase is not considered
         # TODO: Charbie -> Add references to the articles where these methods are described
         # TODO: Charbie -> Add an alternative AI detection method
+        # TODO - WARNING: This method does not work perfectly and should be improved
 
         self.detect_swing_phases_temporary(show_debug_plot_flag=False)
 
@@ -645,7 +647,7 @@ class CyclicEvents:
         plt.savefig(result_file_full_path.replace(".pkl", ".png"))
         plt.show()
 
-    def get_frame_range(self, cycles_to_analyze: range):
+    def get_frame_range(self, cycles_to_analyze: range) -> tuple[range, range]:
         """
         Get the frame range to analyze.
         """
@@ -654,11 +656,17 @@ class CyclicEvents:
             self.experimental_data.markers_time_vector,
             self.events["right_leg_heel_touch"],
         )
-        start_cycle = 0 if cycles_to_analyze is None else cycles_to_analyze.start
-        end_cycle = -1 if cycles_to_analyze is None else cycles_to_analyze.stop
-        start_frame = heel_touches[start_cycle]
-        end_frame = heel_touches[end_cycle]
-        return range(start_frame, end_frame)
+        if cycles_to_analyze is None:
+            start_cycle = 0
+            end_cycle = -1
+        else:
+            start_cycle = cycles_to_analyze.start
+            end_cycle = cycles_to_analyze.stop
+        padded_start_cycle = start_cycle - 5 if start_cycle > 5 else 0
+        padded_end_cycle = end_cycle + 5 if (0 < end_cycle < len(heel_touches) - 5) else end_cycle
+        frame_range = range(heel_touches[start_cycle], heel_touches[end_cycle])
+        padded_frame_range = range(heel_touches[padded_start_cycle], heel_touches[padded_end_cycle])
+        return frame_range, padded_frame_range
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:

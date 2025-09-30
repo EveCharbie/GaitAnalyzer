@@ -185,3 +185,11 @@ examples/results/
 osim_to_biomod/
 
 *.mat
+
+results/
+
+*.html
+
+examples/hide_and_seek/
+
+examples/temporary.bioMod

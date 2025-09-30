@@ -1,12 +1,12 @@
-from gait_analyzer.AngularMomentumCalculator import AngularMomentumCalculator
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
-from gait_analyzer.cyclic_events import CyclicEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
+from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.unique_events import UniqueEvents
 
 
 class ResultManager:
@@ -60,9 +60,10 @@ class ResultManager:
     def create_model(
         self,
         osim_model_type,
-        functional_trials_path: str,
-        mvc_trials_path: str,
         skip_if_existing: bool,
+        functional_trials_path: str = None,
+        mvc_trials_path: str = None,
+        q_regularization_weight: float = 0.01,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
@@ -82,8 +83,8 @@ class ResultManager:
             mvc_trials_path=mvc_trials_path,
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
+            q_regularization_weight=q_regularization_weight,
             skip_if_existing=skip_if_existing,
-            skip_scaling=skip_scaling,
             animate_model_flag=animate_model_flag,
             vtp_geometry_path=vtp_geometry_path,
         )
@@ -177,28 +178,6 @@ class ResultManager:
             plot_kinematics_flag=plot_kinematics_flag,
         )
 
-    def compute_angular_momentum(self):
-        if self.model_creator is None:
-            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
-        if self.experimental_data is None:
-            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
-        if self.kinematics_reconstructor is None:
-            raise Exception(
-                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()")
-        if self.angular_momentum_calculator is not None:
-            raise Exception("Angular momentum has already been calculated")
-
-        self.angular_momentum_calculator = AngularMomentumCalculator(
-            self.model_creator.biorbd_model,
-            self.kinematics_reconstructor.q_filtered,
-            self.kinematics_reconstructor.qdot,
-            self.subject.subject_mass,
-            self.subject.subject_height,
-            self.subject.subject_name,
-        )
-
-        self.angular_momentum_calculator.calculate_angular_momentum()
-
     def perform_inverse_dynamics(
         self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
     ):
@@ -223,12 +202,32 @@ class ResultManager:
             animate_dynamics_flag=animate_dynamics_flag,
         )
 
+    def compute_angular_momentum(self, skip_if_existing: bool = False):
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
+        if self.angular_momentum_calculator is not None:
+            raise Exception("Angular momentum has already been calculated")
+
+        self.angular_momentum_calculator = AngularMomentumCalculator(
+            self.model_creator.biorbd_model,
+            self.experimental_data,
+            self.kinematics_reconstructor,
+            self.subject,
+            skip_if_existing=skip_if_existing,
+        )
+
     def estimate_optimally(
         self,
         cycle_to_analyze: int,
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
-        implicit_contacts: bool = False,
+        skip_if_existing: bool = False,
     ):
 
         # Checks
@@ -251,12 +250,12 @@ class ResultManager:
         self.optimal_estimator = OptimalEstimator(
             cycle_to_analyze=cycle_to_analyze,
             subject=self.subject,
-            biorbd_model_path=self.model_creator.biorbd_model_full_path,
+            model_creator=self.model_creator,
             experimental_data=self.experimental_data,
             events=self.events,
             kinematics_reconstructor=self.kinematics_reconstructor,
             inverse_dynamic_performer=self.inverse_dynamics_performer,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
-            implicit_contacts=implicit_contacts,
+            skip_if_existing=skip_if_existing,
         )

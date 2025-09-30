@@ -2,16 +2,16 @@ import os
 import pickle
 from enum import Enum
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import biorbd
-from pyomeca import Markers
+import biobuddy
 
 from gait_analyzer.operator import Operator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.model_creator import ModelCreator
-from gait_analyzer.cyclic_events import CyclicEvents
-from gait_analyzer.unique_events import UniqueEvents
+from gait_analyzer.events.cyclic_events import CyclicEvents
+from gait_analyzer.events.unique_events import UniqueEvents
+
 
 class ReconstructionType(Enum):
     """
@@ -22,6 +22,7 @@ class ReconstructionType(Enum):
     LM = "lm"  # Levenberg-Marquardt with mid-bounds initialization
     TRF = "trf"  # Trust Region Reflective
     EKF = "ekf"  # Extended Kalman Filter
+    LSQ = "lsq"  # BioBuddy's Least Squares
 
 
 segment_dict = {
@@ -41,7 +42,7 @@ segment_dict = {
         "dof_idx": [9],
         "markers_idx": [7, 8, 9, 52, 53],
         "min_bound": [-2.6179938779914944],
-        "max_bound": [0.0],
+        "max_bound": [0],
     },
     "calcn_r": {
         "dof_idx": [10, 11],
@@ -65,7 +66,7 @@ segment_dict = {
         "dof_idx": [16],
         "markers_idx": [17, 18, 19, 58, 59],
         "min_bound": [-2.6179938779914944],
-        "max_bound": [0.0],
+        "max_bound": [0],
     },
     "calcn_l": {
         "dof_idx": [17, 18],
@@ -171,10 +172,6 @@ class KinematicsReconstructor:
         plot_kinematics_flag: bool
             If True, the kinematics will be plotted and saved in a .png
         """
-        # Default value
-        if reconstruction_type is None:
-            reconstruction_type = ReconstructionType.ONLY_LM
-
         # Checks
         if not isinstance(experimental_data, ExperimentalData):
             raise ValueError(
@@ -188,7 +185,15 @@ class KinematicsReconstructor:
             raise NotImplementedError(
                 "If events is an instance of UniqueEvents, cycles_to_analyze must be None for now."
             )
-        if not isinstance(reconstruction_type, ReconstructionType) and not isinstance(reconstruction_type, list):
+        if reconstruction_type is None:
+            self.reconstruction_type = [ReconstructionType.ONLY_LM]
+        elif isinstance(reconstruction_type, ReconstructionType):
+            self.reconstruction_type = [reconstruction_type]
+        elif isinstance(reconstruction_type, list):
+            if not all(isinstance(i_recons, ReconstructionType) for i_recons in reconstruction_type):
+                raise ValueError("reconstruction_type must be a list of ReconstructionType.")
+            self.reconstruction_type = reconstruction_type
+        else:
             raise ValueError(
                 "reconstruction_type must be an instance of ReconstructionType or a list of ReconstructionType."
             )
@@ -198,13 +203,13 @@ class KinematicsReconstructor:
         self.model_creator = model_creator
         self.events = events
         self.cycles_to_analyze = cycles_to_analyze
-        self.reconstruction_type = reconstruction_type
 
         # Parameters of the reconstruction
         self.acceptance_threshold = 0.1  # 10 cm
 
         # Extended attributes
         self.frame_range = None
+        self.padded_frame_range = None
         self.markers = None
         self.marker_residuals = None
         self.biorbd_model = biorbd.Model(self.model_creator.biorbd_model_full_path)
@@ -230,7 +235,7 @@ class KinematicsReconstructor:
         if plot_kinematics_flag:
             self.plot_kinematics()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the kinematics reconstruction already exists.
         If it exists, load the q.
@@ -245,6 +250,7 @@ class KinematicsReconstructor:
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
                 self.frame_range = data["frame_range"]
+                self.padded_frame_range = data["padded_frame_range"]
                 self.markers = data["markers"]
                 self.cycles_to_analyze = data["cycles_to_analyze_kin"]
                 self.t = data["t"]
@@ -288,8 +294,10 @@ class KinematicsReconstructor:
             position_diffs = np.diff(valid_positions, axis=1)  # shape: (3, n_valid-1)
             distances = np.linalg.norm(position_diffs, axis=0)  # shape: (n_valid-1,)
 
-            # Check for jumps > 0.5
-            jump_indices = np.where(distances > 0.5)[0]
+            # Check for jumps > 20m/s
+            jump_indices = np.where(
+                distances / np.diff(valid_frames) * self.experimental_data.marker_sampling_frequency > 20
+            )[0]
 
             if len(jump_indices) > 0:
                 # Report the first jump found
@@ -298,10 +306,23 @@ class KinematicsReconstructor:
                 frame_after = valid_frames[jump_idx + 1]
                 jump_distance = distances[jump_idx]
 
+                try:
+                    from pyorerun import c3d
+                except:
+                    raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
+
+                c3d(
+                    self.experimental_data.c3d_full_file_path,
+                    show_forces=False,
+                    show_events=False,
+                    marker_trajectories=True,
+                    show_marker_labels=False,
+                )
+
                 raise RuntimeError(
                     f"Marker {marker_name} seems to be inverted between frames "
                     f"{frame_before} and {frame_after} as the distance is "
-                    f"{jump_distance:.3f} (larger than 0.5)."
+                    f"{jump_distance:.3f} (larger than 10m/s) see the animation to make sure."
                 )
 
             print(f"Marker {marker_name} OK: max distance = {np.max(distances):.3f} m")
@@ -312,23 +333,45 @@ class KinematicsReconstructor:
         Perform the kinematics reconstruction for all frames, and then only keep the frames in the cycles to analyze.
         This is a waist of computation, but the beginning of the reconstruction is always shitty.
         """
-        self.frame_range = self.events.get_frame_range(self.cycles_to_analyze)
-        markers = self.experimental_data.markers_sorted
+        self.frame_range, self.padded_frame_range = self.events.get_frame_range(self.cycles_to_analyze)
+        if self.frame_range != self.padded_frame_range:
+            index_to_keep = range(
+                self.frame_range.start - self.padded_frame_range.start,
+                (self.frame_range.start - self.padded_frame_range.start)
+                + (self.frame_range.stop - self.frame_range.start),
+            )
+        else:
+            index_to_keep = range(len(self.frame_range))
+        markers = self.experimental_data.markers_sorted[:, :, self.padded_frame_range]
 
         q_recons = np.ndarray((self.biorbd_model.nbQ(), markers.shape[2]))
         is_successful_reconstruction = False
-        if isinstance(self.reconstruction_type, ReconstructionType):
-            reconstruction_type = [self.reconstruction_type]
-        else:
-            reconstruction_type = self.reconstruction_type
 
         residuals = None
-        for recons_method in reconstruction_type:
+        for recons_method in self.reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
             if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
                 ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
                 residuals = ik.sol()["residuals"]
+            elif recons_method == ReconstructionType.LSQ:
+                biobuddy_model = biobuddy.BiomechanicalModelReal().from_biomod(
+                    self.model_creator.biorbd_model_full_path
+                )
+                # TODO: Charbie -> Make this modulable
+                q_regularization_weight = np.zeros((self.biorbd_model.nbQ(),))
+                q_regularization_weight[3:6] = 1.0
+                q_regularization_weight[20:23] = 1.0
+                q_recons, residuals = biobuddy_model.inverse_kinematics(
+                    marker_positions=markers,
+                    marker_names=biobuddy_model.marker_names,
+                    marker_weights=self.model_creator.marker_weights,
+                    method="lm",
+                    q_regularization_weight=q_regularization_weight,
+                    q_target=np.zeros((self.biorbd_model.nbQ(),)),
+                    animate_reconstruction=False,
+                    compute_residual_distance=True,
+                )
             elif recons_method == ReconstructionType.EKF:
                 # TODO: Charbie -> When using the EKF, these qdot and qddot should be used instead of finite difference
                 _, q_recons, _, _ = biorbd.extended_kalman_filter(
@@ -342,11 +385,12 @@ class KinematicsReconstructor:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
 
             # Check if this reconstruction was acceptable
+            residuals = residuals[:, index_to_keep]
             print(
-                f"75 percentile between : {np.min(np.percentile(residuals[:, self.frame_range], 75, axis=0))} and "
-                f"{np.max(np.percentile(residuals[:, self.frame_range], 75, axis=0))}"
+                f"75 percentile between : {np.min(np.nanpercentile(residuals, 75, axis=0))} and "
+                f"{np.max(np.nanpercentile(residuals, 75, axis=0))}"
             )
-            if np.all(np.percentile(residuals, 75, axis=0) < self.acceptance_threshold):
+            if np.all(np.nanpercentile(residuals, 75, axis=0) < self.acceptance_threshold):
                 is_successful_reconstruction = True
                 break
 
@@ -355,10 +399,10 @@ class KinematicsReconstructor:
                 "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
             )
 
-        self.q = q_recons[:, self.frame_range]
+        self.q = q_recons[:, index_to_keep]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
-        self.markers = markers[:, :, self.frame_range]
-        self.marker_residuals = residuals[:, self.frame_range]
+        self.markers = markers[:, :, index_to_keep]
+        self.marker_residuals = residuals
 
     def filter_kinematics(self):
         """
@@ -441,7 +485,7 @@ class KinematicsReconstructor:
         Animate the kinematics
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers, PyoMuscles
         except:
             raise RuntimeError("To animate the kinematics, you must install Pyorerun.")
 
@@ -451,41 +495,69 @@ class KinematicsReconstructor:
         model.options.show_gravity = True
         model.options.show_marker_labels = False
         model.options.show_center_of_mass_labels = False
-
-        # Visualization
-        viz = PhaseRerun(self.t)
+        model.options.show_gravity = False
 
         # Markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         marker_data_with_ones = np.ones((4, self.markers.shape[1], self.markers.shape[2]))
         marker_data_with_ones[:3, :, :] = self.markers
-        markers = Markers(data=marker_data_with_ones, channels=marker_names)
 
-        # Force plates
-        force_plate_idx = Operator.from_marker_frame_to_analog_frame(
-            self.experimental_data.analogs_time_vector,
-            self.experimental_data.markers_time_vector,
-            list(self.frame_range),
-        )
-        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
-        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
-        viz.add_force_data(
-            num=1,
-            force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, force_plate_idx].T,
-            force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, force_plate_idx].T,
-        )
-        viz.add_force_data(
-            num=2,
-            force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, force_plate_idx].T,
-            force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, force_plate_idx].T,
-        )
-
+        t_animation = self.t
+        frame_range = self.frame_range
         if self.q.shape[0] == model.nb_q:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
             q_animation = self.q_filtered.T
-        viz.add_animated_model(model, q_animation, tracked_markers=markers, show_tracked_marker_labels=False)
-        viz.rerun_by_frame("Kinematics reconstruction")
+
+        if q_animation.shape[1] > 500:
+            print("To avoid computer crashes, only the first 200 frames will be displayed in the animation. ")
+            q_animation = q_animation[:, :500]
+            t_animation = t_animation[:500]
+            frame_range = frame_range[:500]
+            marker_data_with_ones = marker_data_with_ones[:, :, :500]
+
+        # Visualization
+        viz = PhaseRerun(t_animation)
+
+        markers = PyoMarkers(data=marker_data_with_ones, marker_names=marker_names, show_labels=False)
+        muscle_names = [m.to_string() for m in self.biorbd_model.muscleNames()]
+
+        # Force plates
+        analog_idx = Operator.from_marker_frame_to_analog_frame(
+            self.experimental_data.analogs_time_vector,
+            self.experimental_data.markers_time_vector,
+            list(frame_range),
+        )
+
+        # EMGs
+        emg_data = []
+        muscle_name_mapping = self.model_creator.osim_model_type.muscle_name_mapping
+        mvc_names = list(self.model_creator.mvc_values.keys())
+        for muscle_name in muscle_names:
+            if muscle_name in muscle_name_mapping.keys() and muscle_name_mapping[muscle_name] in mvc_names:
+                muscle_index = mvc_names.index(muscle_name_mapping[muscle_name])
+                emg_data += [self.experimental_data.normalized_emg[muscle_index, :]]
+            else:
+                nb_frames = self.experimental_data.normalized_emg.shape[1]
+                emg_data += [np.zeros((nb_frames,))]
+        emg_data = np.array(emg_data)[:, analog_idx]
+        emg = PyoMuscles(data=emg_data, muscle_names=muscle_names, colormap="viridis")
+
+        viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[0])
+        viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
+        viz.add_force_data(
+            num=1,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[0, :3, analog_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[0, 6:9, analog_idx].T,
+        )
+        viz.add_force_data(
+            num=2,
+            force_origin=self.experimental_data.f_ext_sorted_filtered[1, :3, analog_idx].T,
+            force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, analog_idx].T,
+        )
+
+        viz.add_animated_model(model, q_animation, tracked_markers=markers, muscle_activations_intensity=emg)
+        viz.rerun("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):
         if result_folder is None:
@@ -518,6 +590,7 @@ class KinematicsReconstructor:
             "reconstruction_type": reconstruction_type,
             "cycles_to_analyze_kin": self.cycles_to_analyze,
             "frame_range": self.frame_range,
+            "padded_frame_range": self.padded_frame_range,
             "markers": self.markers,
             "marker_residuals": self.marker_residuals,
             "t": self.t,

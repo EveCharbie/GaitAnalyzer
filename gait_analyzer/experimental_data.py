@@ -49,7 +49,8 @@ class ExperimentalData:
             raise ValueError("result_folder must be a string")
 
         # Threshold for removing force values
-        self.force_threshold = 15  # N
+        # TODO: Validate because this value is high !
+        self.force_threshold = 50  # N
 
         # Initial attributes
         self.c3d_full_file_path = c3d_file_name
@@ -144,8 +145,10 @@ class ExperimentalData:
             ]
 
             self.emg_units = 1
-            if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][0] == "V":
-                self.emg_units = 1_000_000  # Convert to microV
+            for i_analog, name in enumerate(self.c3d["parameters"]["ANALOG"]["LABELS"]["value"]):
+                if name not in self.analogs_to_ignore:
+                    if self.c3d["parameters"]["ANALOG"]["UNITS"]["value"][i_analog] == "V":
+                        self.emg_units = 1_000_000  # Convert to microV
 
             # Make sure all MVC are declared
             for analog_name in self.analog_names:
@@ -157,7 +160,6 @@ class ExperimentalData:
             # Process the EMG signals
             emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
             emg_processed = (
-                # emg.interpolate_na(dim="time", method="linear")
                 emg.meca.interpolate_missing_data()
                 .meca.band_pass(order=2, cutoff=[10, 425])
                 .meca.center()
@@ -173,6 +175,15 @@ class ExperimentalData:
                     0  # There are still small negative values after meca.abs()
                 )
             self.normalized_emg = normalized_emg
+
+            if np.any(self.normalized_emg > 1):
+                # raise RuntimeError("The experimental trial reached EMG values above the MVC, which is not expected. ")
+                for i_emg in range(self.normalized_emg.shape[0]):
+                    if np.nanmax(self.normalized_emg[i_emg, :]) > 1:
+                        print(
+                            f"Muscle {self.analog_names[i_emg]} reached {np.nanmax(self.normalized_emg[i_emg, :])}... renormalizing with this new maximum."
+                        )
+                        self.normalized_emg[i_emg, :] /= np.nanmax(self.normalized_emg[i_emg, :])
 
             # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here
 
@@ -255,7 +266,7 @@ class ExperimentalData:
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
-                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-2:
+                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-3:
                     is_good_trial = False
 
                 if not is_good_trial:
@@ -279,7 +290,7 @@ class ExperimentalData:
                     axs[1].set_ylim(-1, 1)
                     axs[2].set_ylim(-0.01, 0.01)
 
-                    axs[3].plot(cop_ezc3d[:, :] - cop_filtered[i_platform, :, :])
+                    axs[3].plot(np.linalg.norm(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :], axis=0))
                     axs[3].plot(np.array([0, cop_ezc3d.shape[1]]), np.array([1e-3, 1e-3]), "--k")
                     axs[3].set_ylabel("Error (m)")
 

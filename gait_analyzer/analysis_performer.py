@@ -150,7 +150,7 @@ class AnalysisPerformer:
             The range of cycles to analyze. If None, all cycles will be analyzed.
         """
 
-        # result_dict = self.get_version()
+        result_dict = self.get_version()
         result_dict["cycles_to_analyze"] = cycles_to_analyze if cycles_to_analyze is not None else 0
         for attr_name in dir(results):
             attr = getattr(results, attr_name)

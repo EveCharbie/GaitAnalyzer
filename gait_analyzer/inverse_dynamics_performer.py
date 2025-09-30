@@ -85,7 +85,7 @@ class InverseDynamicsPerformer:
         if animate_dynamics_flag:
             self.animate_dynamics()
 
-    def check_if_existing(self):
+    def check_if_existing(self) -> bool:
         """
         Check if the events detection already exists.
         If it exists, load the events.
@@ -177,10 +177,8 @@ class InverseDynamicsPerformer:
         #                            method="DOP853")
 
         # Euler integration for now
-        frames_to_reintegrate = range(
-            int(2 * self.experimental_data.marker_sampling_frequency),
-            int(3 * self.experimental_data.marker_sampling_frequency),
-        )
+        frames_to_reintegrate = range(0, 100)
+
         nb_frames_to_reintegrate = len(list(frames_to_reintegrate))
         dt = self.experimental_data.markers_dt
         x_reintegrated = np.zeros((2 * self.biorbd_model.nbQ(), nb_frames_to_reintegrate + 1))
@@ -204,7 +202,7 @@ class InverseDynamicsPerformer:
         Animate the dynamics reconstruction.
         """
         try:
-            from pyorerun import BiorbdModel, PhaseRerun
+            from pyorerun import BiorbdModel, PhaseRerun, PyoMarkers
         except:
             raise RuntimeError("To animate the dynamics, you must install Pyorerun.")
 
@@ -219,7 +217,7 @@ class InverseDynamicsPerformer:
 
         # Add experimental markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
-        markers = Markers(data=self.kinematics_reconstructor.markers, channels=marker_names)
+        markers = PyoMarkers(data=self.kinematics_reconstructor.markers, channels=marker_names, show_labels=False)
 
         # Add force plates to the animation
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(
@@ -241,7 +239,7 @@ class InverseDynamicsPerformer:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers, show_tracked_marker_labels=False)
+        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers)
 
         # Add the reintegration of the dynamics
         viz.add_animated_model(model, self.q_reintegrated)

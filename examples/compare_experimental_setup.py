@@ -27,21 +27,20 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(
-        osim_model_type=OsimModels.WholeBody(),
-        skip_if_existing=False,
-        skip_scaling=True,  # We skip the scaling since it was already done in OpenSim's GUI
-        animate_model_flag=False)
+    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=False, animate_model_flag=False)
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4","*49","*50"], animate_c3d_flag=False
+        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4", "*49", "*50"], animate_c3d_flag=False
     )
     if "Vicon" in c3d_file_name:
         results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
     elif "qtm" in c3d_file_name:
-        results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False,
-                                  plot_phases_flag=False)
+        results.add_cyclic_events(
+            force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False
+        )
     else:
-        raise RuntimeError("To compare both experimental setups, the name of the results files must contain 'Vicon' or 'Qualisys'")
+        raise RuntimeError(
+            "To compare both experimental setups, the name of the results files must contain 'Vicon' or 'qtm'"
+        )
 
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
@@ -57,9 +56,15 @@ if __name__ == "__main__":
 
     # --- Create the list of participants --- #
     subjects_to_analyze = []
-    # Inputs to correct for AOT_01: dominant_leg, subject_height
-    subjects_to_analyze.append(Subject(subject_name="LAP_06", subject_mass=91.5, subject_height=1.78, dominant_leg=Side.RIGHT, preferential_speed=1.06))
-    # Inputs to correct for VIF_04: preferential_speed, dominant_leg
+    subjects_to_analyze.append(
+        Subject(
+            subject_name="LAP_06",
+            subject_mass=91.5,
+            subject_height=1.78,
+            dominant_leg=Side.RIGHT,
+            preferential_speed=1.06,
+        )
+    )
     # subjects_to_analyze.append(
     #     Subject(subject_name="VIF_04", subject_mass=71.0,subject_height=1.84, dominant_leg=Side.RIGHT, preferential_speed=1.06)  # ?  # ?
     # )
@@ -88,6 +93,5 @@ if __name__ == "__main__":
         conditions_to_compare=["_Cond0006"],
     )
     plot.draw_plot()
-    plot.save("results/AOT_01_Q_plot_temporary.png")
+    plot.save("results/Q_plot.png")
     plot.show()
-
