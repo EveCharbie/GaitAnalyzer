@@ -1,60 +1,106 @@
-from collections import defaultdict
+import os
 import numpy as np
+import pickle
 import biorbd
 
+from gait_analyzer.subject import Subject
+from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
+from gait_analyzer.experimental_data import ExperimentalData
+
+
 class AngularMomentumCalculator:
-    def __init__(self, biorbd_model, q_filtered, qdot, subject_mass, subject_height, subject_names):
+    """
+    This class computes the angular momentum of the whole body (total_angular_momentum) and of each segment (segments_angular_momentum).
+    The angular momentum is normalised by subject_mass * subject_height * sqrt(gravity * height) to allow comparison across subjects.
+    Similarly, the segments' angular momentum is also normalised by segment_mass * segment_length * sqrt(gravity * segment_length).
+    """
+
+    def __init__(
+        self,
+        biorbd_model: biorbd.Model,
+        experimental_data: ExperimentalData,
+        kinematics_reconstructor: KinematicsReconstructor,
+        subject: Subject,
+        skip_if_existing: bool,
+    ):
+        """
+        Initialize the AngularMomentumCalculator.
+        .
+        Parameters
+        ----------
+        biorbd_model : biorbd.Model
+            The biorbd model of the subject.
+        experimental_data : ExperimentalData
+            The experimental data for this trial.
+        kinematics_reconstructor : KinematicsReconstructor
+            The kinematics reconstructor object containing the filtered joint angles and velocities.
+        subject : Subject
+            The subject object containing subject-specific parameters like mass and height.
+        # segments_length: dict[str, float]
+        #     A dictionary containing the length of each segment in meters.
+        skip_if_existing : bool
+            If True, skip the angular momentum computations if it already exists.
+        """
+
+        # Initial attributes
         self.model = biorbd_model
-        self.q = q_filtered
-        self.qdot = qdot
-        self.subject_name = subject_names
-        self.subject_mass = subject_mass
-        self.subject_height = subject_height
+        self.experimental_data = experimental_data
+        self.q = kinematics_reconstructor.q_filtered
+        self.qdot = kinematics_reconstructor.qdot
+        self.subject_mass = subject.subject_mass
+        self.subject_height = subject.subject_height
+        self.gravity = biorbd_model.getGravity().to_array()
 
-        self.H_total = None
-        self.H_total_normalized = None
-        self.H_seg = None
-        self.segments_to_keep = None
+        # Helper parameters
+        self.nb_frames = self.q.shape[1]
 
-    def calculate_angular_momentum(self):
+        # Extended attributes
+        self.total_angular_momentum = None
+        self.total_angular_momentum_normalized = None
+        self.segments_angular_momentum = None
+        # self.segments_angular_momentum_normalized = None
+        self.is_loaded_angular_momentum = False
 
-        n_frames = self.q.shape[1]
+        if skip_if_existing and self.check_if_existing():
+            self.is_loaded_angular_momentum = True
+        else:
+            # Compute the angular momentum values
+            self.compute_total_angular_momentum()
+            self.normalize_total_angular_momentum()
+            self.compute_segments_angular_momentum()
 
-        self.H_total = np.zeros((3, n_frames))
-        self.H_seg = np.zeros((self.model.nbSegment(), 3, n_frames))
+    def compute_total_angular_momentum(self):
+        """
+        Computes the angular momentum of the whole body around the center of mass on the three axis.
+        """
+        self.compute_segments_angular_momentum()
 
-        # Récupérer tous les noms de DoF
-        dof_names = [self.model.nameDof()[i].to_string() for i in range(self.model.nbDof())]
 
-        # Extraire la dernière DoF avant changement de segment
-        def extract_last_dof_per_segment(dof_names):
-            last_dof_lines = []
-            current_segment = None
+    def normalize_total_angular_momentum(self):
+        """
+        Normalize the angular momentum with respect to the mass and height of the subject.
+        """
+        if self.gravity[0] != 0.0 or self.gravity[1] != 0.0 or self.gravity[2] == 0.0:
+            raise NotImplementedError(
+                f"The gravity of this model is not aligned with the z axis ({self.gravity}), which id not implemented yet."
+            )
 
-            for i, dof_name in enumerate(dof_names):
-                if "_translation" in dof_name:
-                    segment_name = dof_name.split("_translation")[0]
-                elif "_rotation" in dof_name:
-                    segment_name = dof_name.split("_rotation")[0]
-                else:
-                    segment_name = dof_name.split("_")[0]
+        gravity_norm = np.linalg.norm(self.gravity)
+        normalization_factor = self.subject_mass * self.subject_height * np.sqrt(gravity_norm * self.subject_height)
+        self.total_angular_momentum_normalized = self.total_angular_momentum / normalization_factor.reshape(3, 1)
 
-                if current_segment is not None and segment_name != current_segment:
-                    last_dof_lines.append(dof_names[i - 1])
-                current_segment = segment_name
-
-            if dof_names:
-                last_dof_lines.append(dof_names[-1])
-
-            return last_dof_lines
-
-        # Extraire les derniers DoFs par segment
-        last_dof_names = extract_last_dof_per_segment(dof_names)
-
-        # Trouver les indices des segments correspondants aux derniers DoFs extraits
-        segments_to_keep = set()
-        for dof_name in last_dof_names:
-            # Extraire le nom du segment avant _translation ou _rotation
+    def extract_last_dof_per_segment(self):
+        """
+        Extract the last DoF for each segment because biorbd stores the angular momentum of the kinematic chain at
+        the index of this DoF (all others are set to zeros).
+        TODO: This workaround works for models with "_rotation" and "_translation" in the DoF names, but should be replaced with something else.
+        """
+        dof_names = [m.to_string() for m in self.model.nameDof()]
+        last_dofs = []
+        segment_names = []
+        last_dof_indices = []
+        current_segment = None
+        for i, dof_name in enumerate(dof_names):
             if "_translation" in dof_name:
                 segment_name = dof_name.split("_translation")[0]
             elif "_rotation" in dof_name:
@@ -62,52 +108,163 @@ class AngularMomentumCalculator:
             else:
                 segment_name = dof_name.split("_")[0]
 
-            # Chercher l'indice du segment dans le modèle
-            for j in range(self.model.nbSegment()):
-                segment_name_model = self.model.segment(j).name().to_string()
-                if segment_name_model == segment_name:
-                    segments_to_keep.add(j)
-                    break
+            if current_segment is not None and segment_name != current_segment:
+                last_dofs.append(dof_names[i - 1])
+                segment_names.append(segment_name)
+                last_dof_indices.append(i - 1)
+            current_segment = segment_name
 
-        self.segments_to_keep = sorted(segments_to_keep)
+        if dof_names:
+            last_dofs.append(dof_names[-1])
+            segment_names.append(segment_name)
+            last_dof_indices.append(len(dof_names) - 1)
 
-        # Dictionnaire de correspondance : segment anatomique → indices dans seg_H
-        segment_index_map = defaultdict(list)
+            return last_dofs, segment_names, last_dof_indices
 
-        # On calcule ça une seule fois (pas besoin à chaque frame)
-        # On suppose que seg_H retourne autant d’éléments qu’il y a de DoFs
-        q_0 = self.q[:, 0]
-        qdot_0 = self.qdot[:, 0]
-        seg_H_0 = self.model.CalcSegmentsAngularMomentum(q_0, qdot_0, True)
+    def compute_segments_angular_momentum(self):
+        """
+        Computes the angular momentum of each segment around its center of mass on the three axis.
+        """
 
-        for j in range(len(seg_H_0)):
-            # `seg_H_0[j]` est associé à un segment
-            segment = self.model.segment(j).name().to_string()
 
-            # Retrouver l'indice de ce segment dans la liste officielle
-            for k in range(self.model.nbSegment()):
-                if self.model.segment(k).name().to_string() == segment:
-                    segment_index_map[k].append(j)
-                    break
+        # TODO: The normalization of the segments' angular momentum is not implemented yet.
+        # It would require providing anthropometric measurement from the participant.
 
-        # Boucle principale
-        for i in range(n_frames):
-            q_i = self.q[:, i]
-            qdot_i = self.qdot[:, i]
+        # # Make sure segment_length is of the right type
+        # if self.segments_length is None:
+        #     self.segments_length = {segment_name: np.nan for segment_name in segment_names}
+        # elif not isinstance(self.segments_length, dict):
+        #     raise ValueError("segments_length must be a dictionary with segment names as keys and lengths as values.")
+        # elif not all(segment_name in self.segments_length for segment_name in segment_names):
+        #     raise ValueError("segments_length must contain all segment names from the model.")
+        # elif len(self.segments_length) != len(segment_names):
+        #     raise ValueError("segments_length must contain the same number of segments as the model.")
 
-            self.H_total[:, i] = self.model.angularMomentum(q_i, qdot_i, True).to_array()
-            seg_H = self.model.CalcSegmentsAngularMomentum(q_i, qdot_i, True)
+        segments_data = {}
+        H_segments = {}
+        nb_frames = self.q.shape[1]
 
-            for k in range(self.model.nbSegment()):
-                for j in segment_index_map[k]:
-                    self.H_seg[k, :, i] += seg_H[j].to_array()
+        for segment_i in range(self.model.nbSegment()):
+            seg = self.model.segment(segment_i)
+            char = seg.characteristics()
+            seg_name = seg.name().to_string()
 
-        segments_to_keep = sorted(list(segments_to_keep))  # au cas où ce serait un set
-        self.H_seg = self.H_seg[segments_to_keep]
-        return self.H_total, self.H_seg
+            segments_data[seg_name] = {
+                "Masse": char.mass(),
+                "Inertie": np.array(char.inertia().to_array())[:3, :3],
+                "COM_x": [], "COM_y": [], "COM_z": [],
+                "c_dot_x": [], "c_dot_y": [], "c_dot_z": [],
+            }
+            H_segments[seg_name] = []
+
+        H_total = []
+
+        for frame_i in range(nb_frames):
+            com_global = self.model.CoM(self.q[:, frame_i]).to_array()
+            comdot_global = self.model.CoMdot(self.q[:, frame_i], self.qdot[:, frame_i], True).to_array()
+
+            H_frame_total = np.zeros(3)
+
+            for segment_i in range(self.model.nbSegment()):
+                seg = self.model.segment(segment_i)
+                seg_name = seg.name().to_string()
+                mass = segments_data[seg_name]["Masse"]
+                I_local = segments_data[seg_name]["Inertie"]
+
+                com_global_segment = self.model.CoMbySegment(self.q[:, frame_i], segment_i, True).to_array()
+                comdot_segment = self.model.CoMdotBySegment(
+                    self.q[:, frame_i], self.qdot[:, frame_i], segment_i, True
+                ).to_array()
+
+                segments_data[seg_name]["COM_x"].append(com_global_segment[0])
+                segments_data[seg_name]["COM_y"].append(com_global_segment[1])
+                segments_data[seg_name]["COM_z"].append(com_global_segment[2])
+                segments_data[seg_name]["c_dot_x"].append(comdot_segment[0])
+                segments_data[seg_name]["c_dot_y"].append(comdot_segment[1])
+                segments_data[seg_name]["c_dot_z"].append(comdot_segment[2])
+
+                R_seg_global = np.array(self.model.globalJCS(self.q[:, frame_i], segment_i).to_array())[:3, :3]
+                omega_seg_global = self.model.segmentAngularVelocity(
+                    self.q[:, frame_i], self.qdot[:, frame_i], segment_i
+                ).to_array()
+                omega_seg_local = R_seg_global.T @ omega_seg_global
+                rot_seg_local = I_local @ omega_seg_local
+                rot_seg_global = R_seg_global @ rot_seg_local
+
+                r_j = com_global_segment
+                r_CoM = com_global
+                v_j = comdot_segment
+                v_CoM = comdot_global
+
+                H_j = np.cross(r_j - r_CoM, mass * (v_j - v_CoM)) + rot_seg_global
+                H_segments[seg_name].append(H_j)
+
+                H_frame_total += H_j
+
+            H_total.append(H_frame_total)
+
+        self.segments_angular_momentum = H_segments
+        self.total_angular_momentum = np.array(H_total)
+        #self.segments_data = segments_data
+
+
+        #         self.segments_angular_momentum_normalized[segment_name][:, i_frame] = self.segments_angular_momentum[segment_name][:, i_frame] / (
+        #             self.subject_mass * self.segments_length[segment_name] * np.sqrt(self.gravity * self.segments_length[segment_name])
+        #         )
+
+        return
+
+    def check_if_existing(self) -> bool:
+        """
+        Check if the angular momentum value already exists.
+        If it exists, load it.
+        .
+        Returns
+        -------
+        bool
+            If the angular momentum value already exists
+        """
+        result_file_full_path = self.get_result_file_full_path()
+        if os.path.exists(result_file_full_path):
+            with open(result_file_full_path, "rb") as file:
+                data = pickle.load(file)
+                self.total_angular_momentum = data["total_angular_momentum"]
+                self.total_angular_momentum_normalized = data["total_angular_momentum_normalized"]
+                self.segments_angular_momentum = data["segments_angular_momentum"]
+                # self.segments_angular_momentum_normalized = data["segments_angular_momentum_normalized"]
+                self.is_loaded_angular_momentum = True
+            return True
+        else:
+            return False
+
+    def get_result_file_full_path(self, result_folder=None):
+        if result_folder is None:
+            result_folder = self.experimental_data.result_folder
+        trial_name = self.experimental_data.c3d_full_file_path.split("/")[-1][:-4]
+        result_file_full_path = f"{result_folder}/ang_mom_{trial_name}.pkl"
+        return result_file_full_path
+
+    def save_angular_momentum(self):
+        """
+        Save the angular momentum values.
+        """
+        result_file_full_path = self.get_result_file_full_path()
+        with open(result_file_full_path, "wb") as file:
+            pickle.dump(self.outputs(), file)
+
+    def inputs(self):
+        return {
+            "biorbd_model": self.model.path,
+            "q_filtered": self.q,
+            "qdot": self.qdot,
+            "subject_mass": self.subject_mass,
+            "subject_height": self.subject_height,
+        }
 
     def outputs(self):
         return {
-            "segment_angular_momentum": self.H_total,
-            "order_segment": self.H_seg
+            "total_angular_momentum": self.total_angular_momentum,
+            "total_angular_momentum_normalized": self.total_angular_momentum_normalized,
+            "segments_angular_momentum": self.segments_angular_momentum,
+            # "segments_angular_momentum_normalized": self.segments_angular_momentum_normalized,
         }

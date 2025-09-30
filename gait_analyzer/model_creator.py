@@ -511,18 +511,18 @@ class ModelCreator:
             )
         )
         # # TODO: add one more marker on the foot ?
-        # # Ankle right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["right_ankle"],
-        #         parent_name="tibia_r",
-        #         child_name="calcn_r",
-        #         parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
-        #         child_marker_names=["RCAL", "RMFH1", "RMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Ankle right
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["right_ankle"],
+                parent_name="tibia_r",
+                child_name="calcn_r",
+                parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
+                child_marker_names=["RCAL", "RMFH1", "RMFH5"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Hip Left
         joint_center_tool.add(
             Score(
@@ -555,76 +555,76 @@ class ModelCreator:
             )
         )
         # # TODO: add one more marker on the foot ?
-        # # Ankle Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["left_ankle"],
-        #         parent_name="tibia_l",
-        #         child_name="calcn_l",
-        #         parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
-        #         child_marker_names=["LCAL", "LMFH1", "LMFH5"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Ankle Left
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["left_ankle"],
+                parent_name="tibia_l",
+                child_name="calcn_l",
+                parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
+                child_marker_names=["LCAL", "LMFH1", "LMFH5"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
 
         # To be removed for walking
-        # # Shoulder Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_r",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["RLHE", "RMHE"] + self.osim_model_type.markers_to_add["humerus_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Right
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_r",
-        #         child_name="radius_r",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
-        #         child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Shoulder Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["shoulders"],
-        #         parent_name="torso",
-        #         child_name="humerus_l",
-        #         parent_marker_names=["STR", "C7", "T10", "SUP"],
-        #         child_marker_names=["LLHE", "LMHE"] + self.osim_model_type.markers_to_add["humerus_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
-        # # Elbow Left
-        # joint_center_tool.add(
-        #     Score(
-        #         filepath=trials_list["elbows"],
-        #         parent_name="humerus_l",
-        #         child_name="radius_l",
-        #         parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
-        #         child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
-        #         first_frame=500,
-        #         last_frame=-500,
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Shoulder Right
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["shoulders"],
+                parent_name="torso",
+                child_name="humerus_r",
+                parent_marker_names=["STR", "C7", "T10", "SUP"],
+                child_marker_names=["RLHE", "RMHE"] + self.osim_model_type.markers_to_add["humerus_r"],
+                first_frame=500,
+                last_frame=-500,
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
+        # Elbow Right
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["elbows"],
+                parent_name="humerus_r",
+                child_name="radius_r",
+                parent_marker_names=self.osim_model_type.markers_to_add["humerus_r"],
+                child_marker_names=["RUS", "RRS"] + self.osim_model_type.markers_to_add["radius_r"],
+                first_frame=500,
+                last_frame=-500,
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
+        # Shoulder Left
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["shoulders"],
+                parent_name="torso",
+                child_name="humerus_l",
+                parent_marker_names=["STR", "C7", "T10", "SUP"],
+                child_marker_names=["LLHE", "LMHE"] + self.osim_model_type.markers_to_add["humerus_l"],
+                first_frame=500,
+                last_frame=-500,
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
+        # Elbow Left
+        joint_center_tool.add(
+            Score(
+                filepath=trials_list["elbows"],
+                parent_name="humerus_l",
+                child_name="radius_l",
+                parent_marker_names=self.osim_model_type.markers_to_add["humerus_l"],
+                child_marker_names=["LUS", "LRS"] + self.osim_model_type.markers_to_add["radius_l"],
+                first_frame=500,
+                last_frame=-500,
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # # Neck
         # joint_center_tool.add(
         #     Score(
