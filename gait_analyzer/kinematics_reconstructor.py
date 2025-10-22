@@ -398,14 +398,21 @@ class KinematicsReconstructor:
 
                 # Create
                 _, q_filtered, qdot, qddot = biorbd.extended_kalman_filter(
-                    self.biorbd_model, self.experimental_data.c3d_full_file_path, frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop)
+                    self.biorbd_model,
+                    self.experimental_data.c3d_full_file_path,
+                    frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop),
                 )
                 self.q = q_filtered[:, index_to_keep]
                 self.q_filtered = q_filtered[:, index_to_keep]
                 self.qdot = qdot[:, index_to_keep]
                 self.qddot = qddot[:, index_to_keep]
 
-                residuals = np.zeros((3, q_filtered.shape[1], ))
+                residuals = np.zeros(
+                    (
+                        3,
+                        q_filtered.shape[1],
+                    )
+                )
                 print("Warning: The EKF acceptance criteria was not implemented yet.")
             else:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
