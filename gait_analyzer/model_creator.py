@@ -138,9 +138,6 @@ class OsimModels:
                     )
                 )
 
-        # Fix via points
-        model.fix_via_points()
-
         return model
 
     # Child classes acting as an enum
@@ -545,6 +542,7 @@ class ModelCreator:
             muscle_state_type=MuscleStateType.DEGROOTE,
             mesh_dir=self.vtp_geometry_path,
         )
+        self.model.fix_via_points()
 
     def scale_model(self):
 

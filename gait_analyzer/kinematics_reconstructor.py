@@ -358,6 +358,7 @@ class KinematicsReconstructor:
         else:
             index_to_keep = range(len(self.frame_range))
         markers = self.experimental_data.markers_sorted[:, :, self.padded_frame_range]
+        self.t = self.experimental_data.markers_time_vector[self.frame_range]
 
         is_successful_reconstruction = False
         residuals = None
@@ -395,15 +396,16 @@ class KinematicsReconstructor:
                 if self.q_regularization_weight is not None or self.qdot_regularization_weight is not None:
                     print("Warning: Regularization weights are only used for the LSQ reconstruction method.")
 
+                # Create
                 _, q_filtered, qdot, qddot = biorbd.extended_kalman_filter(
-                    self.biorbd_model, self.experimental_data.c3d_full_file_path
+                    self.biorbd_model, self.experimental_data.c3d_full_file_path, frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop)
                 )
                 self.q = q_filtered[:, index_to_keep]
                 self.q_filtered = q_filtered[:, index_to_keep]
                 self.qdot = qdot[:, index_to_keep]
                 self.qddot = qddot[:, index_to_keep]
 
-                residuals = np.zeros_like(markers)
+                residuals = np.zeros((3, q_filtered.shape[1], ))
                 print("Warning: The EKF acceptance criteria was not implemented yet.")
             else:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
@@ -423,7 +425,6 @@ class KinematicsReconstructor:
                 "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
             )
 
-        self.t = self.experimental_data.markers_time_vector[self.frame_range]
         self.markers = markers[:, :, index_to_keep]
         self.marker_residuals = residuals
 
