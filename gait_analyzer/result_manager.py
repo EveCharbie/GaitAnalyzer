@@ -1,3 +1,5 @@
+import numpy as np
+
 from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
@@ -63,7 +65,8 @@ class ResultManager:
         skip_if_existing: bool,
         functional_trials_path: str = None,
         mvc_trials_path: str = None,
-        q_regularization_weight: float = 0.01,
+        q_regularization_weight: float | np.ndarray = 0.01,
+        qdot_regularization_weight: float | np.ndarray = 0.0,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
@@ -84,6 +87,7 @@ class ResultManager:
             models_result_folder=f"{self.result_folder}/models",
             osim_model_type=osim_model_type,
             q_regularization_weight=q_regularization_weight,
+            qdot_regularization_weight=qdot_regularization_weight,
             skip_if_existing=skip_if_existing,
             animate_model_flag=animate_model_flag,
             vtp_geometry_path=vtp_geometry_path,
@@ -153,6 +157,8 @@ class ResultManager:
         skip_if_existing: bool = False,
         animate_kinematics_flag: bool = False,
         plot_kinematics_flag: bool = False,
+        q_regularization_weight: float | np.ndarray = None,
+        qdot_regularization_weight: float | np.ndarray = None,
     ):
         # Checks
         if self.model_creator is None:
@@ -176,6 +182,8 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
             animate_kinematics_flag=animate_kinematics_flag,
             plot_kinematics_flag=plot_kinematics_flag,
+            q_regularization_weight=q_regularization_weight,
+            qdot_regularization_weight=qdot_regularization_weight,
         )
 
     def perform_inverse_dynamics(
