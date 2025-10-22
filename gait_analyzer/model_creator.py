@@ -410,6 +410,7 @@ class ModelCreator:
         models_result_folder: str,
         osim_model_type,
         q_regularization_weight: float,
+        qdot_regularization_weight: float,
         skip_if_existing: bool,
         animate_model_flag: bool,
         vtp_geometry_path: str,
@@ -429,6 +430,8 @@ class ModelCreator:
             The type of model to create.
         q_regularization_weight: float
             The weight to use for the regularization term on the joint angles during the inverse kinematic step of the scaling procedure.
+        qdot_regularization_weight: float
+            The weight to use for the regularization term on the joint velocities during the inverse kinematic step of the scaling procedure.
         skip_if_existing: bool
             If the model already exists, skip the creation.
         animate_model_flag: bool
@@ -451,6 +454,8 @@ class ModelCreator:
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(q_regularization_weight, (float, int)):
             raise ValueError("q_regularization_weight must be a float.")
+        if not isinstance(qdot_regularization_weight, (float, int)):
+            raise ValueError("qdot_regularization_weight must be a float.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")
         if not isinstance(animate_model_flag, bool):
@@ -466,6 +471,7 @@ class ModelCreator:
         self.mvc_trials_path = mvc_trials_path
         self.models_result_folder = models_result_folder
         self.q_regularization_weight = q_regularization_weight
+        self.qdot_regularization_weight = qdot_regularization_weight
 
         # Extended attributes
         self.trc_file_path = None
@@ -561,6 +567,7 @@ class ModelCreator:
             static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
             q_regularization_weight=self.q_regularization_weight,
+            qdot_regularization_weight=self.qdot_regularization_weight,
             make_static_pose_the_models_zero=True,
             visualize_optimal_static_pose=True,
             method="lm",
