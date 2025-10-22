@@ -406,8 +406,8 @@ class ModelCreator:
         mvc_trials_path: str,
         models_result_folder: str,
         osim_model_type,
-        q_regularization_weight: float,
-        qdot_regularization_weight: float,
+        q_regularization_weight: float | np.ndarray,
+        qdot_regularization_weight: float | np.ndarray,
         skip_if_existing: bool,
         animate_model_flag: bool,
         vtp_geometry_path: str,
@@ -425,9 +425,9 @@ class ModelCreator:
             The folder where the models will be saved.
         osim_model_type: OsimModels
             The type of model to create.
-        q_regularization_weight: float
+        q_regularization_weight: float | np.ndarray
             The weight to use for the regularization term on the joint angles during the inverse kinematic step of the scaling procedure.
-        qdot_regularization_weight: float
+        qdot_regularization_weight: float | np.ndarray
             The weight to use for the regularization term on the joint velocities during the inverse kinematic step of the scaling procedure.
         skip_if_existing: bool
             If the model already exists, skip the creation.
@@ -449,9 +449,9 @@ class ModelCreator:
             raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
-        if not isinstance(q_regularization_weight, (float, int)):
+        if not isinstance(q_regularization_weight, (float, int, np.ndarray)):
             raise ValueError("q_regularization_weight must be a float.")
-        if not isinstance(qdot_regularization_weight, (float, int)):
+        if not isinstance(qdot_regularization_weight, (float, int, np.ndarray)):
             raise ValueError("qdot_regularization_weight must be a float.")
         if not isinstance(skip_if_existing, bool):
             raise ValueError("skip_if_existing must be a boolean.")

@@ -65,8 +65,8 @@ class ResultManager:
         skip_if_existing: bool,
         functional_trials_path: str = None,
         mvc_trials_path: str = None,
-        q_regularization_weight: float = 0.01,
-        qdot_regularization_weight: float = 0.0,
+        q_regularization_weight: float | np.ndarray = 0.01,
+        qdot_regularization_weight: float | np.ndarray = 0.0,
         animate_model_flag: bool = False,
         vtp_geometry_path: str = "../../Geometry_cleaned",
     ):
