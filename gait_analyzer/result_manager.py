@@ -1,3 +1,5 @@
+import numpy as np
+
 from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
