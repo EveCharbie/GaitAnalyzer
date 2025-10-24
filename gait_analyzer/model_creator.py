@@ -554,7 +554,7 @@ class ModelCreator:
             marker_pairs={
                 Translations.X: [["STR", "T10"], ["SUP", "C7"]],
                 Translations.Y: [["RASIS", "RA"], ["LASIS", "LA"], ["RPSIS", "RA"], ["LPSIS", "LA"]],
-                Translations.Z: [["LA", "RA"]],
+                Translations.Z: [["LA", "RA"],["LASIS", "RA"], ["RASIS", "LA"], ["LASIS", "RASIS"]],
             },
         )
         self.model = scale_tool.scale(
@@ -596,17 +596,17 @@ class ModelCreator:
                 raise RuntimeError(f"The functional trial for {trial_name} was not found in the directory {abs_path}.")
 
         # # Hip Right
-        # joint_center_tool.add(
-        #     Score(
-        #         functional_c3d=C3dData(trials_list["right_hip"]),
-        #         parent_name="pelvis",
-        #         child_name="femur_r",
-        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-        #         child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        joint_center_tool.add(
+            Score(
+                functional_c3d=C3dData(trials_list["right_hip"]),
+                parent_name="pelvis",
+                child_name="femur_r",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Knee right
         joint_center_tool.add(
             Sara(
@@ -635,17 +635,17 @@ class ModelCreator:
             )
         )
         # # Hip Left
-        # joint_center_tool.add(
-        #     Score(
-        #         functional_c3d=C3dData(trials_list["left_hip"]),
-        #         parent_name="pelvis",
-        #         child_name="femur_l",
-        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-        #         child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        joint_center_tool.add(
+            Score(
+                functional_c3d=C3dData(trials_list["left_hip"]),
+                parent_name="pelvis",
+                child_name="femur_l",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Knee Left
         joint_center_tool.add(
             Sara(
@@ -720,9 +720,10 @@ class ModelCreator:
                         emg = Analogs.from_c3d(
                             os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
                         )
+                        emg = emg.interpolate_na(dim="time", method="linear")
                         emg_processed = (
-                            emg.meca.interpolate_missing_data()
-                            .meca.band_pass(order=2, cutoff=[10, 425])
+                            # emg.meca.interpolate_missing_data()
+                            emg.meca.band_pass(order=2, cutoff=[10, 425])
                             .meca.center()
                             .meca.abs()
                             .meca.low_pass(order=4, cutoff=5, freq=emg.rate)

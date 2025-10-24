@@ -361,7 +361,8 @@ class KinematicsReconstructor:
                 # TODO: Charbie -> Make this modulable
                 q_regularization_weight = np.zeros((self.biorbd_model.nbQ(),))
                 q_regularization_weight[3:6] = 1.0
-                q_regularization_weight[20:23] = 1.0
+                q_regularization_weight[7:20] = 0.6
+                q_regularization_weight[20:23] = 2.0
                 q_recons, residuals = biobuddy_model.inverse_kinematics(
                     marker_positions=markers,
                     marker_names=biobuddy_model.marker_names,

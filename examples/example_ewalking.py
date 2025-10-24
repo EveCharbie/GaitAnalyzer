@@ -32,18 +32,27 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
+    # # This step is to show the markers and eventually change their labeling manually
+    # marker_handler = MarkerLabelingHandler("path_to_the_c3d_you_want_to_check.c3d")
+    # marker_handler.show_marker_labeling_plot()
+    # marker_handler.invert_marker_labeling([name_of_the_marker, name_of_another_marker], frame_start=0, frame_end=100)
+    # marker_handler.save_c3d(output_c3d_path)
+    # # The hip SCoREs did not seem to help improve the models, so they were not use din this example.
 
-    # The hip SCoREs did not seem to help improve the models, so they were not use din this example.
+    # marker_handler = MarkerLabelingHandler("/Users/floethv/Desktop/Doctorat/Fork/GaitAnalyzer/data/LAO01/LAO01_static.c3d")
+    # marker_handler.show_marker_labeling_plot()
+
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
-        mvc_trials_path=f"..\\data\\{subject.subject_name}\\mvc_trials\\",
+        mvc_trials_path=f"../data/{subject.subject_name}/mvc_trials/",
         # functional_trials_path=None,  # If you want to skip the functional trials for this example
-        functional_trials_path=f"..\\data\\{subject.subject_name}\\functional_trials\\",
-        skip_if_existing=True,
-        animate_model_flag=False,
+        q_regularization_weight = 1,
+        functional_trials_path=f"../data/{subject.subject_name}/functional_trials/",
+        skip_if_existing=False,
+        animate_model_flag=True,
     )
 
-    markers_to_ignore = []
+    markers_to_ignore = ['U1', 'U2', 'U3', 'U4']
     analogs_to_ignore = [
         "Channel_01",
         "Channel_02",
@@ -82,14 +91,13 @@ def analysis_to_perform(
     return results
 
 
-
 def main():
-    # Récupérer infos sujet
+    # Récupérer infos sujets
     subjects_to_analyze = []
     subjects_to_analyze.append(
         Subject(
-            subject_name="CAC_01",
-            subject_height=1.66,
+            subject_name="LAO01",
+            subject_height=1.65,
         )
     )
 
@@ -99,36 +107,36 @@ def main():
         subjects_to_analyze=subjects_to_analyze,
         cycles_to_analyze=None,
         result_folder="results",
-        trails_to_analyze=["_Marche050", "_Marche075", "_Marche100"],
-        skip_if_existing=True,
+        trails_to_analyze=["_Cond0001"],
+        skip_if_existing=False,
     )
 
-    # --- Example of how to create a OrganizedResult object --- #
-    organized_result = OrganizedResult(
-        result_folder="results",
-        conditions_to_compare=["_Marche050", "_Marche075", "_Marche100"],
-        plot_type=PlotType.ANGULAR_MOMENTUM,
-        nb_frames_interp=101,
-    )
-    organized_result.save("results\\AngMom_organized.pkl")
+    # # --- Example of how to create a OrganizedResult object --- #
+    # organized_result = OrganizedResult(
+    #     result_folder="results",
+    #     conditions_to_compare=["_Cond0001"],
+    #     # plot_type=PlotType.ANGULAR_MOMENTUM,
+    #     nb_frames_interp=101,
+    # )
+    # organized_result.save("results/AngMom_organized.pkl")
 
-    # --- Example of how to plot the angular momentum --- #
-    plot = PlotBiomechanicsQuantity(
-        organized_result=organized_result,
-    )
-    plot.draw_plot()
-    plot.save("results\\AngMom_temporary.svg")
-    plot.show()
-
-    # --- Example of how compare peak-to-peak angular momentum with a paired t-test --- #
-    stats_results = StatsPerformer(
-        organized_result=organized_result,
-        stats_type=StatsType.PAIRED_T_TEST(QuantityToExtractType.PEAK_TO_PEAK),
-    )
-    stats_results.perform_stats()
-    stats_results.plot_stats(
-        save_plot_name="results\\AngMom_paired_t_test.svg", order=["_Marche050", "_Marche075", "_Marche100"]
-    )
+    # # --- Example of how to plot the angular momentum --- #
+    # plot = PlotBiomechanicsQuantity(
+    #     organized_result=organized_result,
+    # )
+    # plot.draw_plot()
+    # plot.save("results/AngMom_temporary.svg")
+    # plot.show()
+    #
+    # # --- Example of how compare peak-to-peak angular momentum with a paired t-test --- #
+    # stats_results = StatsPerformer(
+    #     organized_result=organized_result,
+    #     stats_type=StatsType.PAIRED_T_TEST(QuantityToExtractType.PEAK_TO_PEAK),
+    # )
+    # stats_results.perform_stats()
+    # stats_results.plot_stats(
+    #     save_plot_name="results/AngMom_paired_t_test.svg", order=["_Marche050", "_Marche075", "_Marche100"]
+    # )
 
 
 if __name__ == "__main__":

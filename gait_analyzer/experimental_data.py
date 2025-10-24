@@ -159,9 +159,10 @@ class ExperimentalData:
 
             # Process the EMG signals
             emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
+            emg = emg.interpolate_na(dim="time", method="linear")
             emg_processed = (
-                emg.meca.interpolate_missing_data()
-                .meca.band_pass(order=2, cutoff=[10, 425])
+                # emg.meca.interpolate_missing_data()
+                emg.meca.band_pass(order=2, cutoff=[10, 425])
                 .meca.center()
                 .meca.abs()
                 .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
@@ -238,6 +239,18 @@ class ExperimentalData:
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
 
                 r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
+                # cop_filtered[i_platform, 0, :] = (
+                #     (moment_filtered[i_platform, 1, :])
+                #     / force_filtered[i_platform, 2, :]
+                # )
+                # cop_filtered[i_platform, 1, :] = (
+                #     -moment_filtered[i_platform, 0, :]
+                # ) / force_filtered[i_platform, 2, :]
+                # cop_filtered[i_platform, 2, :] = r_z
+                # # The CoP must be expressed relatively to the center of the platforms
+                # cop_filtered[i_platform, :, :] += np.tile(
+                #     np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)
+                # ).T
                 cop_filtered[i_platform, 0, :] = (
                     -(moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z)
                     / force_filtered[i_platform, 2, :]
@@ -258,15 +271,15 @@ class ExperimentalData:
                 f_ext_sorted_filtered[i_platform, 3:6, :] = tz_filtered[i_platform, :, :]
                 f_ext_sorted[i_platform, 6:9, :] = force[:, :]
                 f_ext_sorted_filtered[i_platform, 6:9, :] = force_filtered[i_platform, :, :]
-
+                # 1e4 # 1e-3
                 # Check if the ddata is computed the same way in ezc3d and in this code
                 is_good_trial = True
                 for i_component in range(3):
-                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 1e4)
+                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 2)
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
-                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 1e-3:
+                if np.nanmean(cop_ezc3d[:2, :] - cop_filtered[i_platform, :2, :]) > 2:
                     is_good_trial = False
 
                 if not is_good_trial:
