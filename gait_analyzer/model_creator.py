@@ -562,7 +562,7 @@ class ModelCreator:
             },
         )
         self.model = scale_tool.scale(
-            static_c3d=C3dData(self.static_trial, first_frame=100, last_frame=200),
+            static_trial=C3dData(self.static_trial, first_frame=100, last_frame=200),
             mass=self.subject.subject_mass,
             q_regularization_weight=self.q_regularization_weight,
             qdot_regularization_weight=self.qdot_regularization_weight,
@@ -615,7 +615,7 @@ class ModelCreator:
         # Knee right
         joint_center_tool.add(
             Sara(
-                functional_c3d=C3dData(trials_list["right_knee"]),
+                functional_trial=C3dData(trials_list["right_knee"]),
                 parent_name="femur_r",
                 child_name="tibia_r",
                 parent_marker_names=["RGT"] + self.osim_model_type.markers_to_add["femur_r"],
@@ -630,7 +630,7 @@ class ModelCreator:
         # Ankle right
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["right_ankle"]),
+                functional_trial=C3dData(trials_list["right_ankle"]),
                 parent_name="tibia_r",
                 child_name="calcn_r",
                 parent_marker_names=["RATT", "RLM", "RSPH"] + self.osim_model_type.markers_to_add["tibia_r"],
@@ -642,7 +642,7 @@ class ModelCreator:
         # # Hip Left
         # joint_center_tool.add(
         #     Score(
-        #         functional_c3d=C3dData(trials_list["left_hip"]),
+        #         functional_trial=C3dData(trials_list["left_hip"]),
         #         parent_name="pelvis",
         #         child_name="femur_l",
         #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
@@ -654,7 +654,7 @@ class ModelCreator:
         # Knee Left
         joint_center_tool.add(
             Sara(
-                functional_c3d=C3dData(trials_list["left_knee"]),
+                functional_trial=C3dData(trials_list["left_knee"]),
                 parent_name="femur_l",
                 child_name="tibia_l",
                 parent_marker_names=["LGT"] + self.osim_model_type.markers_to_add["femur_l"],
@@ -669,7 +669,7 @@ class ModelCreator:
         # Ankle Left
         joint_center_tool.add(
             Score(
-                functional_c3d=C3dData(trials_list["left_ankle"]),
+                functional_trial=C3dData(trials_list["left_ankle"]),
                 parent_name="tibia_l",
                 child_name="calcn_l",
                 parent_marker_names=["LATT", "LLM", "LSPH"] + self.osim_model_type.markers_to_add["tibia_l"],
@@ -700,7 +700,7 @@ class ModelCreator:
         except:
             raise RuntimeError("To animate the model, you must install Pyorerun.")
 
-        animation = LiveModelAnimation(self.biorbd_model_full_path, with_q_charts=True)
+        animation = LiveModelAnimation.from_file(self.biorbd_model_full_path, with_q_charts=True)
         animation.rerun()
 
     def get_mvc_values(self, plot_emg_flag: bool = False):
