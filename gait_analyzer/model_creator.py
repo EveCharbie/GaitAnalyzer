@@ -23,6 +23,7 @@ from biobuddy import (
     MarkerWeight,
     AxisWiseScaling,
     RotoTransMatrix,
+    Axis,
 )
 from gait_analyzer.subject import Subject
 
@@ -623,6 +624,7 @@ class ModelCreator:
                 joint_center_markers=["RLFE", "RMFE"],
                 distal_markers=["RLM", "RSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
+                expected_rotation_axis_orientation=Axis("right_knee_sara", "RMFE", "RLFE"),
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
@@ -662,6 +664,7 @@ class ModelCreator:
                 joint_center_markers=["LLFE", "LMFE"],
                 distal_markers=["LLM", "LSPH"],
                 is_longitudinal_axis_from_jcs_to_distal_markers=False,
+                expected_rotation_axis_orientation=Axis("left_knee_sara", "LLFE", "LMFE"),
                 initialize_whole_trial_reconstruction=False,
                 animate_rt=animate_reconstruction,
             )
