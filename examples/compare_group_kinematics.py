@@ -64,7 +64,11 @@ def analysis_to_perform(
         analogs_to_ignore=analogs_to_ignore,
     )
 
-    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(
+        force_plate_sides=[Side.RIGHT, Side.LEFT],
+        skip_if_existing=True,
+        plot_phases_flag=False,
+    )
 
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.ONLY_LM],
@@ -83,10 +87,20 @@ if __name__ == "__main__":
     # --- Create the list of participants --- #
     subjects_to_analyze = []
     subjects_to_analyze.append(
-        Subject(subject_name="PRE", subject_mass=72.0, dominant_leg=Side.RIGHT, preferential_speed=1.5)
+        Subject(
+            subject_name="PRE",
+            subject_mass=72.0,
+            dominant_leg=Side.RIGHT,
+            preferential_speed=1.5,
+        )
     )
     subjects_to_analyze.append(
-        Subject(subject_name="POST", subject_mass=72.0, dominant_leg=Side.RIGHT, preferential_speed=1.5)
+        Subject(
+            subject_name="POST",
+            subject_mass=72.0,
+            dominant_leg=Side.RIGHT,
+            preferential_speed=1.5,
+        )
     )
 
     # --- Run the analysis --- #

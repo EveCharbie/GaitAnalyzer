@@ -67,11 +67,17 @@ def analysis_to_perform(
         "TFL_L",
     ]
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore
+        c3d_file_name=c3d_file_name,
+        markers_to_ignore=markers_to_ignore,
+        analogs_to_ignore=analogs_to_ignore,
     )
 
     # --- Detection of cyclic events ---
-    results.add_cyclic_events(force_plate_sides=[Side.LEFT, Side.RIGHT], skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(
+        force_plate_sides=[Side.LEFT, Side.RIGHT],
+        skip_if_existing=True,
+        plot_phases_flag=False,
+    )
 
     # --- Reconstruction of the kinematics ---
     results.reconstruct_kinematics(

@@ -46,7 +46,11 @@ class OrganizedResult:
         if unique_event_to_split is not None:
             if not isinstance(unique_event_to_split, dict):
                 raise ValueError("unique_event_to_split must be a list or None")
-            if list(unique_event_to_split.keys()) != ["event_index_type", "start", "stop"]:
+            if list(unique_event_to_split.keys()) != [
+                "event_index_type",
+                "start",
+                "stop",
+            ]:
                 raise ValueError(
                     "unique_event_to_split must be a dict with keys event_index_type (weather to express the index in marker indices of analog indices), start a callable giving the first frame of the cycle, and stop a callable giving the last frame of the cycle."
                 )
@@ -173,7 +177,10 @@ class OrganizedResult:
                     )
                     data_to_split = self.get_data_to_split(data)
                     this_cycles_data = split_cycles(
-                        data_to_split, event_index, plot_type=self.plot_type, subject_mass=subject_mass
+                        data_to_split,
+                        event_index,
+                        plot_type=self.plot_type,
+                        subject_mass=subject_mass,
                     )
         return this_cycles_data, condition_name, subject_name
 
@@ -192,7 +199,8 @@ class OrganizedResult:
                     partial_output_file_name = file_in_sub_folder.replace(f"{self.result_folder}/{result_file}/", "")
                     if file_in_sub_folder.endswith("results.pkl"):
                         this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
-                            current_file=file_in_sub_folder, partial_output_file_name=partial_output_file_name
+                            current_file=file_in_sub_folder,
+                            partial_output_file_name=partial_output_file_name,
                         )
                         if self.groups_to_compare is not None:
                             for group in self.groups_to_compare:
@@ -205,15 +213,22 @@ class OrganizedResult:
                                     )
                         else:
                             self.results.add(
-                                data=this_cycles_data, subject_name=subject_name, condition_name=condition_name
+                                data=this_cycles_data,
+                                subject_name=subject_name,
+                                condition_name=condition_name,
                             )
 
             else:
                 if result_file.endswith("results.pkl"):
                     this_cycles_data, condition_name, subject_name = self.get_splitted_cycles(
-                        current_file=result_file, partial_output_file_name=result_file
+                        current_file=result_file,
+                        partial_output_file_name=result_file,
                     )
-                    self.results.add(data=this_cycles_data, subject_name=subject_name, condition_name=condition_name)
+                    self.results.add(
+                        data=this_cycles_data,
+                        subject_name=subject_name,
+                        condition_name=condition_name,
+                    )
 
     def save(self, file_path: str):
         """
@@ -242,7 +257,13 @@ class ResultObject:
         self.mean_data_per_subject = None
         self.mean_data_per_group = None
 
-    def add(self, data: list[np.ndarray], subject_name: str, condition_name: str, group_name: str | None = None):
+    def add(
+        self,
+        data: list[np.ndarray],
+        subject_name: str,
+        condition_name: str,
+        group_name: str | None = None,
+    ):
         """
         Add a result to the ResultObject.
         .
@@ -312,7 +333,10 @@ class ResultObject:
                         group_data = subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis]
                     else:
                         group_data = np.concatenate(
-                            (group_data, subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis]),
+                            (
+                                group_data,
+                                subject_mean[group_name][condition_name][subject_name][:, :, np.newaxis],
+                            ),
                             axis=2,
                         )
                 if group_data is not None:

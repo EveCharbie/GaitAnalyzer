@@ -110,7 +110,12 @@ segment_dict = {
         "min_bound": [-1.5708, -0.43633231],
         "max_bound": [1.5708, 0.61086523999999998],
     },
-    "fingers_r": {"dof_idx": [33], "markers_idx": [40], "min_bound": [-1.5708], "max_bound": [1.5708]},
+    "fingers_r": {
+        "dof_idx": [33],
+        "markers_idx": [40],
+        "min_bound": [-1.5708],
+        "max_bound": [1.5708],
+    },
     "humerus_l": {
         "dof_idx": [34, 35, 36],
         "markers_idx": [41, 42, 66],
@@ -129,7 +134,12 @@ segment_dict = {
         "min_bound": [-1.5708, -0.43633231],
         "max_bound": [1.5708, 0.61086523999999998],
     },
-    "fingers_l": {"dof_idx": [41], "markers_idx": [47, 48], "min_bound": [-1.5708], "max_bound": [1.5708]},
+    "fingers_l": {
+        "dof_idx": [41],
+        "markers_idx": [47, 48],
+        "min_bound": [-1.5708],
+        "max_bound": [1.5708],
+    },
 }
 
 
@@ -355,7 +365,11 @@ class KinematicsReconstructor:
         residuals = None
         for recons_method in self.reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
-            if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
+            if recons_method in [
+                ReconstructionType.ONLY_LM,
+                ReconstructionType.LM,
+                ReconstructionType.TRF,
+            ]:
                 ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
                 self.q = q_recons
@@ -473,7 +487,10 @@ class KinematicsReconstructor:
                 qddot[i_data, -1] = (qdot[i_data, -1] - qdot[i_data, -2]) / (self.t[-1] - self.t[-2])
             for i_data in range(qdot.shape[0]):
                 qdot[i_data, :] = Operator.apply_filtfilt(
-                    qdot[i_data : i_data + 1, :], order=4, sampling_rate=sampling_rate, cutoff_freq=6
+                    qdot[i_data : i_data + 1, :],
+                    order=4,
+                    sampling_rate=sampling_rate,
+                    cutoff_freq=6,
                 )
             return q_filtered, qdot, qddot
 
@@ -488,7 +505,9 @@ class KinematicsReconstructor:
             for i_dof in range(self.q.shape[0]):
                 if i_dof < 3:
                     plt.plot(
-                        self.t, self.q_filtered[i_dof, :], label=f"{self.biorbd_model.nameDof()[i_dof].to_string()} [m]"
+                        self.t,
+                        self.q_filtered[i_dof, :],
+                        label=f"{self.biorbd_model.nameDof()[i_dof].to_string()} [m]",
                     )
                 else:
                     plt.plot(
@@ -590,7 +609,12 @@ class KinematicsReconstructor:
             force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, analog_idx].T,
         )
 
-        viz.add_animated_model(model, q_animation, tracked_markers=markers, muscle_activations_intensity=emg)
+        viz.add_animated_model(
+            model,
+            q_animation,
+            tracked_markers=markers,
+            muscle_activations_intensity=emg,
+        )
         viz.rerun("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):

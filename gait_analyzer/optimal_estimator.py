@@ -410,17 +410,23 @@ class OptimalEstimator:
                 "right_leg": self.f_ext_r_cycles[i_cycle],
             }
 
-            (q_opt, qdot_opt, tau_opt, muscles_opt, f_ext_value_opt, f_ext_position_opt, status) = (
-                self._solve_single_cycle(
-                    q_exp=self.q_cycles[i_cycle],
-                    qdot_exp=self.qdot_cycles[i_cycle],
-                    tau_exp=self.tau_cycles[i_cycle],
-                    emg_exp=self.emg_cycles[i_cycle],
-                    markers_exp=self.markers_cycles[i_cycle],
-                    f_ext_exp=f_ext_exp,
-                    phase_time=self.phase_time_cycles[i_cycle],
-                    with_residual_forces=with_residual_forces,
-                )
+            (
+                q_opt,
+                qdot_opt,
+                tau_opt,
+                muscles_opt,
+                f_ext_value_opt,
+                f_ext_position_opt,
+                status,
+            ) = self._solve_single_cycle(
+                q_exp=self.q_cycles[i_cycle],
+                qdot_exp=self.qdot_cycles[i_cycle],
+                tau_exp=self.tau_cycles[i_cycle],
+                emg_exp=self.emg_cycles[i_cycle],
+                markers_exp=self.markers_cycles[i_cycle],
+                f_ext_exp=f_ext_exp,
+                phase_time=self.phase_time_cycles[i_cycle],
+                with_residual_forces=with_residual_forces,
             )
 
             self.q_opt_cycles[i_cycle] = q_opt
@@ -478,7 +484,12 @@ class OptimalEstimator:
             raise RuntimeError("To reconstruct optimally, you must install Bioptim")
 
         class CustomMuscleModelNoContacts(MusclesBiorbdModel):
-            def __init__(self_, biorbd_model_path, external_force_set=None, with_residual_torque=True):
+            def __init__(
+                self_,
+                biorbd_model_path,
+                external_force_set=None,
+                with_residual_torque=True,
+            ):
                 super().__init__(
                     biorbd_model_path,
                     external_force_set=external_force_set,
@@ -487,11 +498,25 @@ class OptimalEstimator:
                 if with_residual_forces:
                     self_.control_configuration += [
                         lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
-                            ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=2
+                            ocp,
+                            nlp,
+                            as_states=False,
+                            as_controls=True,
+                            as_algebraic_states=False,
+                            n_contacts=2,
                         )
                     ]
 
-            def dynamics(self_, time, states, controls, parameters, algebraic_states, numerical_timeseries, nlp):
+            def dynamics(
+                self_,
+                time,
+                states,
+                controls,
+                parameters,
+                algebraic_states,
+                numerical_timeseries,
+                nlp,
+            ):
                 q = DynamicsFunctions.get(nlp.states["q"], states)
                 qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
 
@@ -504,7 +529,11 @@ class OptimalEstimator:
                     f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
                 external_forces = nlp.get_external_forces(
-                    "external_forces", states, controls, algebraic_states, numerical_timeseries
+                    "external_forces",
+                    states,
+                    controls,
+                    algebraic_states,
+                    numerical_timeseries,
                 )
                 if with_residual_forces:
                     external_forces[:3] += f_ext_residual_position[:3]
@@ -554,7 +583,10 @@ class OptimalEstimator:
         objective_functions = ObjectiveList()
         objective_functions.add(objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=0.001)
         objective_functions.add(
-            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=0.1, index=[0, 1, 2, 3, 4, 5]
+            objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
+            key="tau",
+            weight=0.1,
+            index=[0, 1, 2, 3, 4, 5],
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL,
@@ -563,20 +595,40 @@ class OptimalEstimator:
             target=emg_exp[:, :-1],
         )
         objective_functions.add(
-            objective=ObjectiveFcn.Lagrange.TRACK_MARKERS, weight=100.0, node=Node.ALL, target=markers_exp
+            objective=ObjectiveFcn.Lagrange.TRACK_MARKERS,
+            weight=100.0,
+            node=Node.ALL,
+            target=markers_exp,
         )
         objective_functions.add(
             objective=ObjectiveFcn.Lagrange.TRACK_MARKERS,
             weight=1000.0,
             node=Node.ALL,
-            marker_index=["RCAL", "RMFH1", "RMFH5", "R_foot_up", "LCAL", "LMFH1", "LMFH5", "L_foot_up"],
+            marker_index=[
+                "RCAL",
+                "RMFH1",
+                "RMFH5",
+                "R_foot_up",
+                "LCAL",
+                "LMFH1",
+                "LMFH5",
+                "L_foot_up",
+            ],
             target=markers_exp[:, np.hstack((r_foot_marker_index, l_foot_marker_index)), :],
         )
         objective_functions.add(
-            objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="q", weight=1.0, node=Node.ALL, target=q_exp
+            objective=ObjectiveFcn.Lagrange.TRACK_STATE,
+            key="q",
+            weight=1.0,
+            node=Node.ALL,
+            target=q_exp,
         )
         objective_functions.add(
-            objective=ObjectiveFcn.Lagrange.TRACK_STATE, key="qdot", node=Node.ALL, weight=0.01, target=qdot_exp
+            objective=ObjectiveFcn.Lagrange.TRACK_STATE,
+            key="qdot",
+            node=Node.ALL,
+            weight=0.01,
+            target=qdot_exp,
         )
         if with_residual_forces:
             objective_functions.add(
@@ -605,7 +657,12 @@ class OptimalEstimator:
         min_q[:6, :] = q_exp[:6, :] - 0.05
         max_q = q_exp[:, :] + 0.3
         max_q[:6, :] = q_exp[:6, :] + 0.05
-        x_bounds.add("q", min_bound=min_q, max_bound=max_q, interpolation=InterpolationType.EACH_FRAME)
+        x_bounds.add(
+            "q",
+            min_bound=min_q,
+            max_bound=max_q,
+            interpolation=InterpolationType.EACH_FRAME,
+        )
         x_bounds.add(
             "qdot",
             min_bound=qdot_exp - 10,
@@ -618,7 +675,12 @@ class OptimalEstimator:
         x_init.add("qdot", initial_guess=qdot_exp, interpolation=InterpolationType.EACH_FRAME)
 
         u_bounds = BoundsList()
-        u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
+        u_bounds.add(
+            "tau",
+            min_bound=[-800] * nb_q,
+            max_bound=[800] * nb_q,
+            interpolation=InterpolationType.CONSTANT,
+        )
         u_bounds.add(
             "muscles",
             min_bound=[0.0001] * nb_muscles,
@@ -627,7 +689,10 @@ class OptimalEstimator:
         )
         if with_residual_forces:
             u_bounds.add(
-                "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
+                "contact_forces",
+                min_bound=[-100] * 6,
+                max_bound=[100] * 6,
+                interpolation=InterpolationType.CONSTANT,
             )
             u_bounds.add(
                 "contact_positions",
@@ -637,10 +702,22 @@ class OptimalEstimator:
             )
 
         u_init = InitialGuessList()
-        u_init.add("tau", initial_guess=tau_exp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
-        u_init.add("muscles", initial_guess=emg_exp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add(
+            "tau",
+            initial_guess=tau_exp[:, :-1],
+            interpolation=InterpolationType.EACH_FRAME,
+        )
+        u_init.add(
+            "muscles",
+            initial_guess=emg_exp[:, :-1],
+            interpolation=InterpolationType.EACH_FRAME,
+        )
         if with_residual_forces:
-            u_init.add("contact_forces", initial_guess=[0] * 6, interpolation=InterpolationType.CONSTANT)
+            u_init.add(
+                "contact_forces",
+                initial_guess=[0] * 6,
+                interpolation=InterpolationType.CONSTANT,
+            )
             u_init.add(
                 "contact_positions",
                 initial_guess=np.vstack((f_ext_exp["left_leg"][0:3, :-1], f_ext_exp["right_leg"][0:3, :-1])),
@@ -683,7 +760,15 @@ class OptimalEstimator:
             f_ext_position_opt = np.zeros((6, self.n_shooting))
 
         status = "CVG" if solution.status == 0 else "DVG"
-        return q_opt, qdot_opt, tau_opt, muscles_opt, f_ext_value_opt, f_ext_position_opt, status
+        return (
+            q_opt,
+            qdot_opt,
+            tau_opt,
+            muscles_opt,
+            f_ext_value_opt,
+            f_ext_position_opt,
+            status,
+        )
 
     # ------------------------------------------------------------------ #
     # Muscle force extraction and averaging                                #
@@ -731,7 +816,11 @@ class OptimalEstimator:
         model_viz.options.show_gravity = True
 
         viz = PhaseRerun(np.linspace(0, mean_phase_time, self.n_shooting + 1))
-        markers = PyoMarkers(data=mean_markers, marker_names=list(model_viz.marker_names), show_labels=False)
+        markers = PyoMarkers(
+            data=mean_markers,
+            marker_names=list(model_viz.marker_names),
+            show_labels=False,
+        )
         nb_muscles = len(model_viz.muscle_names)
         emgs = PyoMuscles(
             data=np.hstack((self.muscles_opt, np.zeros((nb_muscles, 1)))),
@@ -743,7 +832,12 @@ class OptimalEstimator:
         viz.add_force_plate(num=2, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(num=1, force_origin=mean_f_ext_l[:3, :], force_vector=mean_f_ext_l[6:9, :])
         viz.add_force_data(num=2, force_origin=mean_f_ext_r[:3, :], force_vector=mean_f_ext_r[6:9, :])
-        viz.add_animated_model(model_viz, self.q_opt, tracked_markers=markers, muscle_activations_intensity=emgs)
+        viz.add_animated_model(
+            model_viz,
+            self.q_opt,
+            tracked_markers=markers,
+            muscle_activations_intensity=emgs,
+        )
         viz.rerun("OCP averaged solution")
 
     # ------------------------------------------------------------------ #

@@ -4,7 +4,9 @@ import pickle
 
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.subject import Subject
-from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import (
+    AngularMomentumCalculator,
+)
 
 
 class ComMmaDistanceCalculator:

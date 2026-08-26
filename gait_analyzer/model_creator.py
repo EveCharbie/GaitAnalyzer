@@ -248,7 +248,11 @@ class OsimModels:
                     [-35 * np.pi / 180, 35 * np.pi / 180],
                     [-45 * np.pi / 180, 45 * np.pi / 180],
                 ],
-                "head_neck_rotation_transform": [[-50 * np.pi / 180, 45 * np.pi / 180], [-0.6, 0.6], [-1.2217, 1.2217]],
+                "head_neck_rotation_transform": [
+                    [-50 * np.pi / 180, 45 * np.pi / 180],
+                    [-0.6, 0.6],
+                    [-1.2217, 1.2217],
+                ],
                 "humerus_r_rotation_transform": [
                     [-np.pi / 2, np.pi],
                     [-3.8397, np.pi / 2],
@@ -552,7 +556,9 @@ class ModelCreator:
         # Modify the model's ground orientation
         rt_matrix = RotoTransMatrix()
         rt_matrix.from_euler_angles_and_translation(
-            angle_sequence="xy", angles=np.array([np.pi / 2, np.pi]), translation=np.array([0, 0, 0])
+            angle_sequence="xy",
+            angles=np.array([np.pi / 2, np.pi]),
+            translation=np.array([0, 0, 0]),
         )
         self.model.segments["ground"].segment_coordinate_system.scs = rt_matrix
 
@@ -560,8 +566,18 @@ class ModelCreator:
         scale_tool.scaling_segments["torso"].scaling_type = AxisWiseScaling(
             marker_pairs={
                 Translations.X: [["STR", "T10"], ["SUP", "C7"]],
-                Translations.Y: [["RASIS", "RA"], ["LASIS", "LA"], ["RPSIS", "RA"], ["LPSIS", "LA"]],
-                Translations.Z: [["LA", "RA"], ["LASIS", "RA"], ["RASIS", "LA"], ["LASIS", "RASIS"]],
+                Translations.Y: [
+                    ["RASIS", "RA"],
+                    ["LASIS", "LA"],
+                    ["RPSIS", "RA"],
+                    ["LPSIS", "LA"],
+                ],
+                Translations.Z: [
+                    ["LA", "RA"],
+                    ["LASIS", "RA"],
+                    ["RASIS", "LA"],
+                    ["LASIS", "RASIS"],
+                ],
             },
         )
         self.model = scale_tool.scale(
@@ -731,7 +747,9 @@ class ModelCreator:
                 for name in analog_names:
                     if mvc.endswith(name + ".c3d"):
                         emg = Analogs.from_c3d(
-                            os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
+                            os.path.join(self.mvc_trials_path, mvc),
+                            suffix_delimiter=".",
+                            usecols=[name],
                         )
                         emg = emg.interpolate_na(dim="time", method="linear")
                         emg_processed = (

@@ -1,6 +1,8 @@
 import numpy as np
 
-from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import (
+    AngularMomentumCalculator,
+)
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
@@ -9,10 +11,18 @@ from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.biomechanics_quantities.marginofstability_calculator import MarginofStabilityCalculation
-from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import MechanicalEnergyCalculator
-from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import ComMmaDistanceCalculator
-from gait_analyzer.biomechanics_quantities.probability_of_instability_calculator import ProbabilityOfInstability
+from gait_analyzer.biomechanics_quantities.marginofstability_calculator import (
+    MarginofStabilityCalculation,
+)
+from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import (
+    MechanicalEnergyCalculator,
+)
+from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import (
+    ComMmaDistanceCalculator,
+)
+from gait_analyzer.biomechanics_quantities.probability_of_instability_calculator import (
+    ProbabilityOfInstability,
+)
 
 
 class ResultManager:
@@ -140,7 +150,12 @@ class ResultManager:
             animate_c3d_flag=animate_c3d_flag,
         )
 
-    def add_cyclic_events(self, force_plate_sides: list[Side], skip_if_existing: bool, plot_phases_flag: bool = False):
+    def add_cyclic_events(
+        self,
+        force_plate_sides: list[Side],
+        skip_if_existing: bool,
+        plot_phases_flag: bool = False,
+    ):
 
         # Checks
         if self.model_creator is None:
@@ -210,7 +225,10 @@ class ResultManager:
         )
 
     def perform_inverse_dynamics(
-        self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
+        self,
+        skip_if_existing: bool,
+        reintegrate_flag: bool = True,
+        animate_dynamics_flag: bool = False,
     ):
         # Checks
         if self.model_creator is None:

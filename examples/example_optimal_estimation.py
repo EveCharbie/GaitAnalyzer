@@ -56,10 +56,16 @@ def analysis_to_perform(
         "Bertec_treadmill_speed",
     ]
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore
+        c3d_file_name=c3d_file_name,
+        markers_to_ignore=markers_to_ignore,
+        analogs_to_ignore=analogs_to_ignore,
     )
 
-    results.add_cyclic_events(force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(
+        force_plate_sides=[Side.RIGHT, Side.LEFT],
+        skip_if_existing=True,
+        plot_phases_flag=False,
+    )
 
     results.reconstruct_kinematics(
         reconstruction_type=[ReconstructionType.LSQ, ReconstructionType.ONLY_LM],

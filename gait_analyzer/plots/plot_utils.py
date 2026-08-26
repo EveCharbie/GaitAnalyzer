@@ -179,7 +179,11 @@ def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, su
 
 
 def split_cycle(
-    data: np.ndarray, cycle_start: int, cycle_end: int, plot_type: PlotType, subject_mass: float
+    data: np.ndarray,
+    cycle_start: int,
+    cycle_end: int,
+    plot_type: PlotType,
+    subject_mass: float,
 ) -> list[np.ndarray]:
     """
     This function extract one cycle.

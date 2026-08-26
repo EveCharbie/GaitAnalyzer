@@ -70,11 +70,19 @@ class PlotAbstract:
                     )
                     if i_ax == 0:
                         lines_list += ax.plot(
-                            normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index]
+                            normalized_time,
+                            mean_data[i_ax, :],
+                            label=label,
+                            color=colors[color_index],
                         )
                         labels_list += [label]
                     else:
-                        ax.plot(normalized_time, mean_data[i_ax, :], label=label, color=colors[color_index])
+                        ax.plot(
+                            normalized_time,
+                            mean_data[i_ax, :],
+                            label=label,
+                            color=colors[color_index],
+                        )
                     this_unit_str = unit_str if isinstance(unit_str, str) else unit_str[i_ax]
                     if self.plot_labels is not None:
                         i_label = i_ax % len(self.plot_labels)

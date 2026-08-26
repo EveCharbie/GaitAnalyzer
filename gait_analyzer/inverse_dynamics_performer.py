@@ -110,14 +110,19 @@ class InverseDynamicsPerformer:
         for i_node in range(self.q_filtered.shape[1]):
             f_ext = self.get_f_ext_at_frame(i_node)
             tau[:, i_node] = self.biorbd_model.InverseDynamics(
-                self.q_filtered[:, i_node], self.qdot[:, i_node], self.qddot[:, i_node], f_ext
+                self.q_filtered[:, i_node],
+                self.qdot[:, i_node],
+                self.qddot[:, i_node],
+                f_ext,
             ).to_array()
         self.tau = tau
 
     def get_f_ext_at_frame(self, i_marker_node: int):
         f_ext_set = self.biorbd_model.externalForceSet()
         i_analog_node = Operator.from_marker_frame_to_analog_frame(
-            self.experimental_data.analogs_time_vector, self.experimental_data.markers_time_vector, i_marker_node
+            self.experimental_data.analogs_time_vector,
+            self.experimental_data.markers_time_vector,
+            i_marker_node,
         )
         analog_to_marker_ratio = int(
             round(
@@ -126,7 +131,10 @@ class InverseDynamicsPerformer:
             )
         )
         frame_range = list(
-            range(i_analog_node - (int(analog_to_marker_ratio / 2)), i_analog_node + (int(analog_to_marker_ratio / 2)))
+            range(
+                i_analog_node - (int(analog_to_marker_ratio / 2)),
+                i_analog_node + (int(analog_to_marker_ratio / 2)),
+            )
         )
 
         def safe_nanmean(data):
@@ -175,7 +183,10 @@ class InverseDynamicsPerformer:
         dt = self.experimental_data.markers_dt
         x_reintegrated = np.zeros((2 * self.biorbd_model.nbQ(), nb_frames_to_reintegrate + 1))
         x_reintegrated[:, 0] = np.hstack(
-            (self.q_filtered[:, frames_to_reintegrate.start], self.qdot[:, frames_to_reintegrate.start])
+            (
+                self.q_filtered[:, frames_to_reintegrate.start],
+                self.qdot[:, frames_to_reintegrate.start],
+            )
         )
         for i, i_node in enumerate(frames_to_reintegrate):
             q = x_reintegrated[: self.biorbd_model.nbQ(), i]
@@ -210,7 +221,9 @@ class InverseDynamicsPerformer:
         # Add experimental markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
         markers = PyoMarkers(
-            data=self.kinematics_reconstructor.markers[:, :, :200], channels=marker_names, show_labels=False
+            data=self.kinematics_reconstructor.markers[:, :, :200],
+            channels=marker_names,
+            show_labels=False,
         )
 
         # Add force plates to the animation

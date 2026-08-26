@@ -2,7 +2,9 @@ import numpy as np
 from scipy.stats import norm
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.subject import Subject
-from gait_analyzer.biomechanics_quantities.marginofstability_calculator import MarginofStabilityCalculation
+from gait_analyzer.biomechanics_quantities.marginofstability_calculator import (
+    MarginofStabilityCalculation,
+)
 
 
 class ProbabilityOfInstability:
@@ -80,7 +82,10 @@ class ProbabilityOfInstability:
         hs_foot2 = np.array(hs_foot2)
 
         hs_all = np.concatenate(
-            [np.vstack((hs_foot1, np.ones(len(hs_foot1)))).T, np.vstack((hs_foot2, np.zeros(len(hs_foot2)))).T]
+            [
+                np.vstack((hs_foot1, np.ones(len(hs_foot1)))).T,
+                np.vstack((hs_foot2, np.zeros(len(hs_foot2)))).T,
+            ]
         )
 
         hs_all = hs_all[np.argsort(hs_all[:, 0])]

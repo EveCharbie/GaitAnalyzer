@@ -78,7 +78,10 @@ class MarginofStabilityCalculation:
         RCAL_pos = markers_sorted_static[:, idx_RCAL, :]
         com0 = self.model.CoM(self.q[:, 0]).to_array()
         trochanteric_height = np.mean(
-            [np.linalg.norm(com0[2] - LCAL_pos[2, 0]), np.linalg.norm(com0[2] - RCAL_pos[2, 0])]
+            [
+                np.linalg.norm(com0[2] - LCAL_pos[2, 0]),
+                np.linalg.norm(com0[2] - RCAL_pos[2, 0]),
+            ]
         )
         # coefficients come from anthropometric scaling used in gait stability studies based on the XCoM framework (Hof et al., 2005).
         l_AP = 1.24 * trochanteric_height

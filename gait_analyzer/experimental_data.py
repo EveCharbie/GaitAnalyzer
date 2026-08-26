@@ -207,9 +207,21 @@ class ExperimentalData:
             # Positions fixes des plateformes (en mm, issues de LEM03 comme référence)
             # I fix the platform coordinates because someone messed up the QTM setup in the lab...
             fixed_corners = [
-                np.array([[1614.0, 1614.0, -44.3, -44.3], [1038.0, 527.0, 527.0, 1038.0], [0.0, 0.0, 0.0, 0.0]])
+                np.array(
+                    [
+                        [1614.0, 1614.0, -44.3, -44.3],
+                        [1038.0, 527.0, 527.0, 1038.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                    ]
+                )
                 * units,  # Platform 1
-                np.array([[1614.0, 1614.0, -44.3, -44.3], [494.0, -17.0, -17.0, 494.0], [0.0, 0.0, 0.0, 0.0]])
+                np.array(
+                    [
+                        [1614.0, 1614.0, -44.3, -44.3],
+                        [494.0, -17.0, -17.0, 494.0],
+                        [0.0, 0.0, 0.0, 0.0],
+                    ]
+                )
                 * units,  # Platform 2
             ]
             for corners in fixed_corners:
@@ -234,13 +246,22 @@ class ExperimentalData:
                 # Filter forces and moments
                 # TODO: Charbie -> Antoine is supposed to send a ref for this filtering
                 force_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    force, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    force,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
                 moment_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    moment, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    moment,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
                 tz_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    tz, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    tz,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
 
                 # Remove the values when the force is too small since it is likely only noise
@@ -266,7 +287,8 @@ class ExperimentalData:
                 cop_filtered[i_platform, 2, :] = r_z
                 # The CoP must be expressed relatively to the center of the platforms
                 cop_filtered[i_platform, :, :] += np.tile(
-                    np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)
+                    np.mean(self.platform_corners[i_platform], axis=1),
+                    (self.nb_analog_frames, 1),
                 ).T
 
                 # Store output in a biorbd compatible format
@@ -297,7 +319,11 @@ class ExperimentalData:
                     axs[1].plot(cop_ezc3d[1, :], "-b")
                     axs[2].plot(cop_ezc3d[2, :], "-b")
 
-                    axs[0].plot(cop_filtered[i_platform, 0, :], "--r", label="CoP recomputed (from filtered F and M)")
+                    axs[0].plot(
+                        cop_filtered[i_platform, 0, :],
+                        "--r",
+                        label="CoP recomputed (from filtered F and M)",
+                    )
                     axs[1].plot(cop_filtered[i_platform, 1, :], "--r")
                     axs[2].plot(cop_filtered[i_platform, 2, :], "--r")
 

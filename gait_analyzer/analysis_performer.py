@@ -112,7 +112,7 @@ class AnalysisPerformer:
         version_dic = {
             "date_of_the_analysis": date.today().strftime("%b-%d-%Y-%H-%M-%S"),
             "biorbd_version": packages_versions["biorbd"],
-            "pyomeca_version": packages_versions["pyomeca"] if "pyomeca" in packages_versions else "Not installed",
+            "pyomeca_version": (packages_versions["pyomeca"] if "pyomeca" in packages_versions else "Not installed"),
             "ezc3d_version": packages_versions["ezc3d"],
             "bioptim_version": (
                 packages_versions["bioptim"] if "bioptim" in packages_versions else "Not installed through conda-forge"
@@ -283,7 +283,10 @@ class AnalysisPerformer:
                 os.makedirs(result_folder)
                 os.makedirs(self.figures_result_folder)
                 os.makedirs(self.models_result_folder)
-                print("The results folder was created here: ", os.path.abspath(result_folder))
+                print(
+                    "The results folder was created here: ",
+                    os.path.abspath(result_folder),
+                )
             if not os.path.exists(self.figures_result_folder):
                 os.makedirs(self.figures_result_folder)
             if not os.path.exists(self.models_result_folder):
