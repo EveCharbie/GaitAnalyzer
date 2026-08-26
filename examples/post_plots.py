@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pickle
 
-
 file_path = "results/CHE_AngMom/CHE_AngMom_zero_results.pkl"
 with open(file_path, "rb") as file:
     results = pickle.load(file)
