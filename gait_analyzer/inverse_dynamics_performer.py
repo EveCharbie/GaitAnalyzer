@@ -134,7 +134,6 @@ class InverseDynamicsPerformer:
             result[np.isnan(result)] = 0.0
             return result
 
-
         f_ext_set.add(
             "calcn_l",
             safe_nanmean(self.experimental_data.f_ext_sorted_filtered[0, 3:9, frame_range]),
@@ -210,7 +209,9 @@ class InverseDynamicsPerformer:
 
         # Add experimental markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
-        markers = PyoMarkers(data=self.kinematics_reconstructor.markers[:, :, :200], channels=marker_names, show_labels=False)
+        markers = PyoMarkers(
+            data=self.kinematics_reconstructor.markers[:, :, :200], channels=marker_names, show_labels=False
+        )
 
         # Add force plates to the animation
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(

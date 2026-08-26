@@ -165,9 +165,7 @@ class ExperimentalData:
             # Process the EMG signals
             normalized_emg = np.zeros((len(self.analog_names), self.nb_analog_frames))
             for i_muscle, muscle_name in enumerate(self.analog_names):
-                emg = Analogs.from_c3d(
-                    self.c3d_full_file_path, suffix_delimiter=".", usecols=[muscle_name]
-                )
+                emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=[muscle_name])
                 emg = emg.interpolate_na(dim="time", method="linear")
                 emg_data_clean = np.nan_to_num(np.array(emg.data), nan=0.0)  # garde la forme (1, 120000)
                 emg.data[:] = emg_data_clean
@@ -178,9 +176,7 @@ class ExperimentalData:
                     .meca.abs()
                     .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
                 ) * self.emg_units
-                normalized_emg[i_muscle, :] = (
-                    np.array(emg_processed) / self.model_creator.mvc_values[muscle_name]
-                )
+                normalized_emg[i_muscle, :] = np.array(emg_processed) / self.model_creator.mvc_values[muscle_name]
                 normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = (
                     0  # There are still small negative values after meca.abs()
                 )
@@ -211,16 +207,10 @@ class ExperimentalData:
             # Positions fixes des plateformes (en mm, issues de LEM03 comme référence)
             # I fix the platform coordinates because someone messed up the QTM setup in the lab...
             fixed_corners = [
-                np.array([
-                    [1614., 1614., -44.3, -44.3],
-                    [1038., 527., 527., 1038.],
-                    [0., 0., 0., 0.]
-                ]) * units,  # Platform 1
-                np.array([
-                    [1614., 1614., -44.3, -44.3],
-                    [494., -17., -17., 494.],
-                    [0., 0., 0., 0.]
-                ]) * units,  # Platform 2
+                np.array([[1614.0, 1614.0, -44.3, -44.3], [1038.0, 527.0, 527.0, 1038.0], [0.0, 0.0, 0.0, 0.0]])
+                * units,  # Platform 1
+                np.array([[1614.0, 1614.0, -44.3, -44.3], [494.0, -17.0, -17.0, 494.0], [0.0, 0.0, 0.0, 0.0]])
+                * units,  # Platform 2
             ]
             for corners in fixed_corners:
                 self.platform_corners += [corners]
@@ -264,7 +254,8 @@ class ExperimentalData:
 
                 r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
                 r_z = np.mean(
-                    self.platform_corners[i_platform][2, :])  # Height of the platform origin (non-zero for some setups)
+                    self.platform_corners[i_platform][2, :]
+                )  # Height of the platform origin (non-zero for some setups)
                 cop_filtered[i_platform, 0, :] = (
                     -(moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z)
                     / force_filtered[i_platform, 2, :]
@@ -436,7 +427,6 @@ class ExperimentalData:
             if idx_all.size < 4:
                 return {}
 
-
             idx_deb = idx_all
             idx_end = idx_all[1:]
             start_idx = 2
@@ -446,8 +436,8 @@ class ExperimentalData:
             else:
                 nbcycle = min(nbcycle, max(0, available_cycles))
 
-            use_idx_deb = idx_deb[start_idx: start_idx + nbcycle]
-            use_idx_end = idx_end[start_idx: start_idx + nbcycle]
+            use_idx_deb = idx_deb[start_idx : start_idx + nbcycle]
+            use_idx_end = idx_end[start_idx : start_idx + nbcycle]
 
             idx_TpfToTframe = fs_mks / fs_force if fs_force != 0 else 1.0
 
@@ -458,14 +448,14 @@ class ExperimentalData:
             for ii in range(nbcycle):
                 a = use_idx_deb[ii]
                 b = use_idx_end[ii]
-                seg = fv_foot1[a: b + 1]
+                seg = fv_foot1[a : b + 1]
                 rel = np.where(seg > threshold_local)[0]
                 if rel.size == 0:
                     end_contact_foot_study[ii] = a
                 else:
                     end_contact_foot_study[ii] = a + rel[-1]
 
-                seg2 = fv_foot2[a: b + 1]
+                seg2 = fv_foot2[a : b + 1]
                 rel2 = np.where(seg2 < threshold_local)[0]
                 if rel2.size == 0:
                     end_contact_foot_opp[ii] = a
@@ -484,10 +474,12 @@ class ExperimentalData:
             else:
                 stride_time = np.array([])
 
-            single_support_time = (start_contact_foot_opp[: nbcycle - 1] - end_contact_foot_opp[
-                                                                           : nbcycle - 1]) / fs_force
-            double_support_time = (end_contact_foot_study[: nbcycle - 1] - start_contact_foot_opp[
-                                                                           : nbcycle - 1]) / fs_force
+            single_support_time = (
+                start_contact_foot_opp[: nbcycle - 1] - end_contact_foot_opp[: nbcycle - 1]
+            ) / fs_force
+            double_support_time = (
+                end_contact_foot_study[: nbcycle - 1] - start_contact_foot_opp[: nbcycle - 1]
+            ) / fs_force
             stance_time = single_support_time + double_support_time
             swing_time = stride_time - stance_time
             frequency = 1.0 / stride_time if stride_time.size > 0 else np.array([])
@@ -530,7 +522,7 @@ class ExperimentalData:
                 "StrideLength": stride_length,
                 "Velocity": velocity,
                 "idx_deb": use_idx_deb,
-                "idx_end": use_idx_end
+                "idx_end": use_idx_end,
             }
             return gait_parameters
 
@@ -539,7 +531,6 @@ class ExperimentalData:
         gait_right = _gait_parameters_calculation(2, nb_cycle, threshold)
         self.gait_parameters_all = {"right_leg": gait_right, "left_leg": gait_left}
         self.gait_parameters_meanstd = self._estimation_mean_std_abs_diff_per(self.gait_parameters_all)
-
 
     def _estimation_mean_std_abs_diff_per(self, data):
         """

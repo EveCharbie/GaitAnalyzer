@@ -7,6 +7,7 @@ from gait_analyzer.subject import Subject
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.experimental_data import ExperimentalData
 
+
 class MechanicalEnergyCalculator:
     """
     Compute the total mechanical energy:
@@ -14,12 +15,12 @@ class MechanicalEnergyCalculator:
     """
 
     def __init__(
-            self,
-            biorbd_model: biorbd.Model,
-            experimental_data: ExperimentalData,
-            kinematics_reconstructor: KinematicsReconstructor,
-            subject: Subject,
-            segments_data: dict,
+        self,
+        biorbd_model: biorbd.Model,
+        experimental_data: ExperimentalData,
+        kinematics_reconstructor: KinematicsReconstructor,
+        subject: Subject,
+        segments_data: dict,
     ):
         self.model = biorbd_model
         self.experimental_data = experimental_data
@@ -66,7 +67,7 @@ class MechanicalEnergyCalculator:
             V = np.linalg.norm(comdot_global)
 
             E_pot = self.subject_mass * g * h
-            E_kin_global = 0.5 * self.subject_mass * V ** 2
+            E_kin_global = 0.5 * self.subject_mass * V**2
 
             E_segments = 0
 
@@ -103,7 +104,9 @@ class MechanicalEnergyCalculator:
             E_kin_total = E_kin_global + E_segments
 
             mechanical_energy[frame] = E_pot + E_kin_total
-            mechanical_energy_normalized[frame] = mechanical_energy[frame] / (self.subject_mass * g * self.subject_height)
+            mechanical_energy_normalized[frame] = mechanical_energy[frame] / (
+                self.subject_mass * g * self.subject_height
+            )
             E_pot_vec[frame] = E_pot
             E_kin_vec[frame] = E_kin_total
             E_kin_global_vec[frame] = E_kin_global
@@ -153,5 +156,5 @@ class MechanicalEnergyCalculator:
             "mechanical_energy_potential_normalized": self.E_pot_normalized,
             "mechanical_energy_kinetic": self.E_kin_vec,
             "mechanical_energy_kinetic_normalized": self.E_kin_normalized,
-            "mechanical_energy_kinetic_com": self.E_kin_global_vec
+            "mechanical_energy_kinetic_com": self.E_kin_global_vec,
         }

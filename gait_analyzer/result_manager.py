@@ -14,12 +14,21 @@ from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import M
 from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import ComMmaDistanceCalculator
 from gait_analyzer.biomechanics_quantities.probability_of_instability_calculator import ProbabilityOfInstability
 
+
 class ResultManager:
     """
     This class contains all the results from the gait analysis and is the main class handling all types of analysis to perform on the experimental data.
     """
 
-    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str, trial_full_file_path, static_trial_full_file_path):
+    def __init__(
+        self,
+        subject: Subject,
+        cycles_to_analyze: range,
+        static_trial: str,
+        result_folder: str,
+        trial_full_file_path,
+        static_trial_full_file_path,
+    ):
         """
         Initialize the ResultManager.
         .
@@ -54,7 +63,6 @@ class ResultManager:
         self.trial_full_file_path = trial_full_file_path
         self.result_folder = result_folder
         self.static_trial_full_file_path = static_trial_full_file_path
-
 
         # Extended attributes
         self.experimental_data = None
@@ -272,9 +280,7 @@ class ResultManager:
                 "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
             )
         if self.angular_momentum_calculator is None:
-            raise Exception(
-                "Please compute angular momentum first (needed for segment COM and COMdot data)"
-            )
+            raise Exception("Please compute angular momentum first (needed for segment COM and COMdot data)")
 
         if self.mechanical_energy_calculator is None:
             self.mechanical_energy_calculator = MechanicalEnergyCalculator(
@@ -320,11 +326,11 @@ class ResultManager:
         )
 
     def estimate_optimally(
-            self,
-            cycles_to_analyze: int | list,  # <- int | list
-            plot_solution_flag: bool = False,
-            animate_solution_flag: bool = False,
-            skip_if_existing: bool = False,
+        self,
+        cycles_to_analyze: int | list,  # <- int | list
+        plot_solution_flag: bool = False,
+        animate_solution_flag: bool = False,
+        skip_if_existing: bool = False,
     ):
 
         # Checks
@@ -343,9 +349,7 @@ class ResultManager:
         if self.inverse_dynamics_performer is None:
             raise Exception("Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()")
         if self.experimental_data.gait_parameters_all is None:
-            raise Exception(
-                "Please compute gait parameters first by running ResultManager.extract_gait_parameters()"
-            )
+            raise Exception("Please compute gait parameters first by running ResultManager.extract_gait_parameters()")
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(

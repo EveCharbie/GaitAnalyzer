@@ -10,9 +10,9 @@ from gait_analyzer.experimental_data import ExperimentalData
 
 class AngularMomentumCalculator:
     """
-     This class computes the angular momentum of the whole body (total_angular_momentum) and of each segment (segments_angular_momentum).
-     The angular momentum is normalised by subject_mass * subject_height * sqrt(gravity * height) to allow comparison across subjects.
-     Similarly, the segments' angular momentum is also normalised by segment_mass * segment_length * sqrt(gravity * segment_length).
+    This class computes the angular momentum of the whole body (total_angular_momentum) and of each segment (segments_angular_momentum).
+    The angular momentum is normalised by subject_mass * subject_height * sqrt(gravity * height) to allow comparison across subjects.
+    Similarly, the segments' angular momentum is also normalised by segment_mass * segment_length * sqrt(gravity * segment_length).
     """
 
     def __init__(
@@ -177,5 +177,5 @@ class AngularMomentumCalculator:
             "H_total": self.H_total,
             "segments_data": self.segments_data,
             "total_angular_momentum_normalized": self.total_angular_momentum_normalized,
-            "DoF_names" : self.dof_names
+            "DoF_names": self.dof_names,
         }

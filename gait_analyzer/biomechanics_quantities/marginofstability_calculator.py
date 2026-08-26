@@ -3,6 +3,7 @@ import pickle
 import os
 import ezc3d
 
+
 class MarginofStabilityCalculation:
     def __init__(
         self,
@@ -65,10 +66,7 @@ class MarginofStabilityCalculation:
         markers *= marker_units
 
         n_frames_static = markers.shape[2]
-        markers_sorted_static = np.full(
-            (3, len(self.model_marker_names), n_frames_static),
-            np.nan
-        )
+        markers_sorted_static = np.full((3, len(self.model_marker_names), n_frames_static), np.nan)
 
         for i_model, name in enumerate(self.model_marker_names):
             if name not in exp_marker_names:
@@ -79,8 +77,9 @@ class MarginofStabilityCalculation:
         LCAL_pos = markers_sorted_static[:, idx_LCAL, :]
         RCAL_pos = markers_sorted_static[:, idx_RCAL, :]
         com0 = self.model.CoM(self.q[:, 0]).to_array()
-        trochanteric_height = np.mean([np.linalg.norm(com0[2] - LCAL_pos[2, 0]),
-                                       np.linalg.norm(com0[2] - RCAL_pos[2, 0])])
+        trochanteric_height = np.mean(
+            [np.linalg.norm(com0[2] - LCAL_pos[2, 0]), np.linalg.norm(com0[2] - RCAL_pos[2, 0])]
+        )
         # coefficients come from anthropometric scaling used in gait stability studies based on the XCoM framework (Hof et al., 2005).
         l_AP = 1.24 * trochanteric_height
         l_ML = 1.34 * trochanteric_height

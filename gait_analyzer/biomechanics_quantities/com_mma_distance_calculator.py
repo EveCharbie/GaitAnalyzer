@@ -43,9 +43,7 @@ class ComMmaDistanceCalculator:
 
     def compute_Hdot(self):
         dt = self.experimental_data.markers_dt
-        self.Hdot = np.gradient(
-            self.angular_momentum_calculator.H_total, dt, axis=1
-        )
+        self.Hdot = np.gradient(self.angular_momentum_calculator.H_total, dt, axis=1)
 
     def compute_resultant_force(self):
         """

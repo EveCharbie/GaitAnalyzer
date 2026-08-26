@@ -4,6 +4,7 @@ from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.subject import Subject
 from gait_analyzer.biomechanics_quantities.marginofstability_calculator import MarginofStabilityCalculation
 
+
 class ProbabilityOfInstability:
     """
     Computes the Probability of Instability (PoI) based on ML and AP Margin of Stability (MoS)
@@ -50,7 +51,6 @@ class ProbabilityOfInstability:
             self.compute_mos_per_step()
             self.compute_poi()
 
-
     def detect_heel_strikes(self):
         """
         Detect heel strikes for both feet using vertical GRF threshold crossing
@@ -79,10 +79,9 @@ class ProbabilityOfInstability:
         hs_foot1 = np.array(hs_foot1)
         hs_foot2 = np.array(hs_foot2)
 
-        hs_all = np.concatenate([
-            np.vstack((hs_foot1, np.ones(len(hs_foot1)))).T,
-            np.vstack((hs_foot2, np.zeros(len(hs_foot2)))).T
-        ])
+        hs_all = np.concatenate(
+            [np.vstack((hs_foot1, np.ones(len(hs_foot1)))).T, np.vstack((hs_foot2, np.zeros(len(hs_foot2)))).T]
+        )
 
         hs_all = hs_all[np.argsort(hs_all[:, 0])]
 
@@ -143,7 +142,7 @@ class ProbabilityOfInstability:
         else:
             self.PoI_ML = np.nan
 
-        self.PoI_ML = (np.sum(self.mos_steps_ML < 0) / len(self.mos_steps_ML))*100
+        self.PoI_ML = (np.sum(self.mos_steps_ML < 0) / len(self.mos_steps_ML)) * 100
 
         # AP
         if len(self.mos_steps_AP) < 2:
@@ -161,7 +160,7 @@ class ProbabilityOfInstability:
         else:
             self.PoI_AP = np.nan
 
-        self.PoI_AP = (np.sum(self.mos_steps_AP < 0) / len(self.mos_steps_AP))*100
+        self.PoI_AP = (np.sum(self.mos_steps_AP < 0) / len(self.mos_steps_AP)) * 100
 
     def outputs(self):
         return {

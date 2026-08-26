@@ -28,18 +28,18 @@ class OptimalEstimator:
     """
 
     def __init__(
-            self,
-            cycles_to_analyze: int | list,
-            subject: Subject,
-            model_creator: ModelCreator,
-            experimental_data: ExperimentalData,
-            events: CyclicEvents,
-            kinematics_reconstructor: KinematicsReconstructor,
-            inverse_dynamic_performer: InverseDynamicsPerformer,
-            gait_parameters_all: dict,
-            plot_solution_flag: bool,
-            animate_solution_flag: bool,
-            skip_if_existing: bool,
+        self,
+        cycles_to_analyze: int | list,
+        subject: Subject,
+        model_creator: ModelCreator,
+        experimental_data: ExperimentalData,
+        events: CyclicEvents,
+        kinematics_reconstructor: KinematicsReconstructor,
+        inverse_dynamic_performer: InverseDynamicsPerformer,
+        gait_parameters_all: dict,
+        plot_solution_flag: bool,
+        animate_solution_flag: bool,
+        skip_if_existing: bool,
     ):
         """
         Parameters
@@ -80,32 +80,32 @@ class OptimalEstimator:
         self.model_ocp = None
         self.n_shooting = None
         # Individual cycle data (input to each OCP), shape (n_cycles, ..., 101)
-        self.q_cycles = None           # (n_cycles, n_dof, 101)
-        self.qdot_cycles = None        # (n_cycles, n_dof, 101)
-        self.tau_cycles = None         # (n_cycles, n_dof, 101)
-        self.f_ext_l_cycles = None     # (n_cycles, 9, 101)
-        self.f_ext_r_cycles = None     # (n_cycles, 9, 101)
-        self.emg_cycles = None         # (n_cycles, n_muscles, 101)
-        self.markers_cycles = None     # (n_cycles, 3, n_markers, 101)
-        self.fz_left_cycles = None     # (n_cycles, 101)
-        self.fz_right_cycles = None    # (n_cycles, 101)
+        self.q_cycles = None  # (n_cycles, n_dof, 101)
+        self.qdot_cycles = None  # (n_cycles, n_dof, 101)
+        self.tau_cycles = None  # (n_cycles, n_dof, 101)
+        self.f_ext_l_cycles = None  # (n_cycles, 9, 101)
+        self.f_ext_r_cycles = None  # (n_cycles, 9, 101)
+        self.emg_cycles = None  # (n_cycles, n_muscles, 101)
+        self.markers_cycles = None  # (n_cycles, 3, n_markers, 101)
+        self.fz_left_cycles = None  # (n_cycles, 101)
+        self.fz_right_cycles = None  # (n_cycles, 101)
         self.phase_time_cycles = None  # (n_cycles,)
         # Per-cycle OCP solutions
-        self.q_opt_cycles = None           # (n_cycles, n_dof, 101)
-        self.qdot_opt_cycles = None        # (n_cycles, n_dof, 101)
-        self.tau_opt_cycles = None         # (n_cycles, n_dof, 100)
-        self.muscles_opt_cycles = None     # (n_cycles, n_muscles, 100)
-        self.f_ext_value_opt_cycles = None     # (n_cycles, 6, 100)
+        self.q_opt_cycles = None  # (n_cycles, n_dof, 101)
+        self.qdot_opt_cycles = None  # (n_cycles, n_dof, 101)
+        self.tau_opt_cycles = None  # (n_cycles, n_dof, 100)
+        self.muscles_opt_cycles = None  # (n_cycles, n_muscles, 100)
+        self.f_ext_value_opt_cycles = None  # (n_cycles, 6, 100)
         self.f_ext_position_opt_cycles = None  # (n_cycles, 6, 100)
-        self.opt_status_cycles = None      # list of str
-        self.muscle_forces_cycles = None   # (n_cycles, n_muscles, 100)
+        self.opt_status_cycles = None  # list of str
+        self.muscle_forces_cycles = None  # (n_cycles, n_muscles, 100)
         self.muscle_names = None
         # Final averaged outputs
-        self.muscle_forces = None          # (n_muscles, 100) — mean over cycles
-        self.q_opt = None                  # (n_dof, 101) — mean over cycles
-        self.qdot_opt = None               # (n_dof, 101)
-        self.tau_opt = None                # (n_dof, 100)
-        self.muscles_opt = None            # (n_muscles, 100)
+        self.muscle_forces = None  # (n_muscles, 100) — mean over cycles
+        self.q_opt = None  # (n_dof, 101) — mean over cycles
+        self.qdot_opt = None  # (n_dof, 101)
+        self.tau_opt = None  # (n_dof, 100)
+        self.muscles_opt = None  # (n_muscles, 100)
         self.opt_status = "CVG"
         self.is_loaded_optimal_solution = False
 
@@ -209,16 +209,16 @@ class OptimalEstimator:
         # ------------------------------------------------------------------ #
         dof_idx_to_keep = np.array(
             [
-                0,   # Pelvis trans X
-                1,   # Pelvis trans Y
-                2,   # Pelvis trans Z
-                3,   # Pelvis rot X
-                4,   # Pelvis rot Y
-                5,   # Pelvis rot Z
-                6,   # femur_r rot X
-                7,   # femur_r rot Y
-                8,   # femur_r rot Z
-                9,   # tibia_r rot X
+                0,  # Pelvis trans X
+                1,  # Pelvis trans Y
+                2,  # Pelvis trans Z
+                3,  # Pelvis rot X
+                4,  # Pelvis rot Y
+                5,  # Pelvis rot Z
+                6,  # femur_r rot X
+                7,  # femur_r rot Y
+                8,  # femur_r rot Z
+                9,  # tibia_r rot X
                 10,  # talus_r rot X
                 11,  # calc_r rot X
                 13,  # femur_l rot X
@@ -253,19 +253,21 @@ class OptimalEstimator:
         self.n_shooting = n_frames_ref - 1
         self.muscle_names = muscle_names
 
-        print(f"------------------ n_frames_ref = {n_frames_ref}, {len(self.cycles_to_analyze)} cycle(s) to solve ------------------")
+        print(
+            f"------------------ n_frames_ref = {n_frames_ref}, {len(self.cycles_to_analyze)} cycle(s) to solve ------------------"
+        )
 
         # ------------------------------------------------------------------ #
         # Accumulate per-cycle arrays                                         #
         # ------------------------------------------------------------------ #
-        q_cycles        = []
-        qdot_cycles     = []
-        tau_cycles      = []
-        f_ext_l_cycles  = []
-        f_ext_r_cycles  = []
-        emg_cycles      = []
-        markers_cycles  = []
-        fz_left_cycles  = []
+        q_cycles = []
+        qdot_cycles = []
+        tau_cycles = []
+        f_ext_l_cycles = []
+        f_ext_r_cycles = []
+        emg_cycles = []
+        markers_cycles = []
+        fz_left_cycles = []
         fz_right_cycles = []
         phase_time_cycles = []
 
@@ -273,42 +275,44 @@ class OptimalEstimator:
             print(f"  Extracting cycle {c}...")
 
             start_a = idx_deb_right[c]
-            end_a   = idx_deb_right[c + 1]
+            end_a = idx_deb_right[c + 1]
             start_m = analog_to_marker(start_a)
-            end_m   = analog_to_marker(end_a)
+            end_m = analog_to_marker(end_a)
 
-            idx_cycle        = np.arange(start_m, end_m)
+            idx_cycle = np.arange(start_m, end_m)
             index_filtered_q = idx_cycle - self.kinematics_reconstructor.frame_range.start
 
-            q_cycles.append(interp_to_ref(
-                self.kinematics_reconstructor.q_filtered[np.ix_(dof_idx_to_keep, index_filtered_q)],
-                n_frames_ref,
-            ))
-            qdot_cycles.append(interp_to_ref(
-                self.kinematics_reconstructor.qdot[np.ix_(dof_idx_to_keep, index_filtered_q)],
-                n_frames_ref,
-            ))
-            tau_cycles.append(interp_to_ref(
-                self.inverse_dynamic_performer.tau[np.ix_(dof_idx_to_keep, index_filtered_q)],
-                n_frames_ref,
-            ))
+            q_cycles.append(
+                interp_to_ref(
+                    self.kinematics_reconstructor.q_filtered[np.ix_(dof_idx_to_keep, index_filtered_q)],
+                    n_frames_ref,
+                )
+            )
+            qdot_cycles.append(
+                interp_to_ref(
+                    self.kinematics_reconstructor.qdot[np.ix_(dof_idx_to_keep, index_filtered_q)],
+                    n_frames_ref,
+                )
+            )
+            tau_cycles.append(
+                interp_to_ref(
+                    self.inverse_dynamic_performer.tau[np.ix_(dof_idx_to_keep, index_filtered_q)],
+                    n_frames_ref,
+                )
+            )
 
-            f_ext_l    = np.zeros((9, n_frames_ref))
-            f_ext_r    = np.zeros((9, n_frames_ref))
-            emg        = np.zeros((nb_muscles, n_frames_ref))
+            f_ext_l = np.zeros((9, n_frames_ref))
+            f_ext_r = np.zeros((9, n_frames_ref))
+            emg = np.zeros((nb_muscles, n_frames_ref))
             idx_frames = np.round(np.linspace(start_m, end_m - 1, n_frames_ref)).astype(int)
 
             for i_frame, marker_frame in enumerate(idx_frames):
                 idx_analogs = marker_to_analog(marker_frame)
-                idx_low     = max(0, idx_analogs - 5)
-                idx_high    = min(n_analogs, idx_analogs + 5)
+                idx_low = max(0, idx_analogs - 5)
+                idx_high = min(n_analogs, idx_analogs + 5)
 
-                f_ext_l[:, i_frame] = np.mean(
-                    self.experimental_data.f_ext_sorted[0, :, idx_low:idx_high], axis=1
-                )
-                f_ext_r[:, i_frame] = np.mean(
-                    self.experimental_data.f_ext_sorted[1, :, idx_low:idx_high], axis=1
-                )
+                f_ext_l[:, i_frame] = np.mean(self.experimental_data.f_ext_sorted[0, :, idx_low:idx_high], axis=1)
+                f_ext_r[:, i_frame] = np.mean(self.experimental_data.f_ext_sorted[1, :, idx_low:idx_high], axis=1)
 
                 for i_muscle, muscle_name in enumerate(muscle_names):
                     if muscle_name in self.model_creator.osim_model_type.muscle_name_mapping:
@@ -321,12 +325,10 @@ class OptimalEstimator:
 
             # EMG left leg: half-cycle shift from right leg
             frame_index_shifted = list(range(n_frames_ref))
-            frame_index_shifted[0:int(np.floor(n_frames_ref / 2))] = list(
+            frame_index_shifted[0 : int(np.floor(n_frames_ref / 2))] = list(
                 range(int(np.ceil(n_frames_ref / 2)), n_frames_ref)
             )
-            frame_index_shifted[int(np.floor(n_frames_ref / 2)):] = list(
-                range(0, int(np.ceil(n_frames_ref / 2)))
-            )
+            frame_index_shifted[int(np.floor(n_frames_ref / 2)) :] = list(range(0, int(np.ceil(n_frames_ref / 2))))
             for i_muscle, muscle_name in enumerate(muscle_names):
                 if muscle_name in self.model_creator.osim_model_type.muscle_name_mapping:
                     muscle_pseudo = self.model_creator.osim_model_type.muscle_name_mapping[muscle_name]
@@ -338,16 +340,24 @@ class OptimalEstimator:
             f_ext_r_cycles.append(f_ext_r)
             emg_cycles.append(emg)
 
-            fz_left_raw  = self.experimental_data.f_ext_sorted_filtered[0, 8, start_a:end_a]
+            fz_left_raw = self.experimental_data.f_ext_sorted_filtered[0, 8, start_a:end_a]
             fz_right_raw = self.experimental_data.f_ext_sorted_filtered[1, 8, start_a:end_a]
-            fz_left_cycles.append(np.interp(
-                np.linspace(0, 1, n_frames_ref), np.linspace(0, 1, len(fz_left_raw)), fz_left_raw,
-            ))
-            fz_right_cycles.append(np.interp(
-                np.linspace(0, 1, n_frames_ref), np.linspace(0, 1, len(fz_right_raw)), fz_right_raw,
-            ))
+            fz_left_cycles.append(
+                np.interp(
+                    np.linspace(0, 1, n_frames_ref),
+                    np.linspace(0, 1, len(fz_left_raw)),
+                    fz_left_raw,
+                )
+            )
+            fz_right_cycles.append(
+                np.interp(
+                    np.linspace(0, 1, n_frames_ref),
+                    np.linspace(0, 1, len(fz_right_raw)),
+                    fz_right_raw,
+                )
+            )
 
-            markers_cycle  = self.experimental_data.markers_sorted[:, :, idx_cycle]
+            markers_cycle = self.experimental_data.markers_sorted[:, :, idx_cycle]
             n_coords, n_markers, _ = markers_cycle.shape
             markers_interp = np.zeros((n_coords, n_markers, n_frames_ref))
             for i_coord in range(n_coords):
@@ -360,16 +370,16 @@ class OptimalEstimator:
             )
 
         # Store all cycles
-        self.q_cycles         = np.array(q_cycles)           # (n_cycles, n_dof, 101)
-        self.qdot_cycles      = np.array(qdot_cycles)        # (n_cycles, n_dof, 101)
-        self.tau_cycles       = np.array(tau_cycles)         # (n_cycles, n_dof, 101)
-        self.f_ext_l_cycles   = np.array(f_ext_l_cycles)     # (n_cycles, 9, 101)
-        self.f_ext_r_cycles   = np.array(f_ext_r_cycles)     # (n_cycles, 9, 101)
-        self.emg_cycles       = np.array(emg_cycles)         # (n_cycles, n_muscles, 101)
-        self.markers_cycles   = np.array(markers_cycles)     # (n_cycles, 3, n_markers, 101)
-        self.fz_left_cycles   = np.array(fz_left_cycles)     # (n_cycles, 101)
-        self.fz_right_cycles  = np.array(fz_right_cycles)    # (n_cycles, 101)
-        self.phase_time_cycles = np.array(phase_time_cycles) # (n_cycles,)
+        self.q_cycles = np.array(q_cycles)  # (n_cycles, n_dof, 101)
+        self.qdot_cycles = np.array(qdot_cycles)  # (n_cycles, n_dof, 101)
+        self.tau_cycles = np.array(tau_cycles)  # (n_cycles, n_dof, 101)
+        self.f_ext_l_cycles = np.array(f_ext_l_cycles)  # (n_cycles, 9, 101)
+        self.f_ext_r_cycles = np.array(f_ext_r_cycles)  # (n_cycles, 9, 101)
+        self.emg_cycles = np.array(emg_cycles)  # (n_cycles, n_muscles, 101)
+        self.markers_cycles = np.array(markers_cycles)  # (n_cycles, 3, n_markers, 101)
+        self.fz_left_cycles = np.array(fz_left_cycles)  # (n_cycles, 101)
+        self.fz_right_cycles = np.array(fz_right_cycles)  # (n_cycles, 101)
+        self.phase_time_cycles = np.array(phase_time_cycles)  # (n_cycles,)
 
     # ------------------------------------------------------------------ #
     # Solve one OCP per cycle                                              #
@@ -380,48 +390,47 @@ class OptimalEstimator:
 
         n_cycles = len(self.cycles_to_analyze)
         model = biorbd.Model(self.model_ocp)
-        nb_q       = self.q_cycles.shape[1]
+        nb_q = self.q_cycles.shape[1]
         nb_muscles = len(self.muscle_names)
 
-        self.q_opt_cycles              = np.zeros((n_cycles, nb_q,       self.n_shooting + 1))
-        self.qdot_opt_cycles           = np.zeros((n_cycles, nb_q,       self.n_shooting + 1))
-        self.tau_opt_cycles            = np.zeros((n_cycles, nb_q,       self.n_shooting))
-        self.muscles_opt_cycles        = np.zeros((n_cycles, nb_muscles, self.n_shooting))
-        self.f_ext_value_opt_cycles    = np.zeros((n_cycles, 6,          self.n_shooting))
-        self.f_ext_position_opt_cycles = np.zeros((n_cycles, 6,          self.n_shooting))
-        self.muscle_forces_cycles      = np.zeros((n_cycles, nb_muscles, self.n_shooting))
-        self.opt_status_cycles         = []
+        self.q_opt_cycles = np.zeros((n_cycles, nb_q, self.n_shooting + 1))
+        self.qdot_opt_cycles = np.zeros((n_cycles, nb_q, self.n_shooting + 1))
+        self.tau_opt_cycles = np.zeros((n_cycles, nb_q, self.n_shooting))
+        self.muscles_opt_cycles = np.zeros((n_cycles, nb_muscles, self.n_shooting))
+        self.f_ext_value_opt_cycles = np.zeros((n_cycles, 6, self.n_shooting))
+        self.f_ext_position_opt_cycles = np.zeros((n_cycles, 6, self.n_shooting))
+        self.muscle_forces_cycles = np.zeros((n_cycles, nb_muscles, self.n_shooting))
+        self.opt_status_cycles = []
 
         for i_cycle, c in enumerate(self.cycles_to_analyze):
             print(f"\n========== Solving OCP for cycle {c} ({i_cycle + 1}/{n_cycles}) ==========")
 
             f_ext_exp = {
-                "left_leg":  self.f_ext_l_cycles[i_cycle],
+                "left_leg": self.f_ext_l_cycles[i_cycle],
                 "right_leg": self.f_ext_r_cycles[i_cycle],
             }
 
-            (q_opt, qdot_opt, tau_opt, muscles_opt,
-             f_ext_value_opt, f_ext_position_opt, status) = self._solve_single_cycle(
-                q_exp=self.q_cycles[i_cycle],
-                qdot_exp=self.qdot_cycles[i_cycle],
-                tau_exp=self.tau_cycles[i_cycle],
-                emg_exp=self.emg_cycles[i_cycle],
-                markers_exp=self.markers_cycles[i_cycle],
-                f_ext_exp=f_ext_exp,
-                phase_time=self.phase_time_cycles[i_cycle],
-                with_residual_forces=with_residual_forces,
+            (q_opt, qdot_opt, tau_opt, muscles_opt, f_ext_value_opt, f_ext_position_opt, status) = (
+                self._solve_single_cycle(
+                    q_exp=self.q_cycles[i_cycle],
+                    qdot_exp=self.qdot_cycles[i_cycle],
+                    tau_exp=self.tau_cycles[i_cycle],
+                    emg_exp=self.emg_cycles[i_cycle],
+                    markers_exp=self.markers_cycles[i_cycle],
+                    f_ext_exp=f_ext_exp,
+                    phase_time=self.phase_time_cycles[i_cycle],
+                    with_residual_forces=with_residual_forces,
+                )
             )
 
-            self.q_opt_cycles[i_cycle]              = q_opt
-            self.qdot_opt_cycles[i_cycle]           = qdot_opt
-            self.tau_opt_cycles[i_cycle]            = tau_opt
-            self.muscles_opt_cycles[i_cycle]        = muscles_opt
-            self.f_ext_value_opt_cycles[i_cycle]    = f_ext_value_opt
+            self.q_opt_cycles[i_cycle] = q_opt
+            self.qdot_opt_cycles[i_cycle] = qdot_opt
+            self.tau_opt_cycles[i_cycle] = tau_opt
+            self.muscles_opt_cycles[i_cycle] = muscles_opt
+            self.f_ext_value_opt_cycles[i_cycle] = f_ext_value_opt
             self.f_ext_position_opt_cycles[i_cycle] = f_ext_position_opt
             self.opt_status_cycles.append(status)
-            self.muscle_forces_cycles[i_cycle]      = self._compute_muscle_forces(
-                q_opt, qdot_opt, muscles_opt
-            )
+            self.muscle_forces_cycles[i_cycle] = self._compute_muscle_forces(q_opt, qdot_opt, muscles_opt)
 
         # Warn if any cycle diverged
         diverged = [self.cycles_to_analyze[i] for i, s in enumerate(self.opt_status_cycles) if s == "DVG"]
@@ -432,8 +441,14 @@ class OptimalEstimator:
 
     def _solve_single_cycle(
         self,
-        q_exp, qdot_exp, tau_exp, emg_exp, markers_exp, f_ext_exp,
-        phase_time, with_residual_forces,
+        q_exp,
+        qdot_exp,
+        tau_exp,
+        emg_exp,
+        markers_exp,
+        f_ext_exp,
+        phase_time,
+        with_residual_forces,
     ):
         """Build and solve one OCP for a single cycle. Returns the solution arrays."""
 
@@ -471,31 +486,30 @@ class OptimalEstimator:
                 )
                 if with_residual_forces:
                     self_.control_configuration += [
-                        lambda ocp, nlp, as_states, as_controls,
-                               as_algebraic_states: ConfigureVariables.configure_translational_forces(
+                        lambda ocp, nlp, as_states, as_controls, as_algebraic_states: ConfigureVariables.configure_translational_forces(
                             ocp, nlp, as_states=False, as_controls=True, as_algebraic_states=False, n_contacts=2
                         )
                     ]
 
             def dynamics(self_, time, states, controls, parameters, algebraic_states, numerical_timeseries, nlp):
-                q    = DynamicsFunctions.get(nlp.states["q"], states)
+                q = DynamicsFunctions.get(nlp.states["q"], states)
                 qdot = DynamicsFunctions.get(nlp.states["qdot"], states)
 
-                tau_residual    = DynamicsFunctions.get(nlp.controls["tau"], controls)
+                tau_residual = DynamicsFunctions.get(nlp.controls["tau"], controls)
                 mus_activations = DynamicsFunctions.get(nlp.controls["muscles"], controls)
                 tau = tau_residual + DynamicsFunctions.compute_tau_from_muscle(nlp, q, qdot, mus_activations, None)
 
                 if with_residual_forces:
-                    f_ext_residual_value    = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
+                    f_ext_residual_value = DynamicsFunctions.get(nlp.controls["contact_forces"], controls)
                     f_ext_residual_position = DynamicsFunctions.get(nlp.controls["contact_positions"], controls)
 
                 external_forces = nlp.get_external_forces(
                     "external_forces", states, controls, algebraic_states, numerical_timeseries
                 )
                 if with_residual_forces:
-                    external_forces[:3]    += f_ext_residual_position[:3]
-                    external_forces[6:9]   += f_ext_residual_value[:3]
-                    external_forces[9:12]  += f_ext_residual_position[3:6]
+                    external_forces[:3] += f_ext_residual_position[:3]
+                    external_forces[6:9] += f_ext_residual_value[:3]
+                    external_forces[9:12] += f_ext_residual_position[3:6]
                     external_forces[15:18] += f_ext_residual_value[3:6]
 
                 ddq = nlp.model.forward_dynamics()(q, qdot, tau, external_forces, nlp.parameters.cx)
@@ -517,21 +531,25 @@ class OptimalEstimator:
         numerical_time_series = {"external_forces": external_force_set.to_numerical_time_series()}
 
         bio_model = CustomMuscleModelNoContacts(self.model_ocp, external_force_set=external_force_set)
-        nb_q       = bio_model.nb_q
+        nb_q = bio_model.nb_q
         nb_muscles = bio_model.nb_muscles
 
-        r_foot_marker_index = np.array([
-            bio_model.marker_index("RCAL"),
-            bio_model.marker_index("RMFH1"),
-            bio_model.marker_index("RMFH5"),
-            bio_model.marker_index("R_foot_up"),
-        ])
-        l_foot_marker_index = np.array([
-            bio_model.marker_index("LCAL"),
-            bio_model.marker_index("LMFH1"),
-            bio_model.marker_index("LMFH5"),
-            bio_model.marker_index("L_foot_up"),
-        ])
+        r_foot_marker_index = np.array(
+            [
+                bio_model.marker_index("RCAL"),
+                bio_model.marker_index("RMFH1"),
+                bio_model.marker_index("RMFH5"),
+                bio_model.marker_index("R_foot_up"),
+            ]
+        )
+        l_foot_marker_index = np.array(
+            [
+                bio_model.marker_index("LCAL"),
+                bio_model.marker_index("LMFH1"),
+                bio_model.marker_index("LMFH5"),
+                bio_model.marker_index("L_foot_up"),
+            ]
+        )
 
         objective_functions = ObjectiveList()
         objective_functions.add(objective=ObjectiveFcn.Lagrange.MINIMIZE_CONTROL, key="tau", weight=0.001)
@@ -596,19 +614,31 @@ class OptimalEstimator:
         )
 
         x_init = InitialGuessList()
-        x_init.add("q",    initial_guess=q_exp,    interpolation=InterpolationType.EACH_FRAME)
+        x_init.add("q", initial_guess=q_exp, interpolation=InterpolationType.EACH_FRAME)
         x_init.add("qdot", initial_guess=qdot_exp, interpolation=InterpolationType.EACH_FRAME)
 
         u_bounds = BoundsList()
-        u_bounds.add("tau",     min_bound=[-800] * nb_q,         max_bound=[800] * nb_q,         interpolation=InterpolationType.CONSTANT)
-        u_bounds.add("muscles", min_bound=[0.0001] * nb_muscles, max_bound=[1.0] * nb_muscles,   interpolation=InterpolationType.CONSTANT)
+        u_bounds.add("tau", min_bound=[-800] * nb_q, max_bound=[800] * nb_q, interpolation=InterpolationType.CONSTANT)
+        u_bounds.add(
+            "muscles",
+            min_bound=[0.0001] * nb_muscles,
+            max_bound=[1.0] * nb_muscles,
+            interpolation=InterpolationType.CONSTANT,
+        )
         if with_residual_forces:
-            u_bounds.add("contact_forces",    min_bound=[-100] * 6,                  max_bound=[100] * 6,                  interpolation=InterpolationType.CONSTANT)
-            u_bounds.add("contact_positions", min_bound=[-2, -2, 0.0, -2, -2, 0.0], max_bound=[2, 2, 0.005, 2, 2, 0.005], interpolation=InterpolationType.CONSTANT)
+            u_bounds.add(
+                "contact_forces", min_bound=[-100] * 6, max_bound=[100] * 6, interpolation=InterpolationType.CONSTANT
+            )
+            u_bounds.add(
+                "contact_positions",
+                min_bound=[-2, -2, 0.0, -2, -2, 0.0],
+                max_bound=[2, 2, 0.005, 2, 2, 0.005],
+                interpolation=InterpolationType.CONSTANT,
+            )
 
         u_init = InitialGuessList()
-        u_init.add("tau",     initial_guess=tau_exp[:, :-1],  interpolation=InterpolationType.EACH_FRAME)
-        u_init.add("muscles", initial_guess=emg_exp[:, :-1],  interpolation=InterpolationType.EACH_FRAME)
+        u_init.add("tau", initial_guess=tau_exp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
+        u_init.add("muscles", initial_guess=emg_exp[:, :-1], interpolation=InterpolationType.EACH_FRAME)
         if with_residual_forces:
             u_init.add("contact_forces", initial_guess=[0] * 6, interpolation=InterpolationType.CONSTANT)
             u_init.add(
@@ -640,16 +670,16 @@ class OptimalEstimator:
         solver.set_tol(1e-3)
         solution = ocp.solve(solver=solver)
 
-        q_opt       = solution.decision_states(to_merge=SolutionMerge.NODES)["q"]
-        qdot_opt    = solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
-        tau_opt     = solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
+        q_opt = solution.decision_states(to_merge=SolutionMerge.NODES)["q"]
+        qdot_opt = solution.decision_states(to_merge=SolutionMerge.NODES)["qdot"]
+        tau_opt = solution.decision_controls(to_merge=SolutionMerge.NODES)["tau"]
         muscles_opt = solution.decision_controls(to_merge=SolutionMerge.NODES)["muscles"]
 
         if with_residual_forces:
-            f_ext_value_opt    = solution.decision_controls(to_merge=SolutionMerge.NODES)["contact_forces"]
+            f_ext_value_opt = solution.decision_controls(to_merge=SolutionMerge.NODES)["contact_forces"]
             f_ext_position_opt = solution.decision_controls(to_merge=SolutionMerge.NODES)["contact_positions"]
         else:
-            f_ext_value_opt    = np.zeros((6, self.n_shooting))
+            f_ext_value_opt = np.zeros((6, self.n_shooting))
             f_ext_position_opt = np.zeros((6, self.n_shooting))
 
         status = "CVG" if solution.status == 0 else "DVG"
@@ -668,19 +698,17 @@ class OptimalEstimator:
             muscles = model.stateSet()
             for i_muscle, muscle in enumerate(muscles):
                 muscle.setActivation(muscles_opt[i_muscle, i_frame])
-            muscle_forces[:, i_frame] = model.muscleForces(
-                muscles, q_opt[:, i_frame], qdot_opt[:, i_frame]
-            ).to_array()
+            muscle_forces[:, i_frame] = model.muscleForces(muscles, q_opt[:, i_frame], qdot_opt[:, i_frame]).to_array()
         return muscle_forces
 
     def average_muscle_forces(self):
         """Average per-cycle results to produce final outputs."""
         print(f"\n  Averaging muscle forces over {len(self.cycles_to_analyze)} cycle(s)...")
         self.muscle_forces = np.mean(self.muscle_forces_cycles, axis=0)  # (n_muscles, 100)
-        self.q_opt         = np.mean(self.q_opt_cycles,         axis=0)  # (n_dof, 101)
-        self.qdot_opt      = np.mean(self.qdot_opt_cycles,      axis=0)  # (n_dof, 101)
-        self.tau_opt       = np.mean(self.tau_opt_cycles,       axis=0)  # (n_dof, 100)
-        self.muscles_opt   = np.mean(self.muscles_opt_cycles,   axis=0)  # (n_muscles, 100)
+        self.q_opt = np.mean(self.q_opt_cycles, axis=0)  # (n_dof, 101)
+        self.qdot_opt = np.mean(self.qdot_opt_cycles, axis=0)  # (n_dof, 101)
+        self.tau_opt = np.mean(self.tau_opt_cycles, axis=0)  # (n_dof, 100)
+        self.muscles_opt = np.mean(self.muscles_opt_cycles, axis=0)  # (n_muscles, 100)
 
     # ------------------------------------------------------------------ #
     # Animation                                                            #
@@ -728,36 +756,36 @@ class OptimalEstimator:
         if os.path.exists(result_file_full_path):
             with open(result_file_full_path, "rb") as file:
                 data = pickle.load(file)
-                self.model_ocp                  = data["model_ocp"]
-                self.n_shooting                 = data["n_shooting"]
-                self.muscle_names               = data["muscle_names"]
+                self.model_ocp = data["model_ocp"]
+                self.n_shooting = data["n_shooting"]
+                self.muscle_names = data["muscle_names"]
                 # Per-cycle experimental data
-                self.q_cycles                   = data["q_cycles"]
-                self.qdot_cycles                = data["qdot_cycles"]
-                self.tau_cycles                 = data["tau_cycles"]
-                self.f_ext_l_cycles             = data["f_ext_l_cycles"]
-                self.f_ext_r_cycles             = data["f_ext_r_cycles"]
-                self.emg_cycles                 = data["emg_cycles"]
-                self.markers_cycles             = data["markers_cycles"]
-                self.fz_left_cycles             = data["fz_left_cycles"]
-                self.fz_right_cycles            = data["fz_right_cycles"]
-                self.phase_time_cycles          = data["phase_time_cycles"]
+                self.q_cycles = data["q_cycles"]
+                self.qdot_cycles = data["qdot_cycles"]
+                self.tau_cycles = data["tau_cycles"]
+                self.f_ext_l_cycles = data["f_ext_l_cycles"]
+                self.f_ext_r_cycles = data["f_ext_r_cycles"]
+                self.emg_cycles = data["emg_cycles"]
+                self.markers_cycles = data["markers_cycles"]
+                self.fz_left_cycles = data["fz_left_cycles"]
+                self.fz_right_cycles = data["fz_right_cycles"]
+                self.phase_time_cycles = data["phase_time_cycles"]
                 # Per-cycle OCP solutions
-                self.q_opt_cycles               = data["q_opt_cycles"]
-                self.qdot_opt_cycles            = data["qdot_opt_cycles"]
-                self.tau_opt_cycles             = data["tau_opt_cycles"]
-                self.muscles_opt_cycles         = data["muscles_opt_cycles"]
-                self.f_ext_value_opt_cycles     = data["f_ext_value_opt_cycles"]
-                self.f_ext_position_opt_cycles  = data["f_ext_position_opt_cycles"]
-                self.opt_status_cycles          = data["opt_status_cycles"]
-                self.muscle_forces_cycles       = data["muscle_forces_cycles"]
+                self.q_opt_cycles = data["q_opt_cycles"]
+                self.qdot_opt_cycles = data["qdot_opt_cycles"]
+                self.tau_opt_cycles = data["tau_opt_cycles"]
+                self.muscles_opt_cycles = data["muscles_opt_cycles"]
+                self.f_ext_value_opt_cycles = data["f_ext_value_opt_cycles"]
+                self.f_ext_position_opt_cycles = data["f_ext_position_opt_cycles"]
+                self.opt_status_cycles = data["opt_status_cycles"]
+                self.muscle_forces_cycles = data["muscle_forces_cycles"]
                 # Averaged outputs
-                self.muscle_forces              = data["muscle_forces"]
-                self.q_opt                      = data["q_opt"]
-                self.qdot_opt                   = data["qdot_opt"]
-                self.tau_opt                    = data["tau_opt"]
-                self.muscles_opt                = data["muscles_opt"]
-                self.opt_status                 = data["opt_status"]
+                self.muscle_forces = data["muscle_forces"]
+                self.q_opt = data["q_opt"]
+                self.qdot_opt = data["qdot_opt"]
+                self.tau_opt = data["tau_opt"]
+                self.muscles_opt = data["muscles_opt"]
+                self.opt_status = data["opt_status"]
             return True
         return False
 
@@ -778,44 +806,44 @@ class OptimalEstimator:
 
     def inputs(self):
         return {
-            "cycles_to_analyze":        self.cycles_to_analyze,
-            "biorbd_model_path":        self.model_creator.biorbd_model_full_path,
-            "experimental_data":        self.experimental_data,
-            "events":                   self.events,
+            "cycles_to_analyze": self.cycles_to_analyze,
+            "biorbd_model_path": self.model_creator.biorbd_model_full_path,
+            "experimental_data": self.experimental_data,
+            "events": self.events,
             "kinematics_reconstructor": self.kinematics_reconstructor,
         }
 
     def outputs(self):
         return {
             # ---- Model ----
-            "model_ocp":                    self.model_ocp,
-            "n_shooting":                   self.n_shooting,
-            "muscle_names":                 self.muscle_names,
+            "model_ocp": self.model_ocp,
+            "n_shooting": self.n_shooting,
+            "muscle_names": self.muscle_names,
             # ---- Per-cycle experimental data ----
-            "q_cycles":                     self.q_cycles,           # (n_cycles, n_dof, 101)
-            "qdot_cycles":                  self.qdot_cycles,        # (n_cycles, n_dof, 101)
-            "tau_cycles":                   self.tau_cycles,         # (n_cycles, n_dof, 101)
-            "f_ext_l_cycles":               self.f_ext_l_cycles,     # (n_cycles, 9, 101)
-            "f_ext_r_cycles":               self.f_ext_r_cycles,     # (n_cycles, 9, 101)
-            "emg_cycles":                   self.emg_cycles,         # (n_cycles, n_muscles, 101)
-            "markers_cycles":               self.markers_cycles,     # (n_cycles, 3, n_markers, 101)
-            "fz_left_cycles":               self.fz_left_cycles,     # (n_cycles, 101)
-            "fz_right_cycles":              self.fz_right_cycles,    # (n_cycles, 101)
-            "phase_time_cycles":            self.phase_time_cycles,  # (n_cycles,)
+            "q_cycles": self.q_cycles,  # (n_cycles, n_dof, 101)
+            "qdot_cycles": self.qdot_cycles,  # (n_cycles, n_dof, 101)
+            "tau_cycles": self.tau_cycles,  # (n_cycles, n_dof, 101)
+            "f_ext_l_cycles": self.f_ext_l_cycles,  # (n_cycles, 9, 101)
+            "f_ext_r_cycles": self.f_ext_r_cycles,  # (n_cycles, 9, 101)
+            "emg_cycles": self.emg_cycles,  # (n_cycles, n_muscles, 101)
+            "markers_cycles": self.markers_cycles,  # (n_cycles, 3, n_markers, 101)
+            "fz_left_cycles": self.fz_left_cycles,  # (n_cycles, 101)
+            "fz_right_cycles": self.fz_right_cycles,  # (n_cycles, 101)
+            "phase_time_cycles": self.phase_time_cycles,  # (n_cycles,)
             # ---- Per-cycle OCP solutions ----
-            "q_opt_cycles":                 self.q_opt_cycles,               # (n_cycles, n_dof, 101)
-            "qdot_opt_cycles":              self.qdot_opt_cycles,            # (n_cycles, n_dof, 101)
-            "tau_opt_cycles":               self.tau_opt_cycles,             # (n_cycles, n_dof, 100)
-            "muscles_opt_cycles":           self.muscles_opt_cycles,         # (n_cycles, n_muscles, 100)
-            "f_ext_value_opt_cycles":       self.f_ext_value_opt_cycles,     # (n_cycles, 6, 100)
-            "f_ext_position_opt_cycles":    self.f_ext_position_opt_cycles,  # (n_cycles, 6, 100)
-            "opt_status_cycles":            self.opt_status_cycles,          # list of str
-            "muscle_forces_cycles":         self.muscle_forces_cycles,       # (n_cycles, n_muscles, 100)
+            "q_opt_cycles": self.q_opt_cycles,  # (n_cycles, n_dof, 101)
+            "qdot_opt_cycles": self.qdot_opt_cycles,  # (n_cycles, n_dof, 101)
+            "tau_opt_cycles": self.tau_opt_cycles,  # (n_cycles, n_dof, 100)
+            "muscles_opt_cycles": self.muscles_opt_cycles,  # (n_cycles, n_muscles, 100)
+            "f_ext_value_opt_cycles": self.f_ext_value_opt_cycles,  # (n_cycles, 6, 100)
+            "f_ext_position_opt_cycles": self.f_ext_position_opt_cycles,  # (n_cycles, 6, 100)
+            "opt_status_cycles": self.opt_status_cycles,  # list of str
+            "muscle_forces_cycles": self.muscle_forces_cycles,  # (n_cycles, n_muscles, 100)
             # ---- Averaged outputs ----
-            "muscle_forces":                self.muscle_forces,   # (n_muscles, 100)
-            "q_opt":                        self.q_opt,           # (n_dof, 101)
-            "qdot_opt":                     self.qdot_opt,        # (n_dof, 101)
-            "tau_opt":                      self.tau_opt,         # (n_dof, 100)
-            "muscles_opt":                  self.muscles_opt,     # (n_muscles, 100)
-            "opt_status":                   self.opt_status,
+            "muscle_forces": self.muscle_forces,  # (n_muscles, 100)
+            "q_opt": self.q_opt,  # (n_dof, 101)
+            "qdot_opt": self.qdot_opt,  # (n_dof, 101)
+            "tau_opt": self.tau_opt,  # (n_dof, 100)
+            "muscles_opt": self.muscles_opt,  # (n_muscles, 100)
+            "opt_status": self.opt_status,
         }

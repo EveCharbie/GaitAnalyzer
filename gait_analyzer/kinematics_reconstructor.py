@@ -415,7 +415,7 @@ class KinematicsReconstructor:
                 raise NotImplementedError(f"The reconstruction_type {recons_method} is not implemented yet.")
 
             # Check if this reconstruction was acceptable
-            residuals = residuals #[:, index_to_keep]
+            residuals = residuals  # [:, index_to_keep]
             print(
                 f"75 percentile between : {np.min(np.nanpercentile(residuals, 75, axis=0))} and "
                 f"{np.max(np.nanpercentile(residuals, 75, axis=0))}"
@@ -473,10 +473,7 @@ class KinematicsReconstructor:
                 qddot[i_data, -1] = (qdot[i_data, -1] - qdot[i_data, -2]) / (self.t[-1] - self.t[-2])
             for i_data in range(qdot.shape[0]):
                 qdot[i_data, :] = Operator.apply_filtfilt(
-                    qdot[i_data:i_data + 1, :],
-                    order=4,
-                    sampling_rate=sampling_rate,
-                    cutoff_freq=6
+                    qdot[i_data : i_data + 1, :], order=4, sampling_rate=sampling_rate, cutoff_freq=6
                 )
             return q_filtered, qdot, qddot
 

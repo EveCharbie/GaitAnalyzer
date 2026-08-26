@@ -561,7 +561,7 @@ class ModelCreator:
             marker_pairs={
                 Translations.X: [["STR", "T10"], ["SUP", "C7"]],
                 Translations.Y: [["RASIS", "RA"], ["LASIS", "LA"], ["RPSIS", "RA"], ["LPSIS", "LA"]],
-                Translations.Z: [["LA", "RA"],["LASIS", "RA"], ["RASIS", "LA"], ["LASIS", "RASIS"]],
+                Translations.Z: [["LA", "RA"], ["LASIS", "RA"], ["RASIS", "LA"], ["LASIS", "RASIS"]],
             },
         )
         self.model = scale_tool.scale(

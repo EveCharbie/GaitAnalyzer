@@ -157,6 +157,7 @@ class AnalysisPerformer:
         # For python analysis
         with open(result_file_name + ".pkl", "wb") as f:
             pickle.dump(result_dict, f)
+
         # For matlab analysis
         # --- Fix for MATLAB field name length limit (31 chars) ---
         def shorten_keys(d, max_len=31):
@@ -317,6 +318,5 @@ class AnalysisPerformer:
                     c3d_file_name,
                     result_folder,
                     **self.kwargs,
-
                 )
                 self.save_subject_results(results, result_file_name, cycles_to_analyze)
