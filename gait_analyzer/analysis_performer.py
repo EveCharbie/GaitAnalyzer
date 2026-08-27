@@ -1,7 +1,6 @@
 import os
 import pickle
 from scipy.io import savemat
-import git
 from datetime import date
 import subprocess
 import json
@@ -110,25 +109,10 @@ class AnalysisPerformer:
         packages = json.loads(result.stdout)
         packages_versions = {elt["name"]: elt["version"] for elt in packages}
 
-        # Get the version of the current package
-        repo = git.Repo(search_parent_directories=True)
-        commit_id = str(repo.commit())
-        branch = str(repo.active_branch)
-        try:
-            tag = repo.git.describe("--tags")
-        except git.exc.GitCommandError:
-            tag = "No tag"
-        gait_analyzer_version = repo.git.version_info
-        git_date = repo.git.log("-1", "--format=%cd")
         version_dic = {
-            "commit_id": commit_id,
-            "git_date": git_date,
-            "branch": branch,
-            "tag": tag,
-            "gait_analyzer_version": gait_analyzer_version,
             "date_of_the_analysis": date.today().strftime("%b-%d-%Y-%H-%M-%S"),
             "biorbd_version": packages_versions["biorbd"],
-            "pyomeca_version": packages_versions["pyomeca"] if "pyomeca" in packages_versions else "Not installed",
+            "pyomeca_version": (packages_versions["pyomeca"] if "pyomeca" in packages_versions else "Not installed"),
             "ezc3d_version": packages_versions["ezc3d"],
             "bioptim_version": (
                 packages_versions["bioptim"] if "bioptim" in packages_versions else "Not installed through conda-forge"
@@ -173,7 +157,21 @@ class AnalysisPerformer:
         # For python analysis
         with open(result_file_name + ".pkl", "wb") as f:
             pickle.dump(result_dict, f)
+
         # For matlab analysis
+        def check_key_lengths(d, max_len=31, path=""):
+            for k, v in d.items():
+                if isinstance(k, str) and len(k) > max_len:
+                    raise ValueError(
+                        f"Key '{path}{k}' is {len(k)} characters long, which exceeds MATLAB's "
+                        f"{max_len}-character field name limit. Please shorten this key at its "
+                        f"source (in the corresponding class's outputs() method) instead of "
+                        f"truncating it here, since truncation can silently collide with another key."
+                    )
+                if isinstance(v, dict):
+                    check_key_lengths(v, max_len, path=f"{path}{k}.")
+
+        check_key_lengths(result_dict)
         savemat(result_file_name + ".mat", result_dict)
 
     def check_for_geometry_files(self):
@@ -285,7 +283,10 @@ class AnalysisPerformer:
                 os.makedirs(result_folder)
                 os.makedirs(self.figures_result_folder)
                 os.makedirs(self.models_result_folder)
-                print("The results folder was created here: ", os.path.abspath(result_folder))
+                print(
+                    "The results folder was created here: ",
+                    os.path.abspath(result_folder),
+                )
             if not os.path.exists(self.figures_result_folder):
                 os.makedirs(self.figures_result_folder)
             if not os.path.exists(self.models_result_folder):

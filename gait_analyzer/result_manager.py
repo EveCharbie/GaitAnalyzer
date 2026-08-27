@@ -1,6 +1,8 @@
 import numpy as np
 
-from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import AngularMomentumCalculator
+from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import (
+    AngularMomentumCalculator,
+)
 from gait_analyzer.model_creator import ModelCreator
 from gait_analyzer.experimental_data import ExperimentalData
 from gait_analyzer.inverse_dynamics_performer import InverseDynamicsPerformer
@@ -9,6 +11,18 @@ from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
+from gait_analyzer.biomechanics_quantities.margin_of_stability_calculator import (
+    MarginOfStabilityCalculator,
+)
+from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import (
+    MechanicalEnergyCalculator,
+)
+from gait_analyzer.biomechanics_quantities.com_mma_distance_calculator import (
+    ComMmaDistanceCalculator,
+)
+from gait_analyzer.biomechanics_quantities.probability_of_instability_calculator import (
+    ProbabilityOfInstability,
+)
 
 
 class ResultManager:
@@ -16,7 +30,15 @@ class ResultManager:
     This class contains all the results from the gait analysis and is the main class handling all types of analysis to perform on the experimental data.
     """
 
-    def __init__(self, subject: Subject, cycles_to_analyze: range, static_trial: str, result_folder: str):
+    def __init__(
+        self,
+        subject: Subject,
+        cycles_to_analyze: range,
+        static_trial: str,
+        result_folder: str,
+        trial_full_file_path,
+        static_trial_full_file_path,
+    ):
         """
         Initialize the ResultManager.
         .
@@ -48,6 +70,9 @@ class ResultManager:
         self.cycles_to_analyze = cycles_to_analyze
         self.result_folder = result_folder
         self.static_trial = static_trial
+        self.trial_full_file_path = trial_full_file_path
+        self.result_folder = result_folder
+        self.static_trial_full_file_path = static_trial_full_file_path
 
         # Extended attributes
         self.experimental_data = None
@@ -58,6 +83,14 @@ class ResultManager:
         self.inverse_dynamics_performer = None
         self.optimal_estimator = None
         self.angular_momentum_calculator = None
+        self.marginofstability_calculator = None
+        self.percentage_of_instability_calculator = None
+        self.mechanical_energy_calculator = None
+        self.com_mma_distance_calculator = None
+        self.mechanical_energy = None
+        self.gait_parameters_all = None
+        self.E_pot = None
+        self.E_kin = None
 
     def create_model(
         self,
@@ -117,7 +150,12 @@ class ResultManager:
             animate_c3d_flag=animate_c3d_flag,
         )
 
-    def add_cyclic_events(self, force_plate_sides: list[Side], skip_if_existing: bool, plot_phases_flag: bool = False):
+    def add_cyclic_events(
+        self,
+        force_plate_sides: list[Side],
+        skip_if_existing: bool,
+        plot_phases_flag: bool = False,
+    ):
 
         # Checks
         if self.model_creator is None:
@@ -187,7 +225,10 @@ class ResultManager:
         )
 
     def perform_inverse_dynamics(
-        self, skip_if_existing: bool, reintegrate_flag: bool = True, animate_dynamics_flag: bool = False
+        self,
+        skip_if_existing: bool,
+        reintegrate_flag: bool = True,
+        animate_dynamics_flag: bool = False,
     ):
         # Checks
         if self.model_creator is None:
@@ -230,9 +271,79 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
         )
 
+    def compute_com_mma_distance(self, skip_if_existing: bool = False):
+        if self.angular_momentum_calculator is None:
+            raise Exception("Compute angular momentum first")
+        if self.kinematics_reconstructor is None:
+            raise Exception("Compute kinematics first")
+
+        self.com_mma_distance_calculator = ComMmaDistanceCalculator(
+            angular_momentum_calculator=self.angular_momentum_calculator,
+            experimental_data=self.experimental_data,
+            subject=self.subject,
+            q=self.kinematics_reconstructor.q_filtered,
+            skip_if_existing=skip_if_existing,
+        )
+
+        self.dCoM_MMA = self.com_mma_distance_calculator.dCoM_MMA_norm
+
+    def compute_mechanical_energy(self, skip_if_existing: bool = False, plot: bool = False):
+
+        if self.model_creator is None:
+            raise Exception("Please add the biorbd model first by running ResultManager.create_model()")
+        if self.experimental_data is None:
+            raise Exception("Please add the experimental data first by running ResultManager.add_experimental_data()")
+        if self.kinematics_reconstructor is None:
+            raise Exception(
+                "Please add the kinematics reconstructor first by running ResultManager.reconstruct_kinematics()"
+            )
+        if self.angular_momentum_calculator is None:
+            raise Exception("Please compute angular momentum first (needed for segment COM and COMdot data)")
+
+        if self.mechanical_energy_calculator is None:
+            self.mechanical_energy_calculator = MechanicalEnergyCalculator(
+                self.model_creator.biorbd_model,
+                self.experimental_data,
+                self.kinematics_reconstructor,
+                self.subject,
+                self.angular_momentum_calculator.segments_data,
+                skip_if_existing=skip_if_existing,
+            )
+
+        if plot:
+            self.mechanical_energy_calculator.plot_energy()
+
+        return self.mechanical_energy_calculator.mechanical_energy
+
+    def compute_marginofstability(self, skip_if_existing: bool = False):
+        if self.marginofstability_calculator is not None:
+            return
+
+        self.marginofstability_calculator = MarginOfStabilityCalculator(
+            model=self.model_creator.biorbd_model,
+            markers_sorted=self.experimental_data.markers_sorted,
+            model_marker_names=self.experimental_data.model_marker_names,
+            q=self.kinematics_reconstructor.q_filtered,
+            qdot=self.kinematics_reconstructor.qdot,
+            experimental_data=self.experimental_data,
+            skip_if_existing=skip_if_existing,
+        )
+
+    def compute_probalityofstability(self, skip_if_existing: bool = False, heel_strike_threshold: float = 20):
+        if self.percentage_of_instability_calculator is not None:
+            return
+
+        self.percentage_of_instability_calculator = ProbabilityOfInstability(
+            marginofstability_calculator=self.marginofstability_calculator,
+            experimental_data=self.experimental_data,
+            subject=self.subject,
+            skip_if_existing=skip_if_existing,
+            heel_strike_threshold=heel_strike_threshold,
+        )
+
     def estimate_optimally(
         self,
-        cycle_to_analyze: int,
+        cycles_to_analyze: int | list,  # <- int | list
         plot_solution_flag: bool = False,
         animate_solution_flag: bool = False,
         skip_if_existing: bool = False,
@@ -249,20 +360,23 @@ class ResultManager:
             )
         if self.kinematics_reconstructor is None:
             raise Exception(
-                "Please run the kinematics reconstruction first by running ResultManager.estimate_optimally()"
+                "Please run the kinematics reconstruction first by running ResultManager.reconstruct_kinematics()"
             )
         if self.inverse_dynamics_performer is None:
             raise Exception("Please run the inverse dynamics first by running ResultManager.perform_inverse_dynamics()")
+        if self.experimental_data.gait_parameters_all is None:
+            raise Exception("Please compute gait parameters first by running ResultManager.extract_gait_parameters()")
 
         # Perform the optimal estimation optimization
         self.optimal_estimator = OptimalEstimator(
-            cycle_to_analyze=cycle_to_analyze,
+            cycles_to_analyze=cycles_to_analyze,
             subject=self.subject,
             model_creator=self.model_creator,
             experimental_data=self.experimental_data,
             events=self.events,
             kinematics_reconstructor=self.kinematics_reconstructor,
             inverse_dynamic_performer=self.inverse_dynamics_performer,
+            gait_parameters_all=self.experimental_data.gait_parameters_all,
             plot_solution_flag=plot_solution_flag,
             animate_solution_flag=animate_solution_flag,
             skip_if_existing=skip_if_existing,

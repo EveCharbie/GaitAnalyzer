@@ -27,15 +27,23 @@ def analysis_to_perform(
         static_trial=static_trial,
         result_folder=result_folder,
     )
-    results.create_model(osim_model_type=OsimModels.WholeBody(), skip_if_existing=False, animate_model_flag=False)
+    results.create_model(
+        osim_model_type=OsimModels.WholeBody(),
+        skip_if_existing=False,
+        animate_model_flag=False,
+    )
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=["U1", "U2", "U3", "U4", "*49", "*50"], animate_c3d_flag=False
+        c3d_file_name=c3d_file_name,
+        markers_to_ignore=["U1", "U2", "U3", "U4", "*49", "*50"],
+        animate_c3d_flag=False,
     )
     if "Vicon" in c3d_file_name:
         results.add_unique_events(skip_if_existing=True, plot_phases_flag=False)
     elif "qtm" in c3d_file_name:
         results.add_cyclic_events(
-            force_plate_sides=[Side.RIGHT, Side.LEFT], skip_if_existing=False, plot_phases_flag=False
+            force_plate_sides=[Side.RIGHT, Side.LEFT],
+            skip_if_existing=False,
+            plot_phases_flag=False,
         )
     else:
         raise RuntimeError(
@@ -43,7 +51,11 @@ def analysis_to_perform(
         )
 
     results.reconstruct_kinematics(
-        reconstruction_type=[ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF],
+        reconstruction_type=[
+            ReconstructionType.ONLY_LM,
+            ReconstructionType.LM,
+            ReconstructionType.TRF,
+        ],
         animate_kinematics_flag=False,
         plot_kinematics_flag=True,
         skip_if_existing=False,

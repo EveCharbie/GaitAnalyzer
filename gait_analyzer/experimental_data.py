@@ -50,7 +50,7 @@ class ExperimentalData:
 
         # Threshold for removing force values
         # TODO: Validate because this value is high !
-        self.force_threshold = 50  # N
+        self.force_threshold = 15  # N
 
         # Initial attributes
         self.c3d_full_file_path = c3d_file_name
@@ -81,7 +81,7 @@ class ExperimentalData:
         # Extract data from the c3d file
         print(f"Reading experimental data from file {self.c3d_full_file_path} ...")
         self.perform_initial_treatment()
-        self.extract_gait_parameters()
+        self.extract_gait_parameters(nb_cycle=None)
         if animate_c3d_flag:
             self.animate_c3d()
 
@@ -151,6 +151,11 @@ class ExperimentalData:
                         self.emg_units = 1_000_000  # Convert to microV
 
             # Make sure all MVC are declared
+
+            if not self.model_creator.mvc_values:
+                print("No MVC values available, skipping EMG normalization.")
+                self.normalized_emg = None  # or an array of NaNs, depending on what the rest of the pipeline expects
+                return
             for analog_name in self.analog_names:
                 if analog_name not in self.model_creator.mvc_values.keys():
                     raise RuntimeError(
@@ -158,22 +163,25 @@ class ExperimentalData:
                     )
 
             # Process the EMG signals
-            emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=self.analog_names)
-            emg_processed = (
-                emg.meca.interpolate_missing_data()
-                .meca.band_pass(order=2, cutoff=[10, 425])
-                .meca.center()
-                .meca.abs()
-                .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
-            ) * self.emg_units
             normalized_emg = np.zeros((len(self.analog_names), self.nb_analog_frames))
             for i_muscle, muscle_name in enumerate(self.analog_names):
+                emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=[muscle_name])
+                emg = emg.interpolate_na(dim="time", method="linear")
+                emg_data_clean = np.nan_to_num(np.array(emg.data), nan=0.0)  # keeps the shape (1, 120000)
+                emg.data[:] = emg_data_clean
+                emg_processed = (
+                    emg.meca.band_pass(order=2, cutoff=[10, 425])
+                    .meca.center()
+                    .meca.abs()
+                    .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
+                ) * self.emg_units
                 normalized_emg[i_muscle, :] = (
                     np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
                 )
                 normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = (
                     0  # There are still small negative values after meca.abs()
                 )
+
             self.normalized_emg = normalized_emg
 
             if np.any(self.normalized_emg > 1):
@@ -184,8 +192,6 @@ class ExperimentalData:
                             f"Muscle {self.analog_names[i_emg]} reached {np.nanmax(self.normalized_emg[i_emg, :])}... renormalizing with this new maximum."
                         )
                         self.normalized_emg[i_emg, :] /= np.nanmax(self.normalized_emg[i_emg, :])
-
-            # TODO: Charbie -> treatment of the EMG signal to remove stimulation artifacts here
 
         def extract_force_platform_data():
             """
@@ -199,7 +205,6 @@ class ExperimentalData:
             self.platform_corners = []
             for platform in platforms:
                 self.platform_corners += [platform["corners"] * units]
-
             # Initialize arrays for storing external forces and moments
             force_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             moment_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
@@ -220,24 +225,36 @@ class ExperimentalData:
                 # Filter forces and moments
                 # TODO: Charbie -> Antoine is supposed to send a ref for this filtering
                 force_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    force, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    force,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
                 moment_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    moment, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    moment,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
                 tz_filtered[i_platform, :, :] = Operator.apply_filtfilt(
-                    tz, order=2, sampling_rate=self.analogs_sampling_frequency, cutoff_freq=10
+                    tz,
+                    order=2,
+                    sampling_rate=self.analogs_sampling_frequency,
+                    cutoff_freq=10,
                 )
 
                 # Remove the values when the force is too small since it is likely only noise
                 null_idx = np.where(np.linalg.norm(force_filtered[i_platform, :, :], axis=0) < self.force_threshold)[0]
                 moment_filtered[i_platform, :, null_idx] = np.nan
                 force_filtered[i_platform, :, null_idx] = np.nan
+                tz_filtered[i_platform, :, null_idx] = np.nan
 
                 # Do not trust the CoP from ezc3d and recompute it after filtering the forces and moments
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
 
-                r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
+                r_z = np.mean(
+                    self.platform_corners[i_platform][2, :]
+                )  # Height of the platform origin (non-zero for some setups)
                 cop_filtered[i_platform, 0, :] = (
                     -(moment_filtered[i_platform, 1, :] - force_filtered[i_platform, 0, :] * r_z)
                     / force_filtered[i_platform, 2, :]
@@ -248,7 +265,8 @@ class ExperimentalData:
                 cop_filtered[i_platform, 2, :] = r_z
                 # The CoP must be expressed relatively to the center of the platforms
                 cop_filtered[i_platform, :, :] += np.tile(
-                    np.mean(self.platform_corners[i_platform], axis=1), (self.nb_analog_frames, 1)
+                    np.mean(self.platform_corners[i_platform], axis=1),
+                    (self.nb_analog_frames, 1),
                 ).T
 
                 # Store output in a biorbd compatible format
@@ -262,7 +280,7 @@ class ExperimentalData:
                 # Check if the ddata is computed the same way in ezc3d and in this code
                 is_good_trial = True
                 for i_component in range(3):
-                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 1e4)
+                    bad_index = np.where(cop_ezc3d[i_component, :] - cop_filtered[i_platform, i_component, :] > 0.05)
                     if len(bad_index) > 0 and bad_index[0].shape[0] > self.nb_analog_frames / 100:
                         is_good_trial = False
                     cop_filtered[i_platform, i_component, bad_index] = np.nan
@@ -278,7 +296,11 @@ class ExperimentalData:
                     axs[1].plot(cop_ezc3d[1, :], "-b")
                     axs[2].plot(cop_ezc3d[2, :], "-b")
 
-                    axs[0].plot(cop_filtered[i_platform, 0, :], "--r", label="CoP recomputed (from filtered F and M)")
+                    axs[0].plot(
+                        cop_filtered[i_platform, 0, :],
+                        "--r",
+                        label="CoP recomputed (from filtered F and M)",
+                    )
                     axs[1].plot(cop_filtered[i_platform, 1, :], "--r")
                     axs[2].plot(cop_filtered[i_platform, 2, :], "--r")
 
@@ -315,6 +337,67 @@ class ExperimentalData:
         extract_force_platform_data()
         compute_time_vectors()
 
+    def get_analog_frame_range_for_marker_frame(self, i_marker_node: int) -> list[int]:
+        """
+        Returns the analog frame indices whose samples fall in the window centered on the analog
+        frame that best matches a given marker frame index (since analogs are sampled at a higher
+        frequency than markers).
+        Note: for marker frames close to the beginning or the end of the trial, this window can
+        extend past the bounds of the analog data, which numpy will silently interpret as
+        negative/wrap-around indexing. This mirrors the existing behavior of
+        InverseDynamicsPerformer.get_f_ext_at_frame and has not been fixed here.
+
+        Parameters
+        ----------
+        i_marker_node: int
+            The marker frame index to convert.
+
+        Returns
+        -------
+        frame_range: list[int]
+            The analog frame indices to average over for this marker frame.
+        """
+        analog_to_marker_ratio = int(round(self.analogs_time_vector.shape[0] / self.markers_time_vector.shape[0]))
+        i_analog_node = Operator.from_marker_frame_to_analog_frame(
+            self.analogs_time_vector,
+            self.markers_time_vector,
+            i_marker_node,
+        )
+        return list(
+            range(
+                i_analog_node - int(analog_to_marker_ratio / 2),
+                i_analog_node + int(analog_to_marker_ratio / 2),
+            )
+        )
+
+    @staticmethod
+    def safe_nanmean(data: np.ndarray) -> np.ndarray:
+        """
+        Compute the mean over axis 0 while ignoring NaNs, replacing any remaining NaN (e.g., a
+        window that was entirely NaN) with 0.0.
+        """
+        result = np.nanmean(data, axis=0)
+        result[np.isnan(result)] = 0.0
+        return result
+
+    def get_f_ext_at_marker_frame(self, i_marker_node: int, i_platform: int, component_idx):
+        """
+        Returns the force plate data (self.f_ext_sorted_filtered) for one platform, averaged over
+        the analog frames that correspond to a single marker frame.
+
+        Parameters
+        ----------
+        i_marker_node: int
+            The marker frame index to get the force plate data for.
+        i_platform: int
+            The index of the force platform (in self.f_ext_sorted_filtered's first dimension).
+        component_idx: int | slice
+            Which of the 9 components of self.f_ext_sorted_filtered to return
+            (0:3 -> CoP, 3:6 -> moment, 6:9 -> force).
+        """
+        frame_range = self.get_analog_frame_range_for_marker_frame(i_marker_node)
+        return self.safe_nanmean(self.f_ext_sorted_filtered[i_platform, component_idx, frame_range])
+
     def animate_c3d(self):
         try:
             from pyorerun import BiorbdModel, PhaseRerun
@@ -323,11 +406,219 @@ class ExperimentalData:
         raise NotImplementedError("Animation of c3d files is not implemented yet.")
         pass
 
-    def extract_gait_parameters(self):
+    def extract_gait_parameters(self, threshold: float = None, nb_cycle: int = None):
         """
-        TODO: Guys -> please provide code :)
+        Detect gait events from force platforms + CAL markers and compute gait parameters.
+        - threshold: threshold on vertical force (N). If None, use self.force_threshold.
+        - nb_cycle: number of cycles to compute. If None, select up to 5 (or available cycles).
+        Results are stored as:
+          self.gait_parameters_all = {'right_leg': {...}, 'left_leg': {...}}
+          self.gait_parameters_meanstd = {'right_leg': {...}, 'left_leg': {...}}
         """
-        pass
+        if threshold is None:
+            threshold = self.force_threshold
+
+        try:
+            idx_RCAL = self.model_marker_names.index("RCAL")
+        except ValueError:
+            idx_RCAL = None
+        try:
+            idx_LCAL = self.model_marker_names.index("LCAL")
+        except ValueError:
+            idx_LCAL = None
+
+        if idx_RCAL is None and idx_LCAL is None:
+            raise RuntimeError("Neither RCAL nor LCAL markers found in model_marker_names.")
+
+        if idx_RCAL is not None:
+            traj_RCAL = self.markers_sorted[:, idx_RCAL, :]  # shape (3, nframes)
+        else:
+            traj_RCAL = None
+        if idx_LCAL is not None:
+            traj_LCAL = self.markers_sorted[:, idx_LCAL, :]
+        else:
+            traj_LCAL = None
+
+        if self.f_ext_sorted_filtered is None:
+            raise RuntimeError("Force data (f_ext_sorted_filtered) not computed.")
+
+        nb_platforms = self.f_ext_sorted_filtered.shape[0]
+        if nb_platforms < 1:
+            raise RuntimeError("No force platforms found in f_ext_sorted_filtered.")
+
+        force1 = self.f_ext_sorted_filtered[0, 6:9, :].copy() if nb_platforms >= 1 else None
+        force2 = self.f_ext_sorted_filtered[1, 6:9, :].copy() if nb_platforms >= 2 else None
+        if force1 is not None:
+            force1 = np.where(np.isnan(force1), 0.0, force1)
+        if force2 is not None:
+            force2 = np.where(np.isnan(force2), 0.0, force2)
+        if force1 is None and force2 is None:
+            raise RuntimeError("Could not find force arrays on platforms 1 or 2.")
+
+        # TODO: move this code to avoid duplication with the biomechanics quantities computation
+
+        def _gait_parameters_calculation(foot: str, nbcycle: int | None, threshold_local: float):
+            if foot == "left":
+                fv_foot1 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
+                fv_foot2 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
+                opp_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
+                study_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
+            elif foot == "right":
+                fv_foot1 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
+                fv_foot2 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
+                opp_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
+                study_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
+            else:
+                raise ValueError(f"foot must be 'left' or 'right', got {foot!r}.")
+
+            baseline1 = np.nanmean(fv_foot1[fv_foot1 < 20])
+            baseline2 = np.nanmean(fv_foot2[fv_foot2 < 20])
+
+            fv_foot1 = fv_foot1 - baseline1
+            fv_foot2 = fv_foot2 - baseline2
+
+            fs_force = self.analogs_sampling_frequency
+            fs_mks = self.marker_sampling_frequency
+
+            above = fv_foot1 > threshold_local
+            idx_all = np.where(np.diff(above.astype(int)) == 1)[0] + 1
+
+            if idx_all.size > 1:
+                diffs = np.diff(idx_all)
+                mean_diff = np.mean(diffs)
+                idx_err = np.where(diffs < 0.75 * mean_diff)[0]
+                if idx_err.size > 0:
+                    idx_all = np.delete(idx_all, idx_err + 1)
+
+            if idx_all.size < 4:
+                return {}
+
+            idx_start = idx_all
+            idx_end = idx_all[1:]
+            start_idx = 2
+            available_cycles = len(idx_end) - start_idx
+            if nbcycle is None:
+                nbcycle = available_cycles
+            else:
+                nbcycle = min(nbcycle, max(0, available_cycles))
+
+            use_idx_start = idx_start[start_idx : start_idx + nbcycle]
+            use_idx_end = idx_end[start_idx : start_idx + nbcycle]
+
+            idx_tpf_to_tframe = fs_mks / fs_force if fs_force != 0 else 1.0
+
+            end_contact_foot_study = np.zeros(nbcycle, dtype=int)
+            end_contact_foot_opp = np.zeros(nbcycle, dtype=int)
+            start_contact_foot_opp = np.zeros(nbcycle, dtype=int)
+
+            for ii in range(nbcycle):
+                a = use_idx_start[ii]
+                b = use_idx_end[ii]
+                seg = fv_foot1[a : b + 1]
+                rel = np.where(seg > threshold_local)[0]
+                if rel.size == 0:
+                    end_contact_foot_study[ii] = a
+                else:
+                    end_contact_foot_study[ii] = a + rel[-1]
+
+                seg2 = fv_foot2[a : b + 1]
+                rel2 = np.where(seg2 < threshold_local)[0]
+                if rel2.size == 0:
+                    end_contact_foot_opp[ii] = a
+                else:
+                    end_contact_foot_opp[ii] = a + rel2[0]
+
+                pre_seg = fv_foot2[: use_idx_end[ii] + 1]
+                rel3 = np.where(pre_seg < threshold_local)[0]
+                if rel3.size == 0:
+                    start_contact_foot_opp[ii] = 0
+                else:
+                    start_contact_foot_opp[ii] = rel3[-1]
+
+            if len(use_idx_start) >= 2:
+                stride_time = np.diff(use_idx_start) / fs_force
+            else:
+                stride_time = np.array([])
+
+            single_support_time = (
+                start_contact_foot_opp[: nbcycle - 1] - end_contact_foot_opp[: nbcycle - 1]
+            ) / fs_force
+            double_support_time = (
+                end_contact_foot_study[: nbcycle - 1] - start_contact_foot_opp[: nbcycle - 1]
+            ) / fs_force
+            stance_time = single_support_time + double_support_time
+            swing_time = stride_time - stance_time
+            frequency = 1.0 / stride_time if stride_time.size > 0 else np.array([])
+
+            step_length = np.array([])
+            step_width = np.array([])
+            opp_step_length = np.array([])
+            stride_length = np.array([])
+            velocity = np.array([])
+
+            if study_cal is not None and opp_cal is not None:
+
+                marker_idx2 = np.round(start_contact_foot_opp * idx_tpf_to_tframe).astype(int)
+                marker_idx2 = np.clip(marker_idx2, 0, study_cal.shape[1] - 1)
+                step_length = np.abs(opp_cal[0, marker_idx2] - study_cal[0, marker_idx2])
+                step_length = np.where(step_length > 100, step_length / 1000.0, step_length)
+                stride_length = step_length[: step_length.size - 1] + step_length[: step_length.size - 1]
+                # step width: mean(abs(opp_cal(2,:) - study_cal(2,:))) / 1000
+                step_width = np.abs(opp_cal[1, marker_idx2] - study_cal[1, marker_idx2])
+
+                if stride_time.size > 0:
+                    velocity = stride_length / stride_time
+                else:
+                    velocity = np.array([])
+
+            gait_parameters = {
+                "stride_time": stride_time,
+                "single_support_time": single_support_time,
+                "double_support_time": double_support_time,
+                "stance_time": stance_time,
+                "swing_time": swing_time,
+                "frequency": frequency,
+                "step_length": step_length,
+                "step_width": step_width,
+                "stride_length": stride_length,
+                "velocity": velocity,
+                "idx_start": use_idx_start,
+                "idx_end": use_idx_end,
+            }
+            return gait_parameters
+
+        # compute for left and right
+        gait_left = _gait_parameters_calculation("left", nb_cycle, threshold)
+        gait_right = _gait_parameters_calculation("right", nb_cycle, threshold)
+        self.gait_parameters_all = {"right_leg": gait_right, "left_leg": gait_left}
+        self.gait_parameters_meanstd = self._estimation_mean_std_abs_diff_per(self.gait_parameters_all)
+
+    def _estimation_mean_std_abs_diff_per(self, data):
+        """
+        Equivalent of estimation_mean_std_abs_diff_per in MATLAB.
+        data is dict with keys 'right_leg' and 'left_leg'; each contains dict of arrays.
+        Returns dict with mean and std for each variable and each leg.
+        """
+        res = {}
+        for leg in ("right_leg", "left_leg"):
+            res[leg] = {}
+            if leg not in data or not data[leg]:
+                continue
+            for var, arr in data[leg].items():
+                try:
+                    # if arr is scalar or empty, handle safely
+                    arr_np = np.asarray(arr)
+                    if arr_np.size == 0:
+                        mean_v = np.nan
+                        std_v = np.nan
+                    else:
+                        mean_v = np.nanmean(arr_np)
+                        std_v = np.nanstd(arr_np)
+                except Exception:
+                    mean_v = np.nan
+                    std_v = np.nan
+                res[leg][var] = (mean_v, std_v)
+        return res
 
     def inputs(self):
         return {
@@ -350,4 +641,10 @@ class ExperimentalData:
             "markers_time_vector": self.markers_time_vector,
             "analogs_time_vector": self.analogs_time_vector,
             "normalized_emg": self.normalized_emg,
+            "gait_parameters_all": self.gait_parameters_all,
+            "gait_parameters_meanstd": self.gait_parameters_meanstd,
+            "idx_start_right": self.gait_parameters_all.get("right_leg", {}).get("idx_start"),
+            "idx_end_right": self.gait_parameters_all.get("right_leg", {}).get("idx_end"),
+            "idx_start_left": self.gait_parameters_all.get("left_leg", {}).get("idx_start"),
+            "idx_end_left": self.gait_parameters_all.get("left_leg", {}).get("idx_end"),
         }

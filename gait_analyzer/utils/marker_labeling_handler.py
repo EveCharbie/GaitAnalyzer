@@ -86,7 +86,11 @@ class MarkerLabelingHandler:
             import pyorerun
 
             pyorerun.c3d(
-                self.c3d_path, show_forces=False, show_events=False, marker_trajectories=False, show_marker_labels=True
+                self.c3d_path,
+                show_forces=False,
+                show_events=False,
+                marker_trajectories=False,
+                show_marker_labels=True,
             )
         except ImportError:
             raise ImportError("pyorerun is not installed. Please install it to animate the C3D data.")

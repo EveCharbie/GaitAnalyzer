@@ -1,7 +1,6 @@
 import pickle
 import os
 import numpy as np
-from pyomeca import Markers
 
 from gait_analyzer import Operator, KinematicsReconstructor
 from gait_analyzer.experimental_data import ExperimentalData
@@ -54,6 +53,7 @@ class InverseDynamicsPerformer:
             raise ValueError("animate_dynamics_flag must be a boolean")
         if animate_dynamics_flag and not reintegrate_flag:
             print("When animate_dynamics_flag is True, reintegrate_flag is automatically set to True.")
+            print("To avoid crashes, only the first 200 frames will be displayed in the animation.")
             reintegrate_flag = True
 
         # Initial attributes
@@ -110,12 +110,15 @@ class InverseDynamicsPerformer:
         for i_node in range(self.q_filtered.shape[1]):
             f_ext = self.get_f_ext_at_frame(i_node)
             tau[:, i_node] = self.biorbd_model.InverseDynamics(
-                self.q_filtered[:, i_node], self.qdot[:, i_node], self.qddot[:, i_node], f_ext
+                self.q_filtered[:, i_node],
+                self.qdot[:, i_node],
+                self.qddot[:, i_node],
+                f_ext,
             ).to_array()
         self.tau = tau
 
     def get_f_ext_at_frame(self, i_marker_node: int):
-        """
+        """ "
         Constructs a biorbd external forces set object at a specific frame.
         .
         Parameters
@@ -129,28 +132,15 @@ class InverseDynamicsPerformer:
             The external forces set at the frame.
         """
         f_ext_set = self.biorbd_model.externalForceSet()
-        i_analog_node = Operator.from_marker_frame_to_analog_frame(
-            self.experimental_data.analogs_time_vector, self.experimental_data.markers_time_vector, i_marker_node
-        )
-        analog_to_marker_ratio = int(
-            round(
-                self.experimental_data.analogs_time_vector.shape[0]
-                / self.experimental_data.markers_time_vector.shape[0]
-            )
-        )
-        frame_range = list(
-            range(i_analog_node - (int(analog_to_marker_ratio / 2)), i_analog_node + (int(analog_to_marker_ratio / 2)))
-        )
-        # Average over the marker frame time lapse
         f_ext_set.add(
             "calcn_l",
-            np.mean(self.experimental_data.f_ext_sorted[0, 3:9, frame_range], axis=0),
-            np.mean(self.experimental_data.f_ext_sorted[0, :3, frame_range], axis=0),
+            self.experimental_data.get_f_ext_at_marker_frame(i_marker_node, 0, slice(3, 9)),
+            self.experimental_data.get_f_ext_at_marker_frame(i_marker_node, 0, slice(0, 3)),
         )
         f_ext_set.add(
             "calcn_r",
-            np.mean(self.experimental_data.f_ext_sorted[1, 3:9, frame_range], axis=0),
-            np.mean(self.experimental_data.f_ext_sorted[1, :3, frame_range], axis=0),
+            self.experimental_data.get_f_ext_at_marker_frame(i_marker_node, 1, slice(3, 9)),
+            self.experimental_data.get_f_ext_at_marker_frame(i_marker_node, 1, slice(0, 3)),
         )
         return f_ext_set
 
@@ -183,7 +173,10 @@ class InverseDynamicsPerformer:
         dt = self.experimental_data.markers_dt
         x_reintegrated = np.zeros((2 * self.biorbd_model.nbQ(), nb_frames_to_reintegrate + 1))
         x_reintegrated[:, 0] = np.hstack(
-            (self.q_filtered[:, frames_to_reintegrate.start], self.qdot[:, frames_to_reintegrate.start])
+            (
+                self.q_filtered[:, frames_to_reintegrate.start],
+                self.qdot[:, frames_to_reintegrate.start],
+            )
         )
         for i, i_node in enumerate(frames_to_reintegrate):
             q = x_reintegrated[: self.biorbd_model.nbQ(), i]
@@ -213,18 +206,22 @@ class InverseDynamicsPerformer:
         model.options.show_marker_labels = False
         model.options.show_center_of_mass_labels = False
 
-        viz = PhaseRerun(self.kinematics_reconstructor.t)
+        viz = PhaseRerun(self.kinematics_reconstructor.t[:200])
 
         # Add experimental markers
         marker_names = [m.to_string() for m in self.biorbd_model.markerNames()]
-        markers = PyoMarkers(data=self.kinematics_reconstructor.markers, channels=marker_names, show_labels=False)
+        markers = PyoMarkers(
+            data=self.kinematics_reconstructor.markers[:, :, :200],
+            channels=marker_names,
+            show_labels=False,
+        )
 
         # Add force plates to the animation
         force_plate_idx = Operator.from_marker_frame_to_analog_frame(
             self.experimental_data.analogs_time_vector,
             self.experimental_data.markers_time_vector,
             list(self.kinematics_reconstructor.frame_range),
-        )
+        )[:200]
         viz.add_force_plate(num=0, corners=self.experimental_data.platform_corners[0])
         viz.add_force_plate(num=1, corners=self.experimental_data.platform_corners[1])
         viz.add_force_data(
@@ -239,10 +236,10 @@ class InverseDynamicsPerformer:
         )
 
         # Add the kinematics
-        viz.add_animated_model(model, self.q_filtered, tracked_markers=markers)
+        viz.add_animated_model(model, self.q_filtered[:, :200], tracked_markers=markers)
 
         # Add the reintegration of the dynamics
-        viz.add_animated_model(model, self.q_reintegrated)
+        viz.add_animated_model(model, self.q_reintegrated[:, :200])
 
         # Play
         viz.rerun_by_frame("Dynamics reconstruction")

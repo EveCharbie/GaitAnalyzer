@@ -181,10 +181,19 @@ class CyclicEvents:
             fig, axs = plt.subplots(2, 1)
             # Left leg
             axs[0].plot(np.abs(grf_left_y_filtered), "-b")
-            axs[0].plot(idx_left_start_search, np.abs(grf_left_y_filtered)[idx_left_start_search], ".g")
+            axs[0].plot(
+                idx_left_start_search,
+                np.abs(grf_left_y_filtered)[idx_left_start_search],
+                ".g",
+            )
             axs[0].plot(
                 np.array([0, grf_left_y_filtered.shape[0]]),
-                np.array([self.minimal_forward_force_threshold, self.minimal_forward_force_threshold]),
+                np.array(
+                    [
+                        self.minimal_forward_force_threshold,
+                        self.minimal_forward_force_threshold,
+                    ]
+                ),
                 "--k",
             )
             axs[0].plot(
@@ -195,10 +204,19 @@ class CyclicEvents:
             axs[0].set_title("Left leg antero-posterior GRF")
             # Right leg
             axs[1].plot(np.abs(grf_right_y_filtered), "-b")
-            axs[1].plot(idx_right_start_search, np.abs(grf_right_y_filtered)[idx_right_start_search], ".g")
+            axs[1].plot(
+                idx_right_start_search,
+                np.abs(grf_right_y_filtered)[idx_right_start_search],
+                ".g",
+            )
             axs[1].plot(
                 np.array([0, grf_right_y_filtered.shape[0]]),
-                np.array([self.minimal_forward_force_threshold, self.minimal_forward_force_threshold]),
+                np.array(
+                    [
+                        self.minimal_forward_force_threshold,
+                        self.minimal_forward_force_threshold,
+                    ]
+                ),
                 "--k",
             )
             axs[1].plot(
@@ -296,7 +314,10 @@ class CyclicEvents:
                 )
                 plt.plot(
                     np.array(
-                        [self.experimental_data.analogs_time_vector[0], self.experimental_data.analogs_time_vector[-1]]
+                        [
+                            self.experimental_data.analogs_time_vector[0],
+                            self.experimental_data.analogs_time_vector[-1],
+                        ]
                     ),
                     np.array([self.heel_velocity_threshold, self.heel_velocity_threshold]),
                     "--k",
@@ -350,7 +371,10 @@ class CyclicEvents:
                 )
                 plt.plot(
                     np.array(
-                        [self.experimental_data.analogs_time_vector[0], self.experimental_data.analogs_time_vector[-1]]
+                        [
+                            self.experimental_data.analogs_time_vector[0],
+                            self.experimental_data.analogs_time_vector[-1],
+                        ]
                     ),
                     np.array([self.heel_velocity_threshold, self.heel_velocity_threshold]),
                     "--k",
@@ -412,7 +436,12 @@ class CyclicEvents:
             )
             axs[0].plot(
                 np.array([0, len(grf_left_z_filtered)]),
-                np.array([self.minimal_vertical_force_threshold, self.minimal_vertical_force_threshold]),
+                np.array(
+                    [
+                        self.minimal_vertical_force_threshold,
+                        self.minimal_vertical_force_threshold,
+                    ]
+                ),
                 "--k",
             )
             axs[0].set_title("Left leg vertical GRF")
@@ -425,7 +454,12 @@ class CyclicEvents:
             )
             axs[1].plot(
                 np.array([0, len(grf_right_z_filtered)]),
-                np.array([self.minimal_vertical_force_threshold, self.minimal_vertical_force_threshold]),
+                np.array(
+                    [
+                        self.minimal_vertical_force_threshold,
+                        self.minimal_vertical_force_threshold,
+                    ]
+                ),
                 "--k",
             )
             axs[1].set_title("Right leg vertical GRF")
@@ -454,7 +488,8 @@ class CyclicEvents:
 
     def detect_phases_both_legs(self, phase_name, left_leg_phase_name, right_leg_phase_name):
         self.phases[phase_name] = np.logical_and(
-            self.phases_left_leg[left_leg_phase_name], self.phases_right_leg[right_leg_phase_name]
+            self.phases_left_leg[left_leg_phase_name],
+            self.phases_right_leg[right_leg_phase_name],
         )
         return
 

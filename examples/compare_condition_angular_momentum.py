@@ -64,10 +64,16 @@ def analysis_to_perform(
         "Bertec_treadmill_speed",
     ]
     results.add_experimental_data(
-        c3d_file_name=c3d_file_name, markers_to_ignore=markers_to_ignore, analogs_to_ignore=analogs_to_ignore
+        c3d_file_name=c3d_file_name,
+        markers_to_ignore=markers_to_ignore,
+        analogs_to_ignore=analogs_to_ignore,
     )
 
-    results.add_cyclic_events(force_plate_sides=[Side.LEFT, Side.RIGHT], skip_if_existing=True, plot_phases_flag=False)
+    results.add_cyclic_events(
+        force_plate_sides=[Side.LEFT, Side.RIGHT],
+        skip_if_existing=True,
+        plot_phases_flag=False,
+    )
 
     results.reconstruct_kinematics(
         reconstruction_type=[
@@ -128,9 +134,21 @@ if __name__ == "__main__":
         )
     )
     cycles_to_analyze = {
-        "CHE_AngMom": {"_zero": range(15, 49), "_plus_20": range(5, 39), "_moins_20": range(130, 164)},
-        "AOT_AngMom": {"_zero": range(33, 67), "_plus_20": range(43, 77), "_moins_20": range(3, 37)},
-        "DEY_AngMom": {"_zero": range(87, 121), "_plus_20": range(120, 153), "_moins_20": range(137, 171)},
+        "CHE_AngMom": {
+            "_zero": range(15, 49),
+            "_plus_20": range(5, 39),
+            "_moins_20": range(130, 164),
+        },
+        "AOT_AngMom": {
+            "_zero": range(33, 67),
+            "_plus_20": range(43, 77),
+            "_moins_20": range(3, 37),
+        },
+        "DEY_AngMom": {
+            "_zero": range(87, 121),
+            "_plus_20": range(120, 153),
+            "_moins_20": range(137, 171),
+        },
     }
 
     # --- Example of how to run the analysis --- #
@@ -167,5 +185,6 @@ if __name__ == "__main__":
     )
     stats_results.perform_stats()
     stats_results.plot_stats(
-        save_plot_name="results/AngMom_paired_t_test.svg", order=["_moins_20", "_zero", "_plus_20"]
+        save_plot_name="results/AngMom_paired_t_test.svg",
+        order=["_moins_20", "_zero", "_plus_20"],
     )

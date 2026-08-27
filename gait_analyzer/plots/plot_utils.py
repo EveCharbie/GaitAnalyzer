@@ -17,7 +17,7 @@ class PlotType(Enum):
     QDDOT = "qddot"
     TAU = "tau"
     POWER = "power"
-    ANGULAR_MOMENTUM = "total_angular_momentum_normalized"
+    ANGULAR_MOMENTUM = "total_angular_momentum_norm"
     GRF = "f_ext_sorted_filtered"
     EMG = "normalized_emg"
     MUSCLE_FORCES = "muscle_forces"
@@ -179,7 +179,11 @@ def split_cycles(data: np.ndarray, event_idx: list[int], plot_type: PlotType, su
 
 
 def split_cycle(
-    data: np.ndarray, cycle_start: int, cycle_end: int, plot_type: PlotType, subject_mass: float
+    data: np.ndarray,
+    cycle_start: int,
+    cycle_end: int,
+    plot_type: PlotType,
+    subject_mass: float,
 ) -> list[np.ndarray]:
     """
     This function extract one cycle.

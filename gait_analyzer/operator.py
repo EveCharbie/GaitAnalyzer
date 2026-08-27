@@ -102,13 +102,18 @@ class Operator:
         for i_data in range(data.shape[0]):
             non_nan_idx = ~np.isnan(data[i_data, :])
             filtered_data[i_data, non_nan_idx] = savgol_filter(
-                data[i_data, non_nan_idx], window_length=window_length, polyorder=polyorder, axis=0
+                data[i_data, non_nan_idx],
+                window_length=window_length,
+                polyorder=polyorder,
+                axis=0,
             )
         return filtered_data
 
     @staticmethod
     def from_marker_frame_to_analog_frame(
-        analogs_time_vector: np.ndarray, markers_time_vector: np.ndarray, marker_idx: int | list[int]
+        analogs_time_vector: np.ndarray,
+        markers_time_vector: np.ndarray,
+        marker_idx: int | list[int],
     ) -> int | list[int] | np.ndarray[int]:
         """
         This function converts a marker frame index into an analog frame index since the analogs are sampled at a higher frequency than the markers.
@@ -145,7 +150,9 @@ class Operator:
 
     @staticmethod
     def from_analog_frame_to_marker_frame(
-        analogs_time_vector: np.ndarray, markers_time_vector: np.ndarray, analog_idx: int | list[int] | np.ndarray[int]
+        analogs_time_vector: np.ndarray,
+        markers_time_vector: np.ndarray,
+        analog_idx: int | list[int] | np.ndarray[int],
     ) -> int | list[int] | np.ndarray[int]:
         """
         This function converts an analog frame index into a marker frame index since the analogs are sampled at a higher frequency than the markers.

@@ -105,7 +105,12 @@ class StatsType:
             max_value = data_df[metrics_names].max().max()
             for i_metric, metrics_name in enumerate(metrics_names):
                 plot_paired(
-                    data=data_df, dv=metrics_name, within="condition", subject="subject", ax=axs[i_metric], order=order
+                    data=data_df,
+                    dv=metrics_name,
+                    within="condition",
+                    subject="subject",
+                    ax=axs[i_metric],
+                    order=order,
                 )
                 axs[i_metric].set_ylim((min_value - 0.1 * max_value, 1.1 * max_value))
             if save_plot_name:

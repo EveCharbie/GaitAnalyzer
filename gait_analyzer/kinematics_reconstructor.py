@@ -110,7 +110,12 @@ segment_dict = {
         "min_bound": [-1.5708, -0.43633231],
         "max_bound": [1.5708, 0.61086523999999998],
     },
-    "fingers_r": {"dof_idx": [33], "markers_idx": [40], "min_bound": [-1.5708], "max_bound": [1.5708]},
+    "fingers_r": {
+        "dof_idx": [33],
+        "markers_idx": [40],
+        "min_bound": [-1.5708],
+        "max_bound": [1.5708],
+    },
     "humerus_l": {
         "dof_idx": [34, 35, 36],
         "markers_idx": [41, 42, 66],
@@ -129,7 +134,12 @@ segment_dict = {
         "min_bound": [-1.5708, -0.43633231],
         "max_bound": [1.5708, 0.61086523999999998],
     },
-    "fingers_l": {"dof_idx": [41], "markers_idx": [47, 48], "min_bound": [-1.5708], "max_bound": [1.5708]},
+    "fingers_l": {
+        "dof_idx": [41],
+        "markers_idx": [47, 48],
+        "min_bound": [-1.5708],
+        "max_bound": [1.5708],
+    },
 }
 
 
@@ -359,12 +369,17 @@ class KinematicsReconstructor:
             index_to_keep = range(len(self.frame_range))
         markers = self.experimental_data.markers_sorted[:, :, self.padded_frame_range]
         self.t = self.experimental_data.markers_time_vector[self.frame_range]
+        markers = self.experimental_data.markers_sorted[:, :, :]
 
         is_successful_reconstruction = False
         residuals = None
         for recons_method in self.reconstruction_type:
             print(f"Performing inverse kinematics reconstruction using {recons_method.value}")
-            if recons_method in [ReconstructionType.ONLY_LM, ReconstructionType.LM, ReconstructionType.TRF]:
+            if recons_method in [
+                ReconstructionType.ONLY_LM,
+                ReconstructionType.LM,
+                ReconstructionType.TRF,
+            ]:
                 ik = biorbd.InverseKinematics(self.biorbd_model, markers)
                 q_recons = ik.solve(method=recons_method.value)
                 self.q = q_recons[:, index_to_keep]
@@ -378,6 +393,11 @@ class KinematicsReconstructor:
                     self.model_creator.biorbd_model_full_path
                 )
                 self.initialize_regularization_weights()
+                # TODO: Charbie -> Make this modulable
+                q_regularization_weight = np.zeros((self.biorbd_model.nbQ(),))
+                q_regularization_weight[3:6] = 1.0
+                q_regularization_weight[7:20] = 0.6
+                q_regularization_weight[20:23] = 2.0
                 q_recons, residuals = biobuddy_model.inverse_kinematics(
                     marker_positions=markers,
                     marker_names=biobuddy_model.marker_names,
@@ -390,6 +410,8 @@ class KinematicsReconstructor:
                     compute_residual_distance=True,
                 )
                 self.q = q_recons[:, index_to_keep]
+                dt = self.experimental_data.markers_dt
+                self.t = np.arange(markers.shape[2]) * dt
                 self.q_filtered, self.qdot, self.qddot = self.filter_kinematics()
 
             elif recons_method == ReconstructionType.EKF:
@@ -402,10 +424,10 @@ class KinematicsReconstructor:
                     self.experimental_data.c3d_full_file_path,
                     frames=slice(self.padded_frame_range.start, self.padded_frame_range.stop),
                 )
-                self.q = q_filtered[:, index_to_keep]
-                self.q_filtered = q_filtered[:, index_to_keep]
-                self.qdot = qdot[:, index_to_keep]
-                self.qddot = qddot[:, index_to_keep]
+                self.q = q_filtered
+                self.q_filtered = q_filtered
+                self.qdot = qdot
+                self.qddot = qddot
 
                 residuals = np.zeros(
                     (
@@ -432,7 +454,8 @@ class KinematicsReconstructor:
                 "The reconstruction was not successful :( Please consider using a different method or checking the experimental data labeling."
             )
 
-        self.markers = markers[:, :, index_to_keep]
+        self.q = q_recons
+        self.markers = markers
         self.marker_residuals = residuals
 
     def filter_kinematics(self):
@@ -454,25 +477,26 @@ class KinematicsReconstructor:
                     f"filter_type {filter_type} not implemented. It must be 'savgol' or 'filtfilt'."
                 )
 
-            # Compute and filter qdot
+            # Compute qdot by finite differences (vectorized over all DOFs at once: these are
+            # elementwise column operations, the same for every row, so no explicit loop is needed
+            # -- apply_filtfilt/apply_savgol already loop internally over rows, see Operator).
             qdot = np.zeros_like(q)
-            for i_data in range(qdot.shape[0]):
-                qdot[i_data, 0] = (q_filtered[i_data, 1] - q_filtered[i_data, 0]) / (
-                    self.t[1] - self.t[0]
-                )  # Forward finite diff
-                qdot[i_data, 1:-1] = (q_filtered[i_data, 2:] - q_filtered[i_data, :-2]) / (
-                    self.t[2:] - self.t[:-2]
-                )  # Centered finite diff
-                qdot[i_data, -1] = (q_filtered[i_data, -1] - q_filtered[i_data, -2]) / (
-                    self.t[-1] - self.t[-2]
-                )  # Backward finite diff
+            qdot[:, 0] = (q_filtered[:, 1] - q_filtered[:, 0]) / (self.t[1] - self.t[0])  # Forward finite diff
+            qdot[:, 1:-1] = (q_filtered[:, 2:] - q_filtered[:, :-2]) / (
+                self.t[2:] - self.t[:-2]
+            )  # Centered finite diff
+            qdot[:, -1] = (q_filtered[:, -1] - q_filtered[:, -2]) / (self.t[-1] - self.t[-2])  # Backward finite diff
 
-            # Compute and filter qddot
+            # Low-pass filter qdot BEFORE differentiating it again, so that qddot is derived from
+            # filtered (not raw/noisy) velocity data, keeping qdot and qddot consistent with each
+            # other (apply_filtfilt already handles a full nb_data x nb_frames array).
+            qdot = Operator.apply_filtfilt(qdot, order=4, sampling_rate=sampling_rate, cutoff_freq=6)
+
+            # Compute qddot by finite differences of the filtered qdot (same vectorization)
             qddot = np.zeros_like(q)
-            for i_data in range(qddot.shape[0]):
-                qddot[i_data, 0] = (qdot[i_data, 1] - qdot[i_data, 0]) / (self.t[1] - self.t[0])
-                qddot[i_data, 1:-1] = (qdot[i_data, 2:] - qdot[i_data, :-2]) / (self.t[2:] - self.t[:-2])
-                qddot[i_data, -1] = (qdot[i_data, -1] - qdot[i_data, -2]) / (self.t[-1] - self.t[-2])
+            qddot[:, 0] = (qdot[:, 1] - qdot[:, 0]) / (self.t[1] - self.t[0])
+            qddot[:, 1:-1] = (qdot[:, 2:] - qdot[:, :-2]) / (self.t[2:] - self.t[:-2])
+            qddot[:, -1] = (qdot[:, -1] - qdot[:, -2]) / (self.t[-1] - self.t[-2])
 
             return q_filtered, qdot, qddot
 
@@ -487,7 +511,9 @@ class KinematicsReconstructor:
             for i_dof in range(self.q.shape[0]):
                 if i_dof < 3:
                     plt.plot(
-                        self.t, self.q_filtered[i_dof, :], label=f"{self.biorbd_model.nameDof()[i_dof].to_string()} [m]"
+                        self.t,
+                        self.q_filtered[i_dof, :],
+                        label=f"{self.biorbd_model.nameDof()[i_dof].to_string()} [m]",
                     )
                 else:
                     plt.plot(
@@ -536,7 +562,7 @@ class KinematicsReconstructor:
         marker_data_with_ones[:3, :, :] = self.markers
 
         t_animation = self.t
-        frame_range = self.frame_range
+        frame_range = range(self.experimental_data.markers_sorted.shape[2])
         if self.q.shape[0] == model.nb_q:
             q_animation = self.q_filtered.reshape(model.nb_q, len(list(self.frame_range)))
         else:
@@ -589,7 +615,12 @@ class KinematicsReconstructor:
             force_vector=self.experimental_data.f_ext_sorted_filtered[1, 6:9, analog_idx].T,
         )
 
-        viz.add_animated_model(model, q_animation, tracked_markers=markers, muscle_activations_intensity=emg)
+        viz.add_animated_model(
+            model,
+            q_animation,
+            tracked_markers=markers,
+            muscle_activations_intensity=emg,
+        )
         viz.rerun("Kinematics reconstruction")
 
     def get_result_file_full_path(self, result_folder=None):

@@ -12,7 +12,7 @@
 		<!--Specifies the name of the unscaled model (.osim) and the marker set.-->
 		<GenericModelMaker>
 			<!--Model file (.osim) for the unscaled model.-->
-			<model_file>wholebody.osim</model_file>
+			<model_file>wholebodyFlo.osim</model_file>
 			<!--Set of model markers used to scale the model. Scaling is done based on distances between model markers compared to the same distances between the corresponding experimental markers.-->
 			<marker_set_file>Unassigned</marker_set_file>
 		</GenericModelMaker>
@@ -586,58 +586,20 @@
 						</BodyScaleSet>
 					</Measurement>
 					<Measurement name="hand_r">
-						<!--Flag to turn on and off scaling for this measurement.-->
 						<apply>true</apply>
-						<!--Set of marker pairs used to determine the scale factors.-->
 						<MarkerPairSet>
 							<objects>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RRS RUS</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RHMH5 RHMH2</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RUS RHMH5</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RRS RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RRS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LRS LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LHMH5 LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LUS LHMH5</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LRS LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LRS</markers>
 								</MarkerPair>
 							</objects>
 							<groups />
@@ -654,67 +616,27 @@
 						</BodyScaleSet>
 					</Measurement>
 					<Measurement name="fingers_r">
-						<!--Flag to turn on and off scaling for this measurement.-->
 						<apply>true</apply>
-						<!--Set of marker pairs used to determine the scale factors.-->
 						<MarkerPairSet>
 							<objects>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RRS RUS</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RHMH5 RHMH2</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RUS RHMH5</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> RRS RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RRS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LRS LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LHMH5 LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LUS LHMH5</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LRS LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LRS</markers>
 								</MarkerPair>
 							</objects>
 							<groups />
 						</MarkerPairSet>
-						<!--Set of bodies to be scaled by this measurement.-->
 						<BodyScaleSet>
 							<objects>
 								<BodyScale name="fingers_r">
-									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
 							</objects>
@@ -1142,67 +1064,27 @@
 						</BodyScaleSet>
 					</Measurement>
 					<Measurement name="hand_l">
-						<!--Flag to turn on and off scaling for this measurement.-->
 						<apply>true</apply>
-						<!--Set of marker pairs used to determine the scale factors.-->
 						<MarkerPairSet>
 							<objects>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RRS RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RHMH5 RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RUS RHMH5</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RRS RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RRS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LRS LUS</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LHMH5 LHMH2</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LUS LHMH5</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LRS LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LRS</markers>
 								</MarkerPair>
 							</objects>
 							<groups />
 						</MarkerPairSet>
-						<!--Set of bodies to be scaled by this measurement.-->
 						<BodyScaleSet>
 							<objects>
 								<BodyScale name="hand_l">
-									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
 							</objects>
@@ -1210,67 +1092,27 @@
 						</BodyScaleSet>
 					</Measurement>
 					<Measurement name="fingers_l">
-						<!--Flag to turn on and off scaling for this measurement.-->
 						<apply>true</apply>
-						<!--Set of marker pairs used to determine the scale factors.-->
 						<MarkerPairSet>
 							<objects>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RRS RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RHMH5 RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RUS RHMH5</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RRS RHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> RFT3 RRS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LRS LUS</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LHMH5 LHMH2</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LUS LHMH5</markers>
 								</MarkerPair>
 								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
 									<markers> LRS LHMH2</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LUS</markers>
-								</MarkerPair>
-								<MarkerPair>
-									<!--Names of two markers, the distance between which is used to compute a body scale factor.-->
-									<markers> LFT3 LRS</markers>
 								</MarkerPair>
 							</objects>
 							<groups />
 						</MarkerPairSet>
-						<!--Set of bodies to be scaled by this measurement.-->
 						<BodyScaleSet>
 							<objects>
 								<BodyScale name="fingers_l">
-									<!--Axes (X Y Z) along which to scale a body. For example, 'X Y Z' scales along all three axes, and 'Y' scales just along the Y axis.-->
 									<axes> X Y Z</axes>
 								</BodyScale>
 							</objects>
@@ -1343,13 +1185,13 @@
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="RMHE">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="RUS">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
@@ -1379,13 +1221,13 @@
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="LMHE">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->
 						<apply>true</apply>
 						<!--Weight given to the task when solving inverse kinematics problems, default is 0.-->
-						<weight>5</weight>
+						<weight>12</weight>
 					</IKMarkerTask>
 					<IKMarkerTask name="LUS">
 						<!--Whether or not this task will be used during inverse kinematics solve, default is true.-->

@@ -248,7 +248,11 @@ class OsimModels:
                     [-35 * np.pi / 180, 35 * np.pi / 180],
                     [-45 * np.pi / 180, 45 * np.pi / 180],
                 ],
-                "head_neck_rotation_transform": [[-50 * np.pi / 180, 45 * np.pi / 180], [-0.6, 0.6], [-1.2217, 1.2217]],
+                "head_neck_rotation_transform": [
+                    [-50 * np.pi / 180, 45 * np.pi / 180],
+                    [-0.6, 0.6],
+                    [-1.2217, 1.2217],
+                ],
                 "humerus_r_rotation_transform": [
                     [-np.pi / 2, np.pi],
                     [-3.8397, np.pi / 2],
@@ -448,6 +452,8 @@ class ModelCreator:
                 raise RuntimeError(f"Functional trials path {functional_trials_path} does not exist.")
         if not os.path.exists(mvc_trials_path):
             raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
+        if mvc_trials_path is not None and not os.path.exists(mvc_trials_path):
+            raise RuntimeError(f"MVC trials path {mvc_trials_path} does not exist.")
         if not isinstance(models_result_folder, str):
             raise ValueError("models_result_folder must be a string.")
         if not isinstance(q_regularization_weight, (float, int, np.ndarray)):
@@ -550,7 +556,9 @@ class ModelCreator:
         # Modify the model's ground orientation
         rt_matrix = RotoTransMatrix()
         rt_matrix.from_euler_angles_and_translation(
-            angle_sequence="xy", angles=np.array([np.pi / 2, np.pi]), translation=np.array([0, 0, 0])
+            angle_sequence="xy",
+            angles=np.array([np.pi / 2, np.pi]),
+            translation=np.array([0, 0, 0]),
         )
         self.model.segments["ground"].segment_coordinate_system.scs = rt_matrix
 
@@ -558,8 +566,18 @@ class ModelCreator:
         scale_tool.scaling_segments["torso"].scaling_type = AxisWiseScaling(
             marker_pairs={
                 Translations.X: [["STR", "T10"], ["SUP", "C7"]],
-                Translations.Y: [["RASIS", "RA"], ["LASIS", "LA"], ["RPSIS", "RA"], ["LPSIS", "LA"]],
-                Translations.Z: [["LA", "RA"]],
+                Translations.Y: [
+                    ["RASIS", "RA"],
+                    ["LASIS", "LA"],
+                    ["RPSIS", "RA"],
+                    ["LPSIS", "LA"],
+                ],
+                Translations.Z: [
+                    ["LA", "RA"],
+                    ["LASIS", "RA"],
+                    ["RASIS", "LA"],
+                    ["LASIS", "RASIS"],
+                ],
             },
         )
         self.model = scale_tool.scale(
@@ -601,18 +619,18 @@ class ModelCreator:
                 abs_path = os.path.abspath(self.functional_trials_path)
                 raise RuntimeError(f"The functional trial for {trial_name} was not found in the directory {abs_path}.")
 
-        # # Hip Right
-        # joint_center_tool.add(
-        #     Score(
-        #         functional_c3d=C3dData(trials_list["right_hip"]),
-        #         parent_name="pelvis",
-        #         child_name="femur_r",
-        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-        #         child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Hip Right
+        joint_center_tool.add(
+            Score(
+                functional_trial=C3dData(trials_list["right_hip"]),
+                parent_name="pelvis",
+                child_name="femur_r",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["RLFE", "RMFE"] + self.osim_model_type.markers_to_add["femur_r"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Knee right
         joint_center_tool.add(
             Sara(
@@ -641,18 +659,18 @@ class ModelCreator:
                 animate_rt=animate_reconstruction,
             )
         )
-        # # Hip Left
-        # joint_center_tool.add(
-        #     Score(
-        #         functional_trial=C3dData(trials_list["left_hip"]),
-        #         parent_name="pelvis",
-        #         child_name="femur_l",
-        #         parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
-        #         child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
-        #         initialize_whole_trial_reconstruction=False,
-        #         animate_rt=animate_reconstruction,
-        #     )
-        # )
+        # Hip Left
+        joint_center_tool.add(
+            Score(
+                functional_trial=C3dData(trials_list["left_hip"]),
+                parent_name="pelvis",
+                child_name="femur_l",
+                parent_marker_names=["RASIS", "LASIS", "LPSIS", "RPSIS"],
+                child_marker_names=["LGT", "LLFE", "LMFE"] + self.osim_model_type.markers_to_add["femur_l"],
+                initialize_whole_trial_reconstruction=False,
+                animate_rt=animate_reconstruction,
+            )
+        )
         # Knee Left
         joint_center_tool.add(
             Sara(
@@ -703,7 +721,7 @@ class ModelCreator:
         except:
             raise RuntimeError("To animate the model, you must install Pyorerun.")
 
-        animation = LiveModelAnimation.from_file(self.biorbd_model_full_path, with_q_charts=True)
+        animation = LiveModelAnimation(self.biorbd_model_full_path, with_q_charts=True)
         animation.rerun()
 
     def get_mvc_values(self, plot_emg_flag: bool = False):
@@ -712,7 +730,10 @@ class ModelCreator:
         """
         if self.mvc_trials_path is None:
             raise NotImplementedError("This should eb allowed but I did not take the time to implement it.")
-
+        if self.mvc_trials_path is None:
+            print("No MVC trials path provided, skipping MVC extraction.")
+            self.mvc_values = {}
+            return
         mvc_values = {}
         emg_values = {}
         for mvc in os.listdir(self.mvc_trials_path):
@@ -726,11 +747,13 @@ class ModelCreator:
                 for name in analog_names:
                     if mvc.endswith(name + ".c3d"):
                         emg = Analogs.from_c3d(
-                            os.path.join(self.mvc_trials_path, mvc), suffix_delimiter=".", usecols=[name]
+                            os.path.join(self.mvc_trials_path, mvc),
+                            suffix_delimiter=".",
+                            usecols=[name],
                         )
+                        emg = emg.interpolate_na(dim="time", method="linear")
                         emg_processed = (
-                            emg.meca.interpolate_missing_data()
-                            .meca.band_pass(order=2, cutoff=[10, 425])
+                            emg.meca.band_pass(order=2, cutoff=[10, 425])
                             .meca.center()
                             .meca.abs()
                             .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
