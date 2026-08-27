@@ -21,6 +21,7 @@ class MechanicalEnergyCalculator:
         kinematics_reconstructor: KinematicsReconstructor,
         subject: Subject,
         segments_data: dict,
+        skip_if_existing: bool = False,
     ):
         self.model = biorbd_model
         self.experimental_data = experimental_data
@@ -39,11 +40,15 @@ class MechanicalEnergyCalculator:
         self.E_kin_global_vec = None
         self.E_pot_normalized = None
         self.E_kin_normalized = None
+        self.is_loaded_mechanical_energy = False
 
-    def compute_mechanical_energy(self, skip_if_existing: bool = False):
         if skip_if_existing and self.check_if_existing():
-            return self.mechanical_energy
+            self.is_loaded_mechanical_energy = True
+        else:
+            self.compute_mechanical_energy()
+            self.save()
 
+    def compute_mechanical_energy(self):
         nb_frames = self.nb_frames
         nb_segments = self.model.nbSegment()
         g = np.linalg.norm(self.gravity)
@@ -84,18 +89,28 @@ class MechanicalEnergyCalculator:
                 com_s = seg_data["COM"][:, frame]
                 comdot_s = seg_data["COMdot"][:, frame]
 
-                if np.max(np.abs(comdot_s)) > 10:  # mm/s → m/s
-                    comdot_s = comdot_s / 1000
-                if np.max(np.abs(comdot_global)) > 10:
-                    comdot_global = comdot_global / 1000
+                # Check: comdot should already be in m/s; >10 m/s is implausible for human
+                # gait and signals a units mismatch (see KinematicsReconstructor / ReconstructionType.EKF).
+                if np.max(np.abs(comdot_s)) > 10 or np.max(np.abs(comdot_global)) > 10:
+                    raise RuntimeError(
+                        "Segment CoM velocity exceeds 10 m/s, which is implausible for human gait and "
+                        "suggests comdot is not in SI units (m/s) for this frame/reconstruction method. "
+                        f"max(|comdot_s|)={np.max(np.abs(comdot_s)):.2f}, "
+                        f"max(|comdot_global|)={np.max(np.abs(comdot_global)):.2f}."
+                    )
 
                 V_rel = comdot_s - comdot_global
                 E_trans = 0.5 * m_s * np.dot(V_rel, V_rel)
 
                 R_seg_global = np.array(self.model.globalJCS(q_i, seg_i).to_array())[:3, :3]
                 omega_global = self.model.segmentAngularVelocity(q_i, qdot_i, seg_i).to_array()
-                if np.max(np.abs(omega_global)) > 10:  # deg/s → rad/s
-                    omega_global = omega_global * np.pi / 180
+                # Same reasoning as above (>10 rad/s ~ 573 deg/s is implausible for human gait).
+                if np.max(np.abs(omega_global)) > 10:
+                    raise RuntimeError(
+                        "Segment angular velocity exceeds 10 rad/s (~573 deg/s), which is implausible "
+                        "for human gait and suggests omega_global is not in SI units (rad/s) for this "
+                        f"frame/reconstruction method. max(|omega_global|)={np.max(np.abs(omega_global)):.2f}."
+                    )
                 omega_local = R_seg_global.T @ omega_global
                 E_rot = 0.5 * omega_local.T @ I_local @ omega_local
 
@@ -153,8 +168,8 @@ class MechanicalEnergyCalculator:
             "mechanical_energy": self.mechanical_energy,
             "mechanical_energy_normalized": self.mechanical_energy_normalized,
             "mechanical_energy_potential": self.E_pot_vec,
-            "mechanical_energy_potential_normalized": self.E_pot_normalized,
+            "mechanical_energy_pot_norm": self.E_pot_normalized,
             "mechanical_energy_kinetic": self.E_kin_vec,
-            "mechanical_energy_kinetic_normalized": self.E_kin_normalized,
+            "mechanical_energy_kin_norm": self.E_kin_normalized,
             "mechanical_energy_kinetic_com": self.E_kin_global_vec,
         }

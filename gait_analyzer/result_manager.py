@@ -11,8 +11,8 @@ from gait_analyzer.events.unique_events import UniqueEvents
 from gait_analyzer.kinematics_reconstructor import KinematicsReconstructor
 from gait_analyzer.optimal_estimator import OptimalEstimator
 from gait_analyzer.subject import Subject, Side
-from gait_analyzer.biomechanics_quantities.marginofstability_calculator import (
-    MarginofStabilityCalculation,
+from gait_analyzer.biomechanics_quantities.margin_of_stability_calculator import (
+    MarginOfStabilityCalculator,
 )
 from gait_analyzer.biomechanics_quantities.mechanical_energy_calculator import (
     MechanicalEnergyCalculator,
@@ -307,22 +307,19 @@ class ResultManager:
                 self.kinematics_reconstructor,
                 self.subject,
                 self.angular_momentum_calculator.segments_data,
+                skip_if_existing=skip_if_existing,
             )
-
-        mechanical_energy = self.mechanical_energy_calculator.compute_mechanical_energy(
-            skip_if_existing=skip_if_existing
-        )
 
         if plot:
             self.mechanical_energy_calculator.plot_energy()
 
-        return mechanical_energy
+        return self.mechanical_energy_calculator.mechanical_energy
 
     def compute_marginofstability(self, skip_if_existing: bool = False):
         if self.marginofstability_calculator is not None:
             return
 
-        self.marginofstability_calculator = MarginofStabilityCalculation(
+        self.marginofstability_calculator = MarginOfStabilityCalculator(
             model=self.model_creator.biorbd_model,
             markers_sorted=self.experimental_data.markers_sorted,
             model_marker_names=self.experimental_data.model_marker_names,
@@ -332,7 +329,7 @@ class ResultManager:
             skip_if_existing=skip_if_existing,
         )
 
-    def compute_probalityofstability(self, skip_if_existing: bool = False):
+    def compute_probalityofstability(self, skip_if_existing: bool = False, heel_strike_threshold: float = 20):
         if self.percentage_of_instability_calculator is not None:
             return
 
@@ -341,6 +338,7 @@ class ResultManager:
             experimental_data=self.experimental_data,
             subject=self.subject,
             skip_if_existing=skip_if_existing,
+            heel_strike_threshold=heel_strike_threshold,
         )
 
     def estimate_optimally(

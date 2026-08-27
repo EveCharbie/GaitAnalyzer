@@ -6,6 +6,18 @@ from gait_analyzer import (
     Side,
     ReconstructionType,
 )
+from pathlib import Path
+
+
+def find_repo_root(start: Path, marker: str = ".git") -> Path:
+    for parent in [start, *start.parents]:
+        if (parent / marker).exists():
+            return parent
+    raise RuntimeError(f"Could not find the repo root (marker '{marker}' not found).")
+
+
+REPO_ROOT = find_repo_root(Path(__file__).resolve())
+DATA_ROOT = REPO_ROOT / "data"
 
 
 def analysis_to_perform(
@@ -17,8 +29,8 @@ def analysis_to_perform(
 ):
 
     # --- Defining full paths for C3D files ---
-    base_data_path = f"/Users/floethv/Desktop/Doctorat/Fork/GaitAnalyzer/data/{subject.subject_name}"
-    c3d_dynamic_path = f"{base_data_path}/{c3d_file_name}"
+    base_data_path = DATA_ROOT / subject.subject_name
+    c3d_dynamic_path = str(base_data_path / c3d_file_name)
     c3d_static_path = f"{static_trial}"
 
     results = ResultManager(
@@ -33,7 +45,7 @@ def analysis_to_perform(
     # Creation of model
     results.create_model(
         osim_model_type=OsimModels.WholeBody(),
-        mvc_trials_path=f"{base_data_path}/mvc_trials/",
+        mvc_trials_path=str(base_data_path / "mvc_trials") + "/",
         functional_trials_path=None,
         q_regularization_weight=1,
         skip_if_existing=True,

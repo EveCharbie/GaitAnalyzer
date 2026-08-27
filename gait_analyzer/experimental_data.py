@@ -154,7 +154,7 @@ class ExperimentalData:
 
             if not self.model_creator.mvc_values:
                 print("No MVC values available, skipping EMG normalization.")
-                self.normalized_emg = None  # ou un tableau de NaN selon ce qu'attend le reste du pipeline
+                self.normalized_emg = None  # or an array of NaNs, depending on what the rest of the pipeline expects
                 return
             for analog_name in self.analog_names:
                 if analog_name not in self.model_creator.mvc_values.keys():
@@ -167,16 +167,17 @@ class ExperimentalData:
             for i_muscle, muscle_name in enumerate(self.analog_names):
                 emg = Analogs.from_c3d(self.c3d_full_file_path, suffix_delimiter=".", usecols=[muscle_name])
                 emg = emg.interpolate_na(dim="time", method="linear")
-                emg_data_clean = np.nan_to_num(np.array(emg.data), nan=0.0)  # garde la forme (1, 120000)
+                emg_data_clean = np.nan_to_num(np.array(emg.data), nan=0.0)  # keeps the shape (1, 120000)
                 emg.data[:] = emg_data_clean
                 emg_processed = (
-                    # emg.meca.interpolate_missing_data()
                     emg.meca.band_pass(order=2, cutoff=[10, 425])
                     .meca.center()
                     .meca.abs()
                     .meca.low_pass(order=4, cutoff=5, freq=emg.rate)
                 ) * self.emg_units
-                normalized_emg[i_muscle, :] = np.array(emg_processed) / self.model_creator.mvc_values[muscle_name]
+                normalized_emg[i_muscle, :] = (
+                    np.array(emg_processed[i_muscle, :]) / self.model_creator.mvc_values[muscle_name]
+                )
                 normalized_emg[i_muscle, normalized_emg[i_muscle, :] < 0] = (
                     0  # There are still small negative values after meca.abs()
                 )
@@ -202,30 +203,8 @@ class ExperimentalData:
             nb_platforms = len(platforms)
             units = self.marker_units  # We assume that the all position units are the same as the markers'
             self.platform_corners = []
-            # for platform in platforms:
-            #     self.platform_corners += [platform["corners"] * units]
-            # Positions fixes des plateformes (en mm, issues de LEM03 comme référence)
-            # I fix the platform coordinates because someone messed up the QTM setup in the lab...
-            fixed_corners = [
-                np.array(
-                    [
-                        [1614.0, 1614.0, -44.3, -44.3],
-                        [1038.0, 527.0, 527.0, 1038.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                    ]
-                )
-                * units,  # Platform 1
-                np.array(
-                    [
-                        [1614.0, 1614.0, -44.3, -44.3],
-                        [494.0, -17.0, -17.0, 494.0],
-                        [0.0, 0.0, 0.0, 0.0],
-                    ]
-                )
-                * units,  # Platform 2
-            ]
-            for corners in fixed_corners:
-                self.platform_corners += [corners]
+            for platform in platforms:
+                self.platform_corners += [platform["corners"] * units]
             # Initialize arrays for storing external forces and moments
             force_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
             moment_filtered = np.zeros((nb_platforms, 3, self.nb_analog_frames))
@@ -273,7 +252,6 @@ class ExperimentalData:
                 # Do not trust the CoP from ezc3d and recompute it after filtering the forces and moments
                 cop_ezc3d = platforms[i_platform]["center_of_pressure"] * units
 
-                r_z = 0  # In our case the reference frame of the platform is at its surface, so the height is 0
                 r_z = np.mean(
                     self.platform_corners[i_platform][2, :]
                 )  # Height of the platform origin (non-zero for some setups)
@@ -295,8 +273,7 @@ class ExperimentalData:
                 f_ext_sorted[i_platform, :3, :] = cop_ezc3d[:, :]
                 f_ext_sorted_filtered[i_platform, :3, :] = cop_filtered[i_platform, :, :]
                 f_ext_sorted[i_platform, 3:6, :] = tz[:, :]
-                # f_ext_sorted_filtered[i_platform, 3:6, :] = moment_filtered[i_platform, :, :] #Tz
-                f_ext_sorted_filtered[i_platform, 3:6, :] = tz_filtered[i_platform, :, :]  # comme f_ext_sorted
+                f_ext_sorted_filtered[i_platform, 3:6, :] = tz_filtered[i_platform, :, :]
                 f_ext_sorted[i_platform, 6:9, :] = force[:, :]
                 f_ext_sorted_filtered[i_platform, 6:9, :] = force_filtered[i_platform, :, :]
 
@@ -360,6 +337,67 @@ class ExperimentalData:
         extract_force_platform_data()
         compute_time_vectors()
 
+    def get_analog_frame_range_for_marker_frame(self, i_marker_node: int) -> list[int]:
+        """
+        Returns the analog frame indices whose samples fall in the window centered on the analog
+        frame that best matches a given marker frame index (since analogs are sampled at a higher
+        frequency than markers).
+        Note: for marker frames close to the beginning or the end of the trial, this window can
+        extend past the bounds of the analog data, which numpy will silently interpret as
+        negative/wrap-around indexing. This mirrors the existing behavior of
+        InverseDynamicsPerformer.get_f_ext_at_frame and has not been fixed here.
+
+        Parameters
+        ----------
+        i_marker_node: int
+            The marker frame index to convert.
+
+        Returns
+        -------
+        frame_range: list[int]
+            The analog frame indices to average over for this marker frame.
+        """
+        analog_to_marker_ratio = int(round(self.analogs_time_vector.shape[0] / self.markers_time_vector.shape[0]))
+        i_analog_node = Operator.from_marker_frame_to_analog_frame(
+            self.analogs_time_vector,
+            self.markers_time_vector,
+            i_marker_node,
+        )
+        return list(
+            range(
+                i_analog_node - int(analog_to_marker_ratio / 2),
+                i_analog_node + int(analog_to_marker_ratio / 2),
+            )
+        )
+
+    @staticmethod
+    def safe_nanmean(data: np.ndarray) -> np.ndarray:
+        """
+        Compute the mean over axis 0 while ignoring NaNs, replacing any remaining NaN (e.g., a
+        window that was entirely NaN) with 0.0.
+        """
+        result = np.nanmean(data, axis=0)
+        result[np.isnan(result)] = 0.0
+        return result
+
+    def get_f_ext_at_marker_frame(self, i_marker_node: int, i_platform: int, component_idx):
+        """
+        Returns the force plate data (self.f_ext_sorted_filtered) for one platform, averaged over
+        the analog frames that correspond to a single marker frame.
+
+        Parameters
+        ----------
+        i_marker_node: int
+            The marker frame index to get the force plate data for.
+        i_platform: int
+            The index of the force platform (in self.f_ext_sorted_filtered's first dimension).
+        component_idx: int | slice
+            Which of the 9 components of self.f_ext_sorted_filtered to return
+            (0:3 -> CoP, 3:6 -> moment, 6:9 -> force).
+        """
+        frame_range = self.get_analog_frame_range_for_marker_frame(i_marker_node)
+        return self.safe_nanmean(self.f_ext_sorted_filtered[i_platform, component_idx, frame_range])
+
     def animate_c3d(self):
         try:
             from pyorerun import BiorbdModel, PhaseRerun
@@ -419,17 +457,19 @@ class ExperimentalData:
 
         # TODO: move this code to avoid duplication with the biomechanics quantities computation
 
-        def _gait_parameters_calculation(foot: int, nbcycle: int | None, threshold_local: float):
-            if foot == 1:
+        def _gait_parameters_calculation(foot: str, nbcycle: int | None, threshold_local: float):
+            if foot == "left":
                 fv_foot1 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
                 fv_foot2 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
                 opp_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
                 study_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
-            else:
+            elif foot == "right":
                 fv_foot1 = force2[2, :].copy() if force2 is not None else np.zeros(self.nb_analog_frames)
                 fv_foot2 = force1[2, :].copy() if force1 is not None else np.zeros(self.nb_analog_frames)
                 opp_cal = traj_LCAL if traj_LCAL is not None else traj_RCAL
                 study_cal = traj_RCAL if traj_RCAL is not None else traj_LCAL
+            else:
+                raise ValueError(f"foot must be 'left' or 'right', got {foot!r}.")
 
             baseline1 = np.nanmean(fv_foot1[fv_foot1 < 20])
             baseline2 = np.nanmean(fv_foot2[fv_foot2 < 20])
@@ -453,7 +493,7 @@ class ExperimentalData:
             if idx_all.size < 4:
                 return {}
 
-            idx_deb = idx_all
+            idx_start = idx_all
             idx_end = idx_all[1:]
             start_idx = 2
             available_cycles = len(idx_end) - start_idx
@@ -462,17 +502,17 @@ class ExperimentalData:
             else:
                 nbcycle = min(nbcycle, max(0, available_cycles))
 
-            use_idx_deb = idx_deb[start_idx : start_idx + nbcycle]
+            use_idx_start = idx_start[start_idx : start_idx + nbcycle]
             use_idx_end = idx_end[start_idx : start_idx + nbcycle]
 
-            idx_TpfToTframe = fs_mks / fs_force if fs_force != 0 else 1.0
+            idx_tpf_to_tframe = fs_mks / fs_force if fs_force != 0 else 1.0
 
             end_contact_foot_study = np.zeros(nbcycle, dtype=int)
             end_contact_foot_opp = np.zeros(nbcycle, dtype=int)
             start_contact_foot_opp = np.zeros(nbcycle, dtype=int)
 
             for ii in range(nbcycle):
-                a = use_idx_deb[ii]
+                a = use_idx_start[ii]
                 b = use_idx_end[ii]
                 seg = fv_foot1[a : b + 1]
                 rel = np.where(seg > threshold_local)[0]
@@ -495,8 +535,8 @@ class ExperimentalData:
                 else:
                     start_contact_foot_opp[ii] = rel3[-1]
 
-            if len(use_idx_deb) >= 2:
-                stride_time = np.diff(use_idx_deb) / fs_force
+            if len(use_idx_start) >= 2:
+                stride_time = np.diff(use_idx_start) / fs_force
             else:
                 stride_time = np.array([])
 
@@ -518,43 +558,38 @@ class ExperimentalData:
 
             if study_cal is not None and opp_cal is not None:
 
-                marker_idx2 = np.round(start_contact_foot_opp * idx_TpfToTframe).astype(int)
+                marker_idx2 = np.round(start_contact_foot_opp * idx_tpf_to_tframe).astype(int)
                 marker_idx2 = np.clip(marker_idx2, 0, study_cal.shape[1] - 1)
-                StepLength = np.abs(opp_cal[0, marker_idx2] - study_cal[0, marker_idx2])
-                StepLength = np.where(StepLength > 100, StepLength / 1000.0, StepLength)
-                StrideLength = StepLength[: StepLength.size - 1] + StepLength[: StepLength.size - 1]
+                step_length = np.abs(opp_cal[0, marker_idx2] - study_cal[0, marker_idx2])
+                step_length = np.where(step_length > 100, step_length / 1000.0, step_length)
+                stride_length = step_length[: step_length.size - 1] + step_length[: step_length.size - 1]
                 # step width: mean(abs(opp_cal(2,:) - study_cal(2,:))) / 1000
-                StepWidth = np.abs(opp_cal[1, marker_idx2] - study_cal[1, marker_idx2])
+                step_width = np.abs(opp_cal[1, marker_idx2] - study_cal[1, marker_idx2])
 
                 if stride_time.size > 0:
-                    Velocity = StrideLength / stride_time
+                    velocity = stride_length / stride_time
                 else:
-                    Velocity = np.array([])
-
-                step_length = StepLength
-                step_width = StepWidth
-                stride_length = StrideLength
-                velocity = Velocity
+                    velocity = np.array([])
 
             gait_parameters = {
-                "StrideTime": stride_time,
-                "SingleSupportTime": single_support_time,
-                "DoubleSupportTime": double_support_time,
-                "StanceTime": stance_time,
-                "SwingTime": swing_time,
-                "Frequence": frequency,
-                "StepLength": step_length,
-                "StepWidth": step_width,
-                "StrideLength": stride_length,
-                "Velocity": velocity,
-                "idx_deb": use_idx_deb,
+                "stride_time": stride_time,
+                "single_support_time": single_support_time,
+                "double_support_time": double_support_time,
+                "stance_time": stance_time,
+                "swing_time": swing_time,
+                "frequency": frequency,
+                "step_length": step_length,
+                "step_width": step_width,
+                "stride_length": stride_length,
+                "velocity": velocity,
+                "idx_start": use_idx_start,
                 "idx_end": use_idx_end,
             }
             return gait_parameters
 
-        # compute for left and right (foot 1 and 2 in matlab naming)
-        gait_left = _gait_parameters_calculation(1, nb_cycle, threshold)
-        gait_right = _gait_parameters_calculation(2, nb_cycle, threshold)
+        # compute for left and right
+        gait_left = _gait_parameters_calculation("left", nb_cycle, threshold)
+        gait_right = _gait_parameters_calculation("right", nb_cycle, threshold)
         self.gait_parameters_all = {"right_leg": gait_right, "left_leg": gait_left}
         self.gait_parameters_meanstd = self._estimation_mean_std_abs_diff_per(self.gait_parameters_all)
 
@@ -608,10 +643,8 @@ class ExperimentalData:
             "normalized_emg": self.normalized_emg,
             "gait_parameters_all": self.gait_parameters_all,
             "gait_parameters_meanstd": self.gait_parameters_meanstd,
-            "gait_parameters_all": self.gait_parameters_all,
-            "gait_parameters_meanstd": self.gait_parameters_meanstd,
-            "idx_deb_right": self.gait_parameters_all.get("right_leg", {}).get("idx_deb"),
+            "idx_start_right": self.gait_parameters_all.get("right_leg", {}).get("idx_start"),
             "idx_end_right": self.gait_parameters_all.get("right_leg", {}).get("idx_end"),
-            "idx_deb_left": self.gait_parameters_all.get("left_leg", {}).get("idx_deb"),
+            "idx_start_left": self.gait_parameters_all.get("left_leg", {}).get("idx_start"),
             "idx_end_left": self.gait_parameters_all.get("left_leg", {}).get("idx_end"),
         }

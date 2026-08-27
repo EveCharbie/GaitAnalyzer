@@ -11,9 +11,16 @@ from gait_analyzer.biomechanics_quantities.angular_momentum_calculator import (
 
 class ComMmaDistanceCalculator:
     """
-    Computes the dCoM-MMA as defined by:
-    dCoM-MMA = (F × dH_COM/dt) / ||F||²
-    where F is the total ground reaction force obtained by summing all force plates.
+    Computes the dCoM-MMA (Center of Mass to Minimum Moment Axis distance), defined as:
+    dCoM-MMA = (F x dH_COM/dt) / ||F||^2
+    where F is the total ground reaction force obtained by summing all force plates, and
+    dH_COM/dt is the rate of change of the whole-body angular momentum about the center of mass.
+
+    Reference:
+    Chalanunt S, Lalles A, Demont A, Benallegue M, Watier B, et al. Comparative analysis of
+    dynamic balance descriptors in humanoids and humans during perturbed bipedal locomotion
+    and fall. International Conference on Humanoid Robots (Humanoids), IEEE, Sep 2025, Seoul,
+    South Korea. pp.1-8. doi:10.1109/Humanoids65713.2025.11203160. hal-05407361.
     """
 
     def __init__(
@@ -21,7 +28,7 @@ class ComMmaDistanceCalculator:
         angular_momentum_calculator: AngularMomentumCalculator,
         experimental_data: ExperimentalData,
         subject: Subject,
-        q,
+        q: np.ndarray,
         skip_if_existing: bool = False,
     ):
         self.angular_momentum_calculator = angular_momentum_calculator
@@ -36,6 +43,7 @@ class ComMmaDistanceCalculator:
         self.F_resultant = None
         self.r_MMA = None
         self.dCoM_MMA_norm = None
+        self.is_loaded_dcom_mma = False
 
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_dcom_mma = True
@@ -44,14 +52,21 @@ class ComMmaDistanceCalculator:
             self.save_dcom_mma()
 
     def compute_Hdot(self):
-        dt = self.experimental_data.markers_dt
-        self.Hdot = np.gradient(self.angular_momentum_calculator.H_total, dt, axis=1)
+        # Use the actual marker time vector (rather than the assumed-constant dt) so that any
+        # non-uniform sampling is accounted for. np.gradient with a coordinate array uses the
+        # real spacing between samples and still returns an array of the same shape as H_total
+        self.Hdot = np.gradient(
+            self.angular_momentum_calculator.H_total,
+            self.experimental_data.markers_time_vector,
+            axis=1,
+        )
 
     def compute_resultant_force(self):
         """
         Compute total ground reaction force R as sum over all force plates.
-        self.f_ext shape = [n_plates, fx, fy, fz, n_frames] ?
-        We assume forces are in indices 6:9 (fx, fy, fz) as in previous discussion.
+        self.f_ext shape = [n_plates, 9, n_frames], where the 9 components are
+        [CoP_x, CoP_y, CoP_z, Mx, My, Mz, Fx, Fy, Fz] (see ExperimentalData.f_ext_sorted_filtered).
+        The forces are in indices 6:9 (Fx, Fy, Fz).
         """
         self.F_resultant = np.sum(self.f_ext[:, 6:9, :], axis=0)
 

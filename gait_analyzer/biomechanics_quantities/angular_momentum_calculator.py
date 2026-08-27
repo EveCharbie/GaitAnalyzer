@@ -52,10 +52,11 @@ class AngularMomentumCalculator:
         self.dof_names = [m.to_string() for m in self.model.nameDof()]
 
         # Outputs
+        self.total_angular_momentum = None
         self.H_segments = None
         self.H_total = None
         self.segments_data = None
-        self.total_angular_momentum_normalized = None
+        self.total_angular_momentum_norm = None
 
         if skip_if_existing and self.check_if_existing():
             self.is_loaded_angular_momentum = True
@@ -137,7 +138,7 @@ class AngularMomentumCalculator:
         """
         g_norm = np.linalg.norm(self.gravity)
         normalization_factor = self.subject_mass * self.subject_height * np.sqrt(g_norm * self.subject_height)
-        self.total_angular_momentum_normalized = self.H_total / normalization_factor
+        self.total_angular_momentum_norm = self.H_total / normalization_factor
 
     def check_if_existing(self) -> bool:
         result_file_full_path = self.get_result_file_full_path()
@@ -147,7 +148,7 @@ class AngularMomentumCalculator:
                 self.H_segments = data["H_segments"]
                 self.H_total = data["H_total"]
                 self.segments_data = data["segments_data"]
-                self.total_angular_momentum_normalized = data["total_angular_momentum_normalized"]
+                self.total_angular_momentum_norm = data["total_angular_momentum_norm"]
             return True
         return False
 
@@ -176,6 +177,6 @@ class AngularMomentumCalculator:
             "H_segments": self.H_segments,
             "H_total": self.H_total,
             "segments_data": self.segments_data,
-            "total_angular_momentum_normalized": self.total_angular_momentum_normalized,
+            "total_angular_momentum_norm": self.total_angular_momentum_norm,
             "DoF_names": self.dof_names,
         }

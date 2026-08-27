@@ -159,19 +159,19 @@ class AnalysisPerformer:
             pickle.dump(result_dict, f)
 
         # For matlab analysis
-        # --- Fix for MATLAB field name length limit (31 chars) ---
-        def shorten_keys(d, max_len=31):
-            """Recursively truncates keys that are too long for savemat()"""
-            new_dict = {}
+        def check_key_lengths(d, max_len=31, path=""):
             for k, v in d.items():
-                new_key = k[:max_len] if isinstance(k, str) else k
+                if isinstance(k, str) and len(k) > max_len:
+                    raise ValueError(
+                        f"Key '{path}{k}' is {len(k)} characters long, which exceeds MATLAB's "
+                        f"{max_len}-character field name limit. Please shorten this key at its "
+                        f"source (in the corresponding class's outputs() method) instead of "
+                        f"truncating it here, since truncation can silently collide with another key."
+                    )
                 if isinstance(v, dict):
-                    new_dict[new_key] = shorten_keys(v, max_len)
-                else:
-                    new_dict[new_key] = v
-            return new_dict
+                    check_key_lengths(v, max_len, path=f"{path}{k}.")
 
-        result_dict = shorten_keys(result_dict)
+        check_key_lengths(result_dict)
         savemat(result_file_name + ".mat", result_dict)
 
     def check_for_geometry_files(self):

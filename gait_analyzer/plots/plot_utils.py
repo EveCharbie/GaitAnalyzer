@@ -17,7 +17,7 @@ class PlotType(Enum):
     QDDOT = "qddot"
     TAU = "tau"
     POWER = "power"
-    ANGULAR_MOMENTUM = "total_angular_momentum_normalized"
+    ANGULAR_MOMENTUM = "total_angular_momentum_norm"
     GRF = "f_ext_sorted_filtered"
     EMG = "normalized_emg"
     MUSCLE_FORCES = "muscle_forces"
