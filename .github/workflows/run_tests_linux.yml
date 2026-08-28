@@ -35,8 +35,8 @@ jobs:
       - name: Install dependencies
         run: | 
           pip install . && pip uninstall -y gait_analyzer
-          pip install scipy==1.17.0 numpy==2.4.1 lxml ezc3d matplotlib plotly
-          conda install biorbd graphviz -cconda-forge
+          pip install scipy numpy lxml ezc3d matplotlib plotly
+          conda install biorbd graphviz biobuddy -cconda-forge
 
       - name: Install extra dependencies
         run: | 
