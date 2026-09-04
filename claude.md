@@ -37,3 +37,6 @@
 
 ## Linting
 - Uses black . -l120
+
+## BioBuddy dependency management
+- When working on a developer computer, use `export PYTHONPATH="${PYTHONPATH}:$(git rev-parse --show-toplevel)/../biobuddy"` to add the BioBuddy repo to the Python path for development purposes (when on GitHub CI, keep installing the released version).
